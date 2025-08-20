@@ -51,9 +51,14 @@ export const verifyToken = <TPayload extends object = AccessTokenPayload>(
   const { secret = JWT_SECRET, ...verifyOpts } = options || {};
   try {
     const payload = jwt.verify(token, secret, {
-      ...defaults,
-      ...verifyOpts,
-    }) as TPayload;
+    ...defaults,
+    ...verifyOpts,
+    audience: verifyOpts.audience as
+      | string
+      | RegExp
+      | [string | RegExp, ...(string | RegExp)[]]
+      | undefined,
+  }) as unknown as TPayload;
     return {
       payload,
     };
