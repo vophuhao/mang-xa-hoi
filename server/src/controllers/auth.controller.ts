@@ -31,6 +31,7 @@ import {
 } from "./auth.schemas";
 
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
+
 export const registerHandler = catchErrors(async (req, res) => {
   const request = registerSchema.parse({
     ...req.body,
@@ -41,6 +42,7 @@ export const registerHandler = catchErrors(async (req, res) => {
     .status(CREATED)
     .json(user);
 });
+
 export const googleLoginHandler = catchErrors(async (req, res) => {
   const { credential } = req.body;
   appAssert(credential, BAD_REQUEST, "Missing credential");

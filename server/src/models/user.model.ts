@@ -9,6 +9,7 @@ export interface UserDocument extends mongoose.Document {
   updatedAt: Date;
   avatarUrl?: string;
   provider: 'local' | 'google' | 'google+local';
+  __v?: number;
   comparePassword(val: string): Promise<boolean>;
   omitPassword(): Pick<
     UserDocument,
