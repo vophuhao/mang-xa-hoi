@@ -25,10 +25,10 @@ export default function Sidebar({
   const handleClick = (item) => {
     if (item.id === "search" || item.id === "message") {
       setActiveMenu(activeMenu === item.id ? "home" : item.id);
-      setIsCollapsed(true); // thu nhỏ sidebar khi mở panel
+      setIsCollapsed(true);
     } else {
       setActiveMenu(item.id);
-      setIsCollapsed(false); // mở rộng lại sidebar khi vào content
+      setIsCollapsed(false);
     }
   };
 
@@ -41,23 +41,24 @@ export default function Sidebar({
     >
       {/* Logo */}
       <div
-        className={`px-4 pb-6 transition-all duration-500 ease-in-out ${
-          isCollapsed ? "opacity-80" : "opacity-100"
-        }`}
+        className={`px-6 py-4 pb-8 transition-all duration-500 ease-in-out flex items-center`}
       >
-        {isCollapsed ? (
-          <span className="text-xl font-extrabold tracking-tight text-primary-default">
+        <span
+          className={`font-extrabold tracking-tight text-primary-default whitespace-nowrap overflow-hidden transition-all duration-500 ease-in-out
+            ${isCollapsed ? "text-xl w-0 opacity-0" : "text-2xl w-auto opacity-100"}
+          `}
+        >
+          Instagram
+        </span>
+        {isCollapsed && (
+          <span className="text-xl font-extrabold tracking-tight text-primary-default absolute">
             IG
-          </span>
-        ) : (
-          <span className="text-2xl font-extrabold tracking-tight text-primary-default">
-            Instagram
           </span>
         )}
       </div>
 
       {/* Nav items */}
-      <div className="flex flex-col space-y-1 px-2"> {/* px-2 tạo khoảng cách với border */}
+      <div className="flex flex-col space-y-4 px-2">
         {navItems.map((item) => (
           <button
             key={item.id}
@@ -67,8 +68,8 @@ export default function Sidebar({
               hover:scale-[1.02] active:scale-[0.97]
               ${
                 activeMenu === item.id
-                  ? "text-primary-default font-bold" // khi active thì chỉ đổi màu + in đậm
-                  : "hover:bg-gray-50 text-gray-700" // khi hover thì mới có background nhạt
+                  ? "text-primary-default font-bold"
+                  : "hover:bg-gray-50 text-gray-700"
               }`}
           >
             {/* Icon */}
@@ -82,18 +83,18 @@ export default function Sidebar({
               {item.icon}
             </span>
 
-            {/* Label */}
-            {!isCollapsed && (
-              <span
-                className={`ml-4 transition-colors duration-300 ${
+            {/* Label luôn render, chỉ ẩn/hiện mượt */}
+            <span
+              className={`ml-4 whitespace-nowrap overflow-hidden transition-all duration-500 ease-in-out
+                ${isCollapsed ? "opacity-0 w-0" : "opacity-100 w-auto"}
+                ${
                   activeMenu === item.id
                     ? "text-primary-default font-bold"
                     : "text-gray-700"
                 }`}
-              >
-                {item.label}
-              </span>
-            )}
+            >
+              {item.label}
+            </span>
           </button>
         ))}
       </div>
