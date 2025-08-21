@@ -1,22 +1,21 @@
-import DestinationGrid from "../components/DestinationGrid"
-import Footer from "../components/Footer"
-import Header from "../components/Header"
-import HomeBanner from "../components/HomeBanner"
-import TopDestinations from "../components/TopDestinations"
+import Sidebar from "../components/SideBar"
 
 
 
-const Home = () =>{
+
+
+const Home = () => {
 
     return (
 
         <>
-            <Header/>
-            <HomeBanner/>
-            <TopDestinations/>
-            <DestinationGrid/>
-            <Footer/>
-            
+            <div className="flex">
+                <Sidebar/>
+                {/* Nội dung chính */}
+                <div className="flex-1 p-10">
+                    <h2 className="text-xl font-semibold">Gợi ý cho bạn</h2>
+                </div>
+            </div>
         </>
     )
 }
