@@ -15,5 +15,6 @@ export const APP_ORIGIN = getEnv("APP_ORIGIN");
 export const JWT_SECRET = getEnv("JWT_SECRET");
 export const JWT_REFRESH_SECRET = getEnv("JWT_REFRESH_SECRET");
 export const EMAIL_SENDER = getEnv("EMAIL_SENDER");
+export const EMAIL_PASS = getEnv("EMAIL_PASS");
 export const RESEND_API_KEY = getEnv("RESEND_API_KEY");
 export const GOOGLE_CLIENT_ID=getEnv("GOOGLE_CLIENT_ID")
