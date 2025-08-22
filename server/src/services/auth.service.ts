@@ -66,26 +66,9 @@ export const createAccount = async (data: CreateAccountParams) => {
   // ignore email errors for now
   if (error) console.error(error);
 
-  // create session
-  const session = await SessionModel.create({
-    userId,
-    userAgent: data.userAgent,
-  });
-
-  const refreshToken = signToken(
-    {
-      sessionId: session._id,
-    },
-    refreshTokenSignOptions
-  );
-  const accessToken = signToken({
-    userId,
-    sessionId: session._id,
-  });
   return {
+    message: "Account created successfully. Please check your email to verify your account.",
     user: user.omitPassword(),
-    accessToken,
-    refreshToken,
   };
 };
 
@@ -105,6 +88,12 @@ export const loginUser = async ({
 
   const isValid = await user.comparePassword(password);
   appAssert(isValid, UNAUTHORIZED, "Invalid email or password");
+
+  appAssert(
+    user.verified,
+    UNAUTHORIZED,
+    "Please verify your email before logging in"
+  );
 
   const userId = user._id;
   const session = await SessionModel.create({
