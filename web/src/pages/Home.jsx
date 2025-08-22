@@ -19,7 +19,7 @@ const Home = () => {
 
       {/* Sidebar panel phụ */}
       {activeMenu === "search" && (
-        <div className="w-80 border-r bg-white animate-slideIn">
+        <div className="w-100 border-gray-800 bg-white animate-slideIn rounded-tr-4xl rounded-br-4xl">
           <SearchPanel />
         </div>
       )}

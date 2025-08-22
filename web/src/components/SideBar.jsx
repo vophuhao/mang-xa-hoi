@@ -23,8 +23,11 @@ export default function Sidebar({
   ];
 
   const handleClick = (item) => {
+    // Nếu bấm lại đúng cái đang active thì bỏ qua
+    if (activeMenu === item.id) return;
+
     if (item.id === "search" || item.id === "message") {
-      setActiveMenu(activeMenu === item.id ? "home" : item.id);
+      setActiveMenu(item.id);
       setIsCollapsed(true);
     } else {
       setActiveMenu(item.id);
@@ -32,11 +35,11 @@ export default function Sidebar({
     }
   };
 
+
   return (
     <div
-      className={`${
-        isCollapsed ? "w-16" : "w-60"
-      } border-r border-gray-200 bg-white flex flex-col space-y-2 py-6 
+      className={`${isCollapsed ? "w-16" : "w-60"
+        } border-r border-gray-200 bg-white flex flex-col space-y-2 py-6 
       transition-all duration-500 ease-in-out shadow-sm`}
     >
       {/* Logo */}
@@ -66,19 +69,17 @@ export default function Sidebar({
             className={`flex items-center px-4 py-3 rounded-xl group
               transition-all duration-300 ease-out transform
               hover:scale-[1.02] active:scale-[0.97]
-              ${
-                activeMenu === item.id
-                  ? "text-primary-default font-bold"
-                  : "hover:bg-gray-50 text-gray-700"
+              ${activeMenu === item.id
+                ? "text-primary-default font-bold"
+                : "hover:bg-gray-50 text-gray-700"
               }`}
           >
             {/* Icon */}
             <span
-              className={`w-6 h-6 transition-colors duration-300 ${
-                activeMenu === item.id
+              className={`w-6 h-6 transition-colors duration-300 ${activeMenu === item.id
                   ? "text-primary-default"
                   : "text-gray-600 group-hover:text-black"
-              }`}
+                }`}
             >
               {item.icon}
             </span>
@@ -87,10 +88,9 @@ export default function Sidebar({
             <span
               className={`ml-4 whitespace-nowrap overflow-hidden transition-all duration-500 ease-in-out
                 ${isCollapsed ? "opacity-0 w-0" : "opacity-100 w-auto"}
-                ${
-                  activeMenu === item.id
-                    ? "text-primary-default font-bold"
-                    : "text-gray-700"
+                ${activeMenu === item.id
+                  ? "text-primary-default font-bold"
+                  : "text-gray-700"
                 }`}
             >
               {item.label}
