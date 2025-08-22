@@ -27,7 +27,7 @@ const userSchema = new mongoose.Schema<UserDocument>(
         return this.provider === 'local';
       },
     },
-    verified: { type: Boolean, required: true, default: true },
+    verified: { type: Boolean, required: true, default: false },
     avatarUrl: { 
       type: String ,
       default: "https://i.pinimg.com/736x/41/76/b9/4176b9b864c1947320764e82477c168f.jpg",

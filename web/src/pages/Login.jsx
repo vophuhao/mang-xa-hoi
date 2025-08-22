@@ -45,7 +45,8 @@ const Login = () => {
         <Box rounded="lg" bg="gray.700" boxShadow="lg" p={8}>
           {isError && (
             <Box mb={3} color="red.400">
-              Invalid email or password
+              {isError.response?.data?.message === "Invalid email or password" ? "Invalid email or password"
+              :"Please verify your email before logging in"}
             </Box>
           )}
           <Stack spacing={4}>
