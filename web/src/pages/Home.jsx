@@ -2,6 +2,7 @@ import { useState } from "react";
 import Sidebar from "../components/SideBar";
 import SearchPanel from "../components/SearchPanel";
 import MessagePanel from "../components/MessagePanel";
+import ProfilePanel from "../components/ProfilePanel";
 
 const Home = () => {
   const [activeMenu, setActiveMenu] = useState("home"); // home | explore | reels | profile | search | message
@@ -30,11 +31,11 @@ const Home = () => {
       )}
 
       {/* Nội dung chính */}
-      <div className="flex-1 bg-gray-50 p-6 overflow-auto">
-        {activeMenu === "home" && <div>🏠 Home Page</div>}
-        {activeMenu === "explore" && <div>🔍 Explore Page</div>}
-        {activeMenu === "reels" && <div>🎬 Reels Page</div>}
-        {activeMenu === "profile" && <div>👤 Profile Page</div>}
+      <div className="flex-1 bg-gray-50 overflow-auto">
+        {activeMenu === "home" && <div className="p-6">🏠 Home Page</div>}
+        {activeMenu === "explore" && <div className="p-6">🔍 Explore Page</div>}
+        {activeMenu === "reels" && <div className="p-6">🎬 Reels Page</div>}
+        {activeMenu === "profile" && <ProfilePanel />}
       </div>
     </div>
   );
