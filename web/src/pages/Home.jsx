@@ -1,24 +1,44 @@
-import DestinationGrid from "../components/DestinationGrid"
-import Footer from "../components/Footer"
-import Header from "../components/Header"
-import HomeBanner from "../components/HomeBanner"
-import TopDestinations from "../components/TopDestinations"
+import { useState } from "react";
+import Sidebar from "../components/SideBar";
+import SearchPanel from "../components/SearchPanel";
+import MessagePanel from "../components/MessagePanel";
 
+const Home = () => {
+  const [activeMenu, setActiveMenu] = useState("home"); // home | explore | reels | profile | search | message
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
+  return (
+    <div className="flex h-screen">
+      {/* Sidebar */}
+      <Sidebar
+        activeMenu={activeMenu}
+        setActiveMenu={setActiveMenu}
+        isCollapsed={isCollapsed}
+        setIsCollapsed={setIsCollapsed}
+      />
 
-const Home = () =>{
+      {/* Sidebar panel phụ */}
+      {activeMenu === "search" && (
+        <div className="w-80 border-r bg-white animate-slideIn">
+          <SearchPanel />
+        </div>
+      )}
+      {activeMenu === "message" && (
+        <div className="w-80 border-r bg-white animate-slideIn">
+          <MessagePanel />
+        </div>
+      )}
 
-    return (
+      {/* Nội dung chính */}
+      <div className="flex-1 bg-gray-50 p-6 overflow-auto">
+        {activeMenu === "home" && <div>🏠 Home Page</div>}
+        {activeMenu === "explore" && <div>🔍 Explore Page</div>}
+        {activeMenu === "reels" && <div>🎬 Reels Page</div>}
+        {activeMenu === "profile" && <div>👤 Profile Page</div>}
+      </div>
+    </div>
+  );
+};
 
-        <>
-            <Header/>
-            <HomeBanner/>
-            <TopDestinations/>
-            <DestinationGrid/>
-            <Footer/>
-            
-        </>
-    )
-}
+export default Home;
 
-export default Home

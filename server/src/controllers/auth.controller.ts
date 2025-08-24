@@ -37,10 +37,10 @@ export const registerHandler = catchErrors(async (req, res) => {
     ...req.body,
     userAgent: req.headers["user-agent"],
   });
-  const { user, accessToken, refreshToken } = await createAccount(request);
-  return setAuthCookies({ res, accessToken, refreshToken })
-    .status(CREATED)
-    .json(user);
+
+  const result = await createAccount(request);
+
+  return res.status(CREATED).json(result);
 });
 
 export const googleLoginHandler = catchErrors(async (req, res) => {
