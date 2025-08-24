@@ -10,7 +10,7 @@ export default function ProfilePanel() {
   
   // Kết hợp dữ liệu người dùng từ API với dữ liệu mẫu
   const profileData = {
-    username: user?.name || "User",
+    username: user?._id || "User",
     fullName: user?.name || "User A",
     email: user?.email || "example@email.com",
     bio: user?.bio || "📸 Nhiếp ảnh gia | 🌍 Du lịch khắp thế giới\nLiên hệ: " + (user?.email || "example@email.com"),
