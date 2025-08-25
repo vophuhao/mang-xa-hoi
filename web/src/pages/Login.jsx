@@ -48,7 +48,7 @@ const handleGoogleLogin = async (credentialResponse) => {
     <div className="min-h-screen relative overflow-hidden">
       {/* Background Image */}
       <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat blur-[1.5px]"
         style={{
           backgroundImage: `url(${landingImg_1})`,
         }}
@@ -113,9 +113,10 @@ const handleGoogleLogin = async (credentialResponse) => {
               <Divider text="hoặc" />
 
               {/* Google Login Button */}
-             <GoogleLogin  onSuccess={handleGoogleLogin}
+              <GoogleLogin onSuccess={handleGoogleLogin}
                  onError={() => toast.error("Đăng nhập thất bại")}
-                 useOneTap/>
+                 useOneTap
+              />
 
               {/* Login Button */}
               <button

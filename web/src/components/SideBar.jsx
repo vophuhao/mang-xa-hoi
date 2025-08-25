@@ -18,6 +18,7 @@ import { useNavigate } from "react-router-dom";
 import { logout } from "../lib/api";
 import { toast } from 'react-toastify';
 import { useMutation } from "@tanstack/react-query";
+import logo_pixyy from "../assets/images/logo_pixyy.png";
 export default function Sidebar({
   activeMenu,
   setActiveMenu,
@@ -73,16 +74,18 @@ export default function Sidebar({
       {/* Logo */}
       <div className="px-6 py-4 pb-8 flex items-center transition-all duration-500 ease-in-out">
         <span
-          className={`font-extrabold tracking-tight text-primary-default whitespace-nowrap overflow-hidden transition-all duration-500 ease-in-out
+          className={`font-pacifico text-4xl font-extrabold tracking-tight p-[12px] text-primary-default whitespace-nowrap overflow-hidden transition-all duration-500 ease-in-out
             ${isCollapsed ? "text-xl w-0 opacity-0" : "text-2xl w-auto opacity-100"}
           `}
         >
-          Instagram
+          Pixyy
         </span>
         {isCollapsed && (
-          <span className="text-xl font-extrabold tracking-tight text-primary-default absolute">
-            IG
-          </span>
+          <img
+            src={logo_pixyy}
+            alt="Pixyy Logo"
+            className="absolute h-6 w-auto"
+          />
         )}
       </div>
 
