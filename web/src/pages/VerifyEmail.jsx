@@ -1,15 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams, Link } from "react-router-dom";
-import {
-  Container,
-  Flex,
-  Link as ChakraLink,
-  Spinner,
-  Text,
-  Alert,
-  AlertIcon,
-  VStack,
-} from "@chakra-ui/react";
 import { verifyEmail } from "../lib/api";
 
 const VerifyEmail = () => {
@@ -20,35 +10,53 @@ const VerifyEmail = () => {
   });
 
   return (
-    <Flex minH="100vh" justify="center" mt={12}>
-      <Container mx="auto" maxW="md" py={12} px={6} textAlign="center">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-md text-center">
         {isPending ? (
-          <Spinner />
+          <div className="flex justify-center">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
+          </div>
         ) : (
-          <VStack align="center" spacing={6}>
-            <Alert
-              status={isSuccess ? "success" : "error"}
-              w="fit-content"
-              borderRadius={12}
+          <div className="space-y-6">
+            <h2 className="text-xl font-semibold">
+              {isSuccess ? "Email Verified!" : "Verification Failed"}
+            </h2>
+
+            <div
+              className={`flex items-center justify-center gap-2 rounded-md px-4 py-3 text-sm font-medium ${
+                isSuccess
+                  ? "bg-green-50 text-green-600"
+                  : "bg-red-50 text-red-600"
+              }`}
             >
-              <AlertIcon />
-              {isSuccess ? "Email Verified!" : "Invalid Link"}
-            </Alert>
+              {isSuccess
+                ? "Your email has been successfully verified."
+                : "Invalid or expired verification link."}
+            </div>
+
             {isError && (
-              <Text color="gray.400">
+              <p className="text-sm text-gray-600">
                 The link is either invalid or expired.{" "}
-                <ChakraLink as={Link} to="/password/forgot" replace>
+                <Link
+                  to="/password/forgot"
+                  className="font-medium text-blue-600 hover:underline"
+                >
                   Get a new link
-                </ChakraLink>
-              </Text>
+                </Link>
+              </p>
             )}
-            <ChakraLink as={Link} to="/" replace>
-              Back to home
-            </ChakraLink>
-          </VStack>
+
+            <Link
+              to="/login"
+              className="block w-full rounded-md bg-blue-600 py-2 text-white font-medium hover:bg-blue-700 transition"
+            >
+              Back to Login
+            </Link>
+          </div>
         )}
-      </Container>
-    </Flex>
+      </div>
+    </div>
   );
 };
+
 export default VerifyEmail;
