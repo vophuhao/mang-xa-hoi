@@ -21,19 +21,23 @@ API.interceptors.response.use(
     const { config, response } = error;
     const { status, data } = response || {};
 
-    // try to refresh the access token behind the scenes
     if (status === UNAUTHORIZED && data?.errorCode === "InvalidAccessToken") {
       try {
-        // refresh the access token, then retry the original request
+        // Kiểm tra có refresh token không (ví dụ lưu trong localStorage hoặc cookie)
+        const hasRefreshToken = document.cookie.includes("refreshToken=");
+        if (!hasRefreshToken) {
+          throw new Error("No refresh token");
+        }
+
+        // Refresh token
         await TokenRefreshClient.get("/auth/refresh");
-        return TokenRefreshClient(config);
-      } catch (error) {
-        // handle refresh errors by clearing the query cache & redirecting to login
+
+        // Retry bằng API (client chính), không phải TokenRefreshClient
+        return API(config);
+      } catch (err) {
         queryClient.clear();
-        navigate("/home", {
-          state: {
-            redirectUrl: window.location.pathname,
-          },
+        navigate("/login", {
+          state: { redirectUrl: window.location.pathname },
         });
       }
     }

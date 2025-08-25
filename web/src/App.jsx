@@ -1,9 +1,7 @@
 import { Route, Routes, useNavigate } from "react-router-dom";
 import AppContainer from "./components/AppContainer";
-import Profile from "./pages/Profile";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Settings from "./pages/Settings";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import VerifyEmail from "./pages/VerifyEmail";
@@ -23,9 +21,7 @@ function App() {
   return (
     <Provider store={store}>
       <Routes>
-        <Route path="/" element={<AppContainer />}>
-          <Route index element={<Profile />} />
-          <Route path="settings" element={<Settings />} />
+        <Route path="/" element={<AppContainer />}>    
         </Route>
         <Route path="/home" element={<Home />}></Route>
         <Route path="/login" element={<Login />} />

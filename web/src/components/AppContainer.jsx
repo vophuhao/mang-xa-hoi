@@ -1,7 +1,6 @@
-import { Box, Center, Spinner } from "@chakra-ui/react";
-import { Navigate, Outlet } from "react-router-dom";
+import {  Center, Spinner } from "@chakra-ui/react";
+import { Navigate } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
-import UserMenu from "./UserMenu";
 
 const AppContainer = () => {
   const { user, isLoading } = useAuth();
@@ -11,10 +10,13 @@ const AppContainer = () => {
       <Spinner mb={4} />
     </Center>
   ) : user ? (
-    <Box p={4} minH="100vh">
-      <UserMenu />
-      <Outlet />
-    </Box>
+    <Navigate
+      to="/home"
+      replace
+      state={{
+        redirectUrl: window.location.pathname,
+      }}
+    />
   ) : (
     <Navigate
       to="/login"

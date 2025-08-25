@@ -4,11 +4,12 @@ import landingImg_1 from "../assets/images/landingImg_1.png";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import Divider from "../components/ui/Divider";
 import ThemeToggle from "../components/ui/ThemeToggle";
-import GoogleIcon from "../components/ui/GoogleIcon";
 import { useTheme } from "../hooks/useTheme";
 import FloatingInput from "../components/ui/FloatingInput";
 import { loginUser, clearError } from "../store/slices/authSlice";
-
+import { GoogleLogin } from '@react-oauth/google'; 
+import { googleLogin } from "../lib/api";
+import { toast } from 'react-toastify';
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,6 +19,16 @@ const Login = () => {
   const { isLoading, error } = useSelector((state) => state.auth);
   const redirectUrl = location.state?.redirectUrl || "/";
   const { isDarkMode, toggleTheme } = useTheme();
+
+const handleGoogleLogin = async (credentialResponse) => {
+  try {
+    const credential = credentialResponse.credential;
+    await googleLogin({ credential });
+    navigate("/home"); // hoặc navigate("/dashboard") tùy dự án của bạn
+  } catch (error) {
+    navigate("/login"); // chỉ quay về login nếu lỗi
+  }
+};
 
   const handleSubmit = () => {
     dispatch(loginUser({ email, password })).then((result) => {
@@ -31,10 +42,6 @@ const Login = () => {
     if (e.key === "Enter") {
       handleSubmit();
     }
-  };
-
-  const handleGoogleLogin = () => {
-    alert('Google login clicked');
   };
 
   return (
@@ -106,14 +113,9 @@ const Login = () => {
               <Divider text="hoặc" />
 
               {/* Google Login Button */}
-              <button
-                type="button"
-                onClick={handleGoogleLogin}
-                className="w-full py-4 px-4 bg-white/20 dark:bg-white/10 border border-white/30 dark:border-white/20 rounded-2xl text-gray-700 dark:text-gray-100 hover:bg-white/30 dark:hover:bg-white/20 transition-all duration-300 flex items-center justify-center space-x-3"
-              >
-                <GoogleIcon />
-                <span>Đăng nhập bằng Google</span>
-              </button>
+             <GoogleLogin  onSuccess={handleGoogleLogin}
+                 onError={() => toast.error("Đăng nhập thất bại")}
+                 useOneTap/>
 
               {/* Login Button */}
               <button
