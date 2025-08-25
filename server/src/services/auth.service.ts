@@ -38,36 +38,42 @@ type CreateAccountParams = {
   userAgent?: string;
 };
 
-export const createAccount = async (data: CreateAccountParams) => {
-  // verify email is not taken
-  const existingUser = await UserModel.exists({
-    email: data.email,
-  });
-  appAssert(!existingUser, CONFLICT, "Email already in use");
+export const sendEmailVerification = async (email: string) => {
+  const user = await UserModel.findOne({ email });
+  appAssert(user, NOT_FOUND, "User not found");
 
-  const user = await UserModel.create({
-    email: data.email,
-    password: data.password,
-  });
-  const userId = user._id;
   const verificationCode = await VerificationCodeModel.create({
-    userId,
+    userId: user._id,
     type: VerificationCodeType.EmailVerification,
     expiresAt: oneYearFromNow(),
   });
 
   const url = `${APP_ORIGIN}/email/verify/${verificationCode._id}`;
 
-  // send verification email
   const { error } = await sendMail({
-    to: user.email,
+    to: email,
     ...getVerifyEmailTemplate(url),
   });
-  // ignore email errors for now
+
   if (error) console.error(error);
 
+  return verificationCode;
+};
+
+export const createAccount = async (data: CreateAccountParams) => {
+  const existingUser = await UserModel.exists({ email: data.email });
+  appAssert(!existingUser, CONFLICT, "Email already in use");
+
+  const user = await UserModel.create({
+    email: data.email,
+    password: data.password,
+  });
+
+  await sendEmailVerification(user.email);
+
   return {
-    message: "Account created successfully. Please check your email to verify your account.",
+    message:
+      "Account created successfully. Please check your email to verify your account.",
     user: user.omitPassword(),
   };
 };

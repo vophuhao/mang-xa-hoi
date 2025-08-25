@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  sendEmailVerificationHandler,
   sendPasswordResetHandler,
   loginHandler,
   logoutHandler,
@@ -18,6 +19,7 @@ authRoutes.post("/login", loginHandler);
 authRoutes.post("/login/google",googleLoginHandler);
 authRoutes.get("/refresh", refreshHandler);
 authRoutes.get("/logout", logoutHandler);
+authRoutes.post("/email/verification", sendEmailVerificationHandler);
 authRoutes.get("/email/verify/:code", verifyEmailHandler);
 authRoutes.post("/password/forgot", sendPasswordResetHandler);
 authRoutes.post("/password/reset", resetPasswordHandler);

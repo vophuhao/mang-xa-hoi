@@ -5,6 +5,7 @@ import SessionModel from "../models/session.model";
 import { GOOGLE_CLIENT_ID } from "../constants/env";
 import {BAD_REQUEST} from "../constants/http"
 import {
+  sendEmailVerification,
   createAccount,
   loginUser,
   loginWithGoogle,
@@ -31,6 +32,14 @@ import {
 } from "./auth.schemas";
 
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
+
+export const sendEmailVerificationHandler = catchErrors(async (req, res) => {
+  const email = emailSchema.parse(req.body.email);
+
+  await sendEmailVerification(email);
+
+  return res.status(OK).json({ message: "Verification email sent" });
+});
 
 export const registerHandler = catchErrors(async (req, res) => {
   const request = registerSchema.parse({

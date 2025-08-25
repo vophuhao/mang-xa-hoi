@@ -94,7 +94,7 @@ const ResetPasswordForm = ({ code }) => {
 
             <div className="text-center text-sm">
               Don’t have an account?{" "}
-              <Link to="/signup" className="text-blue-500 font-medium">
+              <Link to="/register" className="text-blue-500 font-medium">
                 Sign up
               </Link>
             </div>
