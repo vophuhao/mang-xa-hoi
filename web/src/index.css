@@ -1,61 +1,114 @@
+@import url('./assets/styles/fonts.css');
 @import "tailwindcss";
 
-@keyframes slideIn {
-  from {
-    transform: translateX(-100%);
-    opacity: 0;
+@theme {
+	--color-primary-default: #009689;
+	--color-primary-hover: #009699;
+	--color-primary-light: #33b3a2;
+
+	--breakpoint-sm: 40rem;
+	--breakpoint-md: 48rem;
+	--breakpoint-lg: 64rem;
+	--breakpoint-xl: 80rem;
+
+  --font-*: initial;
+  --font-sans: 'Roboto', sans-serif;
+  --font-pacifico: 'Pacifico', sans-serif;
+
+	--animate-fade-in: fade-in 0.5s ease-in-out;
+	--animate-slide-up: slide-up 0.5s ease-in-out;
+	--animate-bounce-heart: bounce-heart 1s infinite;
+
+	@keyframes fade-in {
+		0% {
+			opacity: 0;
+		}
+		100% {
+			opacity: 1;
+		}
+	}
+	@keyframes slide-up {
+		0% {
+			transform: translateY(20px);
+			opacity: 0;
+		}
+		100% {
+			transform: translateY(0);
+			opacity: 1;
+		}
+	}
+	@keyframes bounce-heart {
+		0%,
+		100% {
+			transform: scale(1);
+		}
+		50% {
+			transform: scale(1.1);
+		}
+	}
+  @keyframes slideIn {
+    from {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
   }
-  to {
-    transform: translateX(0);
-    opacity: 1;
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
+  @keyframes scaleIn {
+    from {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  /* Hiệu ứng pulse cho story ring */
+  @keyframes pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.7);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(236, 72, 153, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(236, 72, 153, 0);
+    }
+  }
+
+  
 }
 
 .animate-slideIn {
   animation: slideIn 0.3s ease-out forwards;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+.animate-scaleIn {
+  animation: scaleIn 0.3s ease-out forwards;
 }
 
 .animate-fadeIn {
   animation: fadeIn 0.3s ease-out forwards;
 }
 
-@keyframes scaleIn {
-  from {
-    transform: scale(0.95);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
+/* Xoá styles mặc định của autofill cho input */
+input:-webkit-autofill {
+  box-shadow: 0 0 0px 1000px rgba(255, 255, 255, 0.2) inset !important;
+  -webkit-text-fill-color: #000 !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
-
-.animate-scaleIn {
-  animation: scaleIn 0.3s ease-out forwards;
-}
-
-/* Hiệu ứng pulse cho story ring */
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.7);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(236, 72, 153, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(236, 72, 153, 0);
-  }
-}
-
-.animate-pulse-slow {
-  animation: pulse 2s infinite;
+.dark input:-webkit-autofill {
+  box-shadow: 0 0 0px 1000px rgba(255, 255, 255, 0.1) inset !important;
+  -webkit-text-fill-color: #fff !important;
 }
