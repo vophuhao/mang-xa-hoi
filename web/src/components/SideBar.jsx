@@ -129,7 +129,7 @@ export default function Sidebar({
       </div>
 
       {/* Nút Xem thêm (dưới cùng) */}
-      <div className="mt-55 relative px-2">
+      <div className="mt-auto relative px-2">
         <button
           onClick={() => handleClick({ id: "more" })}
           className={`flex items-center px-4 py-3 rounded-xl group w-full
