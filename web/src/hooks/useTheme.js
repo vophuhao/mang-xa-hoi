@@ -1,26 +1,37 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
-export const useTheme = () => {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+const useTheme = () => {
+  const [theme, setTheme] = useState(
+    () => localStorage.getItem("theme") || "system",
+  );
 
-  useEffect(() => {
-    const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)"
-    ).matches;
-    setIsDarkMode(prefersDark);
-  }, []);
-
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [isDarkMode]);
-
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
+  const applyTheme = (theme) => {
+    const isDark =
+      theme === "dark" ||
+      (theme === "system" &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.classList.toggle("dark", isDark);
   };
 
-  return { isDarkMode, toggleTheme };
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
+
+  const changeTheme = (newTheme) => {
+    setTheme(newTheme);
+    newTheme === "system"
+      ? localStorage.removeItem("theme")
+      : localStorage.setItem("theme", newTheme);
+  };
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = () => theme === "system" && applyTheme("system");
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, [theme]);
+
+  return { theme, changeTheme };
 };
+
+export default useTheme;

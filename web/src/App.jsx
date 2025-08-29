@@ -1,15 +1,16 @@
+import { Provider } from "react-redux";
 import { Route, Routes, useNavigate } from "react-router-dom";
+import { ToastContainer } from "react-toastify";
+
+import "react-toastify/dist/ReactToastify.css";
 import AppContainer from "./components/AppContainer";
+import { setNavigate } from "./lib/navigation";
+import ForgotPassword from "./pages/ForgotPassword";
+import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import VerifyEmail from "./pages/VerifyEmail";
-import { setNavigate } from "./lib/navigation";
-import Home from "./pages/Home";
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import { Provider } from "react-redux";
 import store from "./store";
 
 function App() {
@@ -21,8 +22,7 @@ function App() {
   return (
     <Provider store={store}>
       <Routes>
-        <Route path="/" element={<AppContainer />}>    
-        </Route>
+        <Route path="/" element={<AppContainer />}></Route>
         <Route path="/home" element={<Home />}></Route>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

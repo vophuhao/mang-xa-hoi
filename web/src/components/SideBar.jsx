@@ -11,7 +11,8 @@ import {
   Sun,
   AlertCircle,
   LogOut,
-  SwitchCamera
+  SwitchCamera,
+  PlusSquare
 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -28,12 +29,14 @@ export default function Sidebar({
   const [showMore, setShowMore] = useState(false);
   const navigate = useNavigate();
   const navItems = [
-    { id: "home", label: "Trang chủ", icon: <Home size={25} /> },
-    { id: "search", label: "Tìm kiếm", icon: <Search size={25} /> },
-    { id: "message", label: "Tin nhắn", icon: <MessageCircle size={25} /> },
-    { id: "explore", label: "Khám phá", icon: <Compass size={25} /> },
-    { id: "reels", label: "Reels", icon: <Video size={25} /> },
-    { id: "profile", label: "Trang cá nhân", icon: <User size={25} /> },
+    { id: "home", label: "Trang chủ", icon: <Home size={23} /> },
+    { id: "search", label: "Tìm kiếm", icon: <Search size={23} /> },
+    { id: "message", label: "Tin nhắn", icon: <MessageCircle size={23} /> },
+    { id: "explore", label: "Khám phá", icon: <Compass size={23} /> },
+    { id: "post", label: "Tạo", icon: <PlusSquare size={23} /> },
+    { id: "reels", label: "Reels", icon: <Video size={23} /> },
+    { id: "profile", label: "Trang cá nhân", icon: <User size={23} /> },
+    
   ];
 
   const {
@@ -126,7 +129,7 @@ export default function Sidebar({
       </div>
 
       {/* Nút Xem thêm (dưới cùng) */}
-      <div className="mt-55 relative px-2">
+      <div className="mt-auto relative px-2">
         <button
           onClick={() => handleClick({ id: "more" })}
           className={`flex items-center px-4 py-3 rounded-xl group w-full

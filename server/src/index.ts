@@ -7,6 +7,7 @@ import errorHandler from "./middleware/errorHandler";
 import authenticate from "./middleware/authenticate";
 import authRoutes from "./routes/auth.route";
 import userRoutes from "./routes/user.route";
+import postRoutes from "./routes/post.route"
 import sessionRoutes from "./routes/session.route";
 import { APP_ORIGIN, NODE_ENV, PORT } from "./constants/env";
 
@@ -32,6 +33,8 @@ app.get("/", (_, res) => {
 
 // auth routes
 app.use("/auth", authRoutes);
+
+app.use("",authenticate,postRoutes)
 
 // protected routes
 app.use("/user", authenticate, userRoutes);
