@@ -1,20 +1,19 @@
-import { CREATED, OK, UNAUTHORIZED } from "../constants/http";
-import { Request, Response } from 'express';
-import { OAuth2Client } from 'google-auth-library';
-import SessionModel from "../models/session.model";
+import { OAuth2Client } from "google-auth-library";
 import { GOOGLE_CLIENT_ID } from "../constants/env";
-import {BAD_REQUEST} from "../constants/http"
+import { BAD_REQUEST, CREATED, OK, UNAUTHORIZED } from "../constants/http";
+import SessionModel from "../models/session.model";
 import {
-  sendEmailVerification,
   createAccount,
   loginUser,
   loginWithGoogle,
   refreshUserAccessToken,
   resetPassword,
+  sendEmailVerification,
   sendPasswordResetEmail,
   verifyEmail,
 } from "../services/auth.service";
 import appAssert from "../utils/appAssert";
+import catchErrors from "../utils/catchErrors";
 import {
   clearAuthCookies,
   getAccessTokenCookieOptions,
@@ -22,7 +21,6 @@ import {
   setAuthCookies,
 } from "../utils/cookies";
 import { verifyToken } from "../utils/jwt";
-import catchErrors from "../utils/catchErrors";
 import {
   emailSchema,
   loginSchema,
@@ -53,18 +51,11 @@ export const registerHandler = catchErrors(async (req, res) => {
 });
 
 export const googleLoginHandler = catchErrors(async (req, res) => {
-  const { credential } = req.body;
-  appAssert(credential, BAD_REQUEST, "Missing credential");
+  const { email, name, picture, googleId } = req.body;
 
-  const ticket = await googleClient.verifyIdToken({
-    idToken: credential,
-    audience: process.env.GOOGLE_CLIENT_ID,
-  });
-
-  const payload = ticket.getPayload();
-  appAssert(payload?.email, BAD_REQUEST, "Invalid Google token");
-
-  const { email, name = "Google User", picture } = payload;
+  // Validate required fields
+  appAssert(email, BAD_REQUEST, "Missing email");
+  appAssert(googleId, BAD_REQUEST, "Missing Google ID");
 
   const userAgentRaw = req.headers["user-agent"];
   const userAgent = Array.isArray(userAgentRaw)
@@ -73,8 +64,9 @@ export const googleLoginHandler = catchErrors(async (req, res) => {
 
   const { user, accessToken, refreshToken } = await loginWithGoogle({
     email,
-    name,
+    name: name || "Google User",
     avatarUrl: picture,
+    googleId, // Thêm googleId để identify user
     userAgent,
   });
 
@@ -153,4 +145,3 @@ export const resetPasswordHandler = catchErrors(async (req, res) => {
     .status(OK)
     .json({ message: "Password was reset successfully" });
 });
-

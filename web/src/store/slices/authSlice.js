@@ -1,4 +1,5 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+
 import { login, register } from "../../lib/api";
 
 export const loginUser = createAsyncThunk(
@@ -8,21 +9,26 @@ export const loginUser = createAsyncThunk(
       const response = await login({ email, password });
       return response;
     } catch (error) {
-      return rejectWithValue(error.message || "Login failed");
+      return rejectWithValue(error.message || "Đăng nhập thất bại.");
     }
-  }
+  },
 );
 
 export const registerUser = createAsyncThunk(
   "auth/register",
-  async ({ email, password, confirmPassword }, { rejectWithValue }) => {
+  async ({ email, name, password, confirmPassword }, { rejectWithValue }) => {
     try {
-      const response = await register({ email, password, confirmPassword });
+      const response = await register({
+        email,
+        name,
+        password,
+        confirmPassword,
+      });
       return response;
     } catch (error) {
-      return rejectWithValue(error.message || "Registration failed");
+      return rejectWithValue(error.message || "Đăng ký thất bại.");
     }
-  }
+  },
 );
 
 const authSlice = createSlice({

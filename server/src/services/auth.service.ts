@@ -5,11 +5,10 @@ import {
   NOT_FOUND,
   TOO_MANY_REQUESTS,
   UNAUTHORIZED,
-  UNPROCESSABLE_CONTENT,
 } from "../constants/http";
 import VerificationCodeType from "../constants/verificationCodeType";
-import SessionModel, { SessionDocument } from "../models/session.model";
-import UserModel, { UserDocument } from "../models/user.model";
+import SessionModel from "../models/session.model";
+import UserModel from "../models/user.model";
 import VerificationCodeModel from "../models/verificationCode.model";
 import appAssert from "../utils/appAssert";
 import { hashValue } from "../utils/bcrypt";
@@ -35,6 +34,7 @@ import { sendMail } from "../utils/sendMail";
 type CreateAccountParams = {
   email: string;
   password: string;
+  name: string;
   userAgent?: string;
 };
 
@@ -66,6 +66,7 @@ export const createAccount = async (data: CreateAccountParams) => {
 
   const user = await UserModel.create({
     email: data.email,
+    name: data.name,
     password: data.password,
   });
 
@@ -127,35 +128,55 @@ export const loginWithGoogle = async ({
   email,
   name,
   avatarUrl,
+  googleId,
   userAgent,
 }: {
   email: string;
   name: string;
   avatarUrl?: string;
+  googleId: string;
   userAgent: string;
 }) => {
   let user = await UserModel.findOne({ email });
 
   if (!user) {
-  // ✅ Chưa có tài khoản nào → tạo mới bằng Google
-  user = await UserModel.create({
-    email,
-    provider: 'google',
-    verified: true,
-    avatarUrl,
-  });
-} else {
-  // ✅ Đã có tài khoản, kiểm tra provider
-  if (user.provider === 'local') {
-    // 👉 Cho phép login bằng Google nếu email khớp
-    // 👉 Liên kết Google với tài khoản hiện có
-    user.provider = 'google+local';
-    user.avatarUrl = avatarUrl;
-    await user.save();
-  }
-  // nếu là google hoặc google+local thì không cần làm gì
-}
+    // ✅ Chưa có tài khoản nào → tạo mới bằng Google
+    user = await UserModel.create({
+      email,
+      name, // Thêm name vào đây
+      provider: "google",
+      verified: true,
+      avatarUrl,
+      googleId, // Lưu Google ID để tracking
+    });
+  } else {
+    // ✅ Đã có tài khoản, kiểm tra provider
+    if (user.provider === "local") {
+      // 👉 Cho phép login bằng Google nếu email khớp
+      // 👉 Liên kết Google với tài khoản hiện có
+      user.provider = "google+local";
+      user.avatarUrl = avatarUrl || user.avatarUrl; // Giữ avatar cũ nếu không có avatar mới
+      user.googleId = googleId; // Lưu Google ID
+      await user.save();
+    } else if (user.provider === "google" || user.provider === "google+local") {
+      // Cập nhật thông tin nếu có thay đổi
+      if (avatarUrl && user.avatarUrl !== avatarUrl) {
+        user.avatarUrl = avatarUrl;
+      }
+      if (user.googleId !== googleId) {
+        user.googleId = googleId;
+      }
+      // Cập nhật name nếu user chưa có hoặc muốn sync với Google
+      if (!user.name || user.name === "Google User") {
+        user.name = name;
+      }
 
+      // Chỉ save nếu có thay đổi
+      if (user.isModified()) {
+        await user.save();
+      }
+    }
+  }
 
   const session = await SessionModel.create({
     userId: user._id,

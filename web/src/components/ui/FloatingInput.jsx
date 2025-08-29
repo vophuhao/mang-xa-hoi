@@ -32,12 +32,12 @@ const FloatingInput = ({
         onKeyDown={onKeyDown}
         placeholder=" "
         required={required}
-        className="peer w-full rounded-2xl border border-white/30 bg-white/20 px-4 pt-6 pb-2 text-gray-800 transition-all duration-300 focus:border-transparent focus:ring-2 focus:ring-pink-200 focus:outline-none dark:border-white/20 dark:bg-white/10 dark:text-white"
+        className="peer border-border bg-input/40 text-foreground focus:ring-ring w-full rounded-2xl border px-4 pt-6 pb-2 transition-all duration-300 focus:border-transparent focus:ring-3 focus:outline-none"
         {...props}
       />
       <label
         htmlFor={id}
-        className="absolute top-2 left-4 text-sm text-gray-500 transition-all duration-300 peer-placeholder-shown:top-4 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500 peer-focus:top-2 peer-focus:text-sm dark:text-gray-300 dark:peer-placeholder-shown:text-white"
+        className="text-foreground absolute top-2 left-4 text-sm transition-all duration-300 peer-not-placeholder-shown:top-2 peer-not-placeholder-shown:text-[12px] peer-placeholder-shown:top-4 peer-placeholder-shown:text-base peer-focus:top-2 peer-focus:text-[12px]"
       >
         {label}
       </label>
@@ -46,7 +46,7 @@ const FloatingInput = ({
         <button
           type="button"
           onClick={togglePassword}
-          className="absolute top-1/2 right-3 -translate-y-1/2 p-2 text-gray-500 transition-colors duration-200 dark:text-white"
+          className="text-muted-foreground absolute top-1/2 right-3 -translate-y-1/2 p-2 transition-colors duration-200"
           aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
         >
           {showPassword ? (
