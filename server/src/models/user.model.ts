@@ -10,6 +10,7 @@ export interface UserDocument extends mongoose.Document {
   avatarUrl?: string;
   verified: boolean;
   provider: "local" | "google" | "google+local";
+  googleId?: string; // Thêm googleId để track Google account
   followers: mongoose.Types.ObjectId[];
   following: mongoose.Types.ObjectId[];
   createdAt: Date;
@@ -27,9 +28,18 @@ const userSchema = new mongoose.Schema<UserDocument>(
         return this.provider === "local";
       },
     },
-    username: { type: String, required: true, unique: true },
+    username: {
+      type: String,
+      required: false,
+      default: "User", // Simple default, sẽ set name trong pre-save hook
+    },
     fullName: { type: String },
     bio: { type: String, default: "" },
+    avatarUrl: {
+      type: String,
+      default:
+        "https://i.pinimg.com/736x/41/76/b9/4176b9b864c1947320764e82477c168f.jpg",
+    },
     avatarUrl: {
       type: String,
       default:
@@ -41,6 +51,12 @@ const userSchema = new mongoose.Schema<UserDocument>(
       enum: ["local", "google", "google+local"],
       default: "local",
     },
+    googleId: {
+      type: String,
+      required: false,
+      unique: true,
+      sparse: true, // Cho phép multiple null values nhưng unique khi có giá trị
+    },
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   },
@@ -51,10 +67,14 @@ const userSchema = new mongoose.Schema<UserDocument>(
 // userSchema.index({ email: 1 });
 // userSchema.index({ googleId: 1 });
 
+// Index để tối ưu query
+// userSchema.index({ email: 1 });
+// userSchema.index({ googleId: 1 });
+
 userSchema.pre("save", async function (next) {
-  // Tự động tạo name từ email nếu chưa có name
-  if (!this.name || this.name === "User") {
-    this.name = this.email ? this.email.split("@")[0] : "User";
+  // Tự động tạo username từ email nếu chưa có username
+  if (!this.username || this.username === "User") {
+    this.username = this.email ? this.email.split("@")[0] : "User";
   }
 
   if (!this.isModified("password") || !this.password) {
