@@ -16,7 +16,7 @@ const Register = () => {
   const dispatch = useDispatch();
   const { isLoading, error, isRegistered } = useSelector((state) => state.auth);
   const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -26,7 +26,7 @@ const Register = () => {
   };
 
   const handleSubmit = () => {
-    dispatch(registerUser({ email, name, password, confirmPassword }));
+    dispatch(registerUser({ email, username, password, confirmPassword }));
   };
 
   const handleKeyDown = (e) => {
@@ -77,9 +77,9 @@ const Register = () => {
 
               <FloatingInput
                 type="text"
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                id="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 label="Tên người dùng"
                 required
               />

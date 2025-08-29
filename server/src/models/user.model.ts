@@ -40,11 +40,6 @@ const userSchema = new mongoose.Schema<UserDocument>(
       default:
         "https://i.pinimg.com/736x/41/76/b9/4176b9b864c1947320764e82477c168f.jpg",
     },
-    avatarUrl: {
-      type: String,
-      default:
-        "https://i.pinimg.com/736x/41/76/b9/4176b9b864c1947320764e82477c168f.jpg",
-    },
     verified: { type: Boolean, default: false },
     provider: {
       type: String,

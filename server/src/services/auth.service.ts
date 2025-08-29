@@ -34,7 +34,7 @@ import { sendMail } from "../utils/sendMail";
 type CreateAccountParams = {
   email: string;
   password: string;
-  name: string;
+  username: string;
   userAgent?: string;
 };
 
@@ -66,7 +66,7 @@ export const createAccount = async (data: CreateAccountParams) => {
 
   const user = await UserModel.create({
     email: data.email,
-    name: data.name,
+    username: data.username,
     password: data.password,
   });
 
@@ -126,13 +126,13 @@ export const loginUser = async ({
 
 export const loginWithGoogle = async ({
   email,
-  name,
+  username,
   avatarUrl,
   googleId,
   userAgent,
 }: {
   email: string;
-  name: string;
+  username: string;
   avatarUrl?: string;
   googleId: string;
   userAgent: string;
@@ -143,7 +143,7 @@ export const loginWithGoogle = async ({
     // ✅ Chưa có tài khoản nào → tạo mới bằng Google
     user = await UserModel.create({
       email,
-      name, // Thêm name vào đây
+      username, // Thêm username vào đây
       provider: "google",
       verified: true,
       avatarUrl,
@@ -166,9 +166,9 @@ export const loginWithGoogle = async ({
       if (user.googleId !== googleId) {
         user.googleId = googleId;
       }
-      // Cập nhật name nếu user chưa có hoặc muốn sync với Google
-      if (!user.name || user.name === "Google User") {
-        user.name = name;
+      // Cập nhật username nếu user chưa có hoặc muốn sync với Google
+      if (!user.username || user.username === "Google User") {
+        user.username = username;
       }
 
       // Chỉ save nếu có thay đổi

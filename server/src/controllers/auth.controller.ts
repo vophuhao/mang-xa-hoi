@@ -64,7 +64,7 @@ export const googleLoginHandler = catchErrors(async (req, res) => {
 
   const { user, accessToken, refreshToken } = await loginWithGoogle({
     email,
-    name: name || "Google User",
+    username: name || "Google User",
     avatarUrl: picture,
     googleId, // Thêm googleId để identify user
     userAgent,
