@@ -20,6 +20,11 @@ export const updateProfileSchema = z.object({
   avatarUrl: imageUrlSchema,
 });
 
+// Get user by username
+export const getUserByUsernameSchema = z.object({
+  username: usernameSchema,
+});
+
 // Get user by ID
 export const getUserByIdSchema = z.object({
   id: mongoIdSchema,

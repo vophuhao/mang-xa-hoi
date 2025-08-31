@@ -12,8 +12,8 @@ import {
 
 // Create post validation
 export const createPostSchema = z.object({
-  content: contentSchema,
-  imageUrls: imageUrlsSchema,
+  caption: contentSchema,
+  mediaUrls: imageUrlsSchema,
   tags: z
     .array(
       z

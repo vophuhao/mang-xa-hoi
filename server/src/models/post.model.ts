@@ -1,49 +1,151 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 export interface PostDocument extends mongoose.Document {
   user: mongoose.Types.ObjectId;
   caption?: string;
   mediaUrls: string[];
+  mediaType: "image" | "video" | "carousel";
+  location?: {
+    name: string;
+    coordinates?: [number, number]; // [longitude, latitude]
+  };
+  tags: string[];
+  mentions: mongoose.Types.ObjectId[];
+
+  // Social metrics
   likeCount: number;
   commentCount: number;
+  shareCount: number;
+  viewCount: number;
+
+  // Privacy & settings
+  isHidden: boolean;
+  commentsDisabled: boolean;
+  likesHidden: boolean;
+
   createdAt: Date;
   updatedAt: Date;
+
+  // Methods
+  incrementComment(): Promise<PostDocument>;
+  decrementComment(): Promise<PostDocument>;
+  incrementLike(): Promise<PostDocument>;
+  decrementLike(): Promise<PostDocument>;
+  incrementShare(): Promise<PostDocument>;
+  incrementView(): Promise<PostDocument>;
 }
 
 const postSchema = new mongoose.Schema<PostDocument>(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    caption: { type: String },
-    mediaUrls: { type: [String], required: true },
-    likeCount: { type: Number, default: 0 },
-    commentCount: { type: Number, default: 0 },
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    caption: {
+      type: String,
+      maxlength: 2200, // Instagram's limit
+    },
+    mediaUrls: {
+      type: [String],
+      required: true,
+      validate: {
+        validator: function (v: string[]) {
+          return v.length > 0 && v.length <= 10; // Max 10 media items
+        },
+        message: "Post must have 1-10 media items",
+      },
+    },
+    mediaType: {
+      type: String,
+      enum: ["image", "video", "carousel"],
+      required: true,
+      default: function (this: PostDocument) {
+        if (this.mediaUrls.length > 1) return "carousel";
+        // You can add logic to detect video vs image based on URL
+        return "image";
+      },
+    },
+    location: {
+      name: { type: String },
+      coordinates: {
+        type: [Number],
+        validate: {
+          validator: function (v: number[]) {
+            return !v || v.length === 2;
+          },
+          message: "Coordinates must be [longitude, latitude]",
+        },
+      },
+    },
+    tags: {
+      type: [String],
+      validate: {
+        validator: function (v: string[]) {
+          return v.length <= 30; // Instagram limit
+        },
+        message: "Maximum 30 hashtags allowed",
+      },
+    },
+    mentions: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+
+    // Social metrics
+    likeCount: { type: Number, default: 0, min: 0 },
+    commentCount: { type: Number, default: 0, min: 0 },
+    shareCount: { type: Number, default: 0, min: 0 },
+    viewCount: { type: Number, default: 0, min: 0 },
+
+    // Privacy & settings
+    isHidden: { type: Boolean, default: false },
+    commentsDisabled: { type: Boolean, default: false },
+    likesHidden: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
-// Tăng commentCount khi thêm comment
+// Indexes for optimization
+postSchema.index({ user: 1, createdAt: -1 });
+postSchema.index({ tags: 1 });
+postSchema.index({ createdAt: -1 });
+postSchema.index({ likeCount: -1 });
+postSchema.index({ "location.coordinates": "2dsphere" }); // For geolocation
+
+// Instance methods
 postSchema.methods.incrementComment = async function () {
   this.commentCount += 1;
   return this.save();
 };
 
-// Giảm commentCount khi xóa comment
 postSchema.methods.decrementComment = async function () {
   if (this.commentCount > 0) this.commentCount -= 1;
   return this.save();
 };
 
-// Tăng likeCount khi like
 postSchema.methods.incrementLike = async function () {
   this.likeCount += 1;
   return this.save();
 };
 
-// Giảm likeCount khi unlike
 postSchema.methods.decrementLike = async function () {
   if (this.likeCount > 0) this.likeCount -= 1;
   return this.save();
 };
 
-const PostModel = mongoose.model<PostDocument>('Post', postSchema);
+postSchema.methods.incrementShare = async function () {
+  this.shareCount += 1;
+  return this.save();
+};
+
+postSchema.methods.incrementView = async function () {
+  this.viewCount += 1;
+  return this.save();
+};
+
+const PostModel = mongoose.model<PostDocument>("Post", postSchema);
 export default PostModel;

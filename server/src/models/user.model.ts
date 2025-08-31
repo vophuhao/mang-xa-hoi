@@ -4,17 +4,34 @@ import mongoose from "mongoose";
 export interface UserDocument extends mongoose.Document {
   email: string;
   password: string;
+  verified: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+
+  // Instagram-like profile fields
   username: string;
   fullName?: string;
   bio?: string;
   avatarUrl?: string;
-  verified: boolean;
+  website?: string;
+  phoneNumber?: string;
+  dateOfBirth?: Date;
+  gender?: "male" | "female" | "other" | "prefer_not_to_say";
+  isPrivate: boolean;
+  isVerified: boolean;
   provider: "local" | "google" | "google+local";
-  googleId?: string; // Thêm googleId để track Google account
-  followers: mongoose.Types.ObjectId[];
-  following: mongoose.Types.ObjectId[];
-  createdAt: Date;
-  updatedAt: Date;
+  googleId?: string;
+
+  // Social counts
+  followersCount: number;
+  followingCount: number;
+  postsCount: number;
+
+  // Settings
+  allowTagging: boolean;
+  showActivityStatus: boolean;
+  allowDirectMessages: "everyone" | "people_you_follow" | "off";
+
   comparePassword(val: string): Promise<boolean>;
   omitPassword(): Omit<UserDocument, "password">;
 }
@@ -24,22 +41,52 @@ const userSchema = new mongoose.Schema<UserDocument>(
     email: { type: String, required: true, unique: true },
     password: {
       type: String,
-      required: function () {
+      required: function (this: UserDocument) {
         return this.provider === "local";
       },
     },
+    verified: { type: Boolean, default: false },
+
+    // Instagram-like profile fields
     username: {
       type: String,
-      required: false,
-      default: "User", // Simple default, sẽ set name trong pre-save hook
+      required: true,
+      unique: true,
+      trim: true,
+      minlength: 1,
+      maxlength: 30,
+      match: /^[a-zA-Z0-9._]+$/,
     },
-    fullName: { type: String },
-    bio: { type: String, default: "" },
+    fullName: {
+      type: String,
+      trim: true,
+      maxlength: 150,
+    },
+    bio: {
+      type: String,
+      default: "",
+      maxlength: 150,
+    },
     avatarUrl: {
       type: String,
       default: "https://i.pinimg.com/736x/41/76/b9/4176b9b864c1947320764e82477c168f.jpg",
     },
-    verified: { type: Boolean, default: false },
+    website: {
+      type: String,
+      trim: true,
+      maxlength: 100,
+    },
+    phoneNumber: {
+      type: String,
+      trim: true,
+    },
+    dateOfBirth: Date,
+    gender: {
+      type: String,
+      enum: ["male", "female", "other", "prefer_not_to_say"],
+    },
+    isPrivate: { type: Boolean, default: false },
+    isVerified: { type: Boolean, default: false },
     provider: {
       type: String,
       enum: ["local", "google", "google+local"],
@@ -49,10 +96,22 @@ const userSchema = new mongoose.Schema<UserDocument>(
       type: String,
       required: false,
       unique: true,
-      sparse: true, // Cho phép multiple null values nhưng unique khi có giá trị
+      sparse: true,
     },
-    followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-    following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+
+    // Social counts
+    followersCount: { type: Number, default: 0 },
+    followingCount: { type: Number, default: 0 },
+    postsCount: { type: Number, default: 0 },
+
+    // Settings
+    allowTagging: { type: Boolean, default: true },
+    showActivityStatus: { type: Boolean, default: true },
+    allowDirectMessages: {
+      type: String,
+      enum: ["everyone", "people_you_follow", "off"],
+      default: "everyone",
+    },
   },
   { timestamps: true }
 );

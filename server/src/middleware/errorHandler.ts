@@ -15,7 +15,7 @@ const handleAppError = (res: Response, error: AppError) => {
   return ResponseUtil.error(res, error.message, error.statusCode);
 };
 
-const errorHandler: ErrorRequestHandler = (error, req, res) => {
+const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
   // Only log in development
   if (process.env.NODE_ENV === "development") {
     console.error(`PATH ${req.path}`, error);

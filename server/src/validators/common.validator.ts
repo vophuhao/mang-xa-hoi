@@ -47,12 +47,12 @@ export const paginationSchema = z.object({
 });
 
 // File upload schemas
-export const imageUrlSchema = z.string().url("Please provide a valid image URL").optional();
+export const imageUrlSchema = z.string().url("Please provide a valid image URL");
 
 export const imageUrlsSchema = z
   .array(imageUrlSchema)
-  .max(10, "Maximum 10 images allowed")
-  .optional();
+  .min(1, "At least one image is required")
+  .max(10, "Maximum 10 images allowed");
 
 // Common text fields
 export const nameSchema = z
