@@ -1,41 +1,33 @@
-import { APP_ORIGIN } from "../constants/env";
+import { APP_ORIGIN } from "@/constants/env";
 import {
   CONFLICT,
   INTERNAL_SERVER_ERROR,
   NOT_FOUND,
   TOO_MANY_REQUESTS,
   UNAUTHORIZED,
-} from "../constants/http";
-import VerificationCodeType from "../constants/verificationCodeType";
-import SessionModel from "../models/session.model";
-import UserModel from "../models/user.model";
-import VerificationCodeModel from "../models/verificationCode.model";
-import appAssert from "../utils/appAssert";
-import { hashValue } from "../utils/bcrypt";
+} from "@/constants/http";
+import VerificationCodeType from "@/constants/verificationCodeType";
+import SessionModel from "@/models/session.model";
+import UserModel from "@/models/user.model";
+import VerificationCodeModel from "@/models/verificationCode.model";
+import appAssert from "@/utils/appAssert";
+import { hashValue } from "@/utils/bcrypt";
 import {
   ONE_DAY_MS,
   fiveMinutesAgo,
   oneHourFromNow,
   oneYearFromNow,
   thirtyDaysFromNow,
-} from "../utils/date";
-import {
-  getPasswordResetTemplate,
-  getVerifyEmailTemplate,
-} from "../utils/emailTemplates";
-import {
-  RefreshTokenPayload,
-  refreshTokenSignOptions,
-  signToken,
-  verifyToken,
-} from "../utils/jwt";
-import { sendMail } from "../utils/sendMail";
+} from "@/utils/date";
+import { getPasswordResetTemplate, getVerifyEmailTemplate } from "@/utils/emailTemplates";
+import { RefreshTokenPayload, refreshTokenSignOptions, signToken, verifyToken } from "@/utils/jwt";
+import { sendMail } from "@/utils/sendMail";
 
 type CreateAccountParams = {
   email: string;
   password: string;
   username: string;
-  userAgent?: string;
+  userAgent?: string | undefined;
 };
 
 export const sendEmailVerification = async (email: string) => {
@@ -73,8 +65,7 @@ export const createAccount = async (data: CreateAccountParams) => {
   await sendEmailVerification(user.email);
 
   return {
-    message:
-      "Account created successfully. Please check your email to verify your account.",
+    message: "Account created successfully. Please check your email to verify your account.",
     user: user.omitPassword(),
   };
 };
@@ -82,25 +73,17 @@ export const createAccount = async (data: CreateAccountParams) => {
 type LoginParams = {
   email: string;
   password: string;
-  userAgent?: string;
+  userAgent?: string | undefined;
 };
 
-export const loginUser = async ({
-  email,
-  password,
-  userAgent,
-}: LoginParams) => {
+export const loginUser = async ({ email, password, userAgent }: LoginParams) => {
   const user = await UserModel.findOne({ email });
   appAssert(user, UNAUTHORIZED, "Invalid email or password");
 
   const isValid = await user.comparePassword(password);
   appAssert(isValid, UNAUTHORIZED, "Invalid email or password");
 
-  appAssert(
-    user.verified,
-    UNAUTHORIZED,
-    "Please verify your email before logging in"
-  );
+  appAssert(user.verified, UNAUTHORIZED, "Please verify your email before logging in");
 
   const userId = user._id;
   const session = await SessionModel.create({
@@ -155,7 +138,9 @@ export const loginWithGoogle = async ({
       // 👉 Cho phép login bằng Google nếu email khớp
       // 👉 Liên kết Google với tài khoản hiện có
       user.provider = "google+local";
-      user.avatarUrl = avatarUrl || user.avatarUrl; // Giữ avatar cũ nếu không có avatar mới
+      if (avatarUrl) {
+        user.avatarUrl = avatarUrl;
+      }
       user.googleId = googleId; // Lưu Google ID
       await user.save();
     } else if (user.provider === "google" || user.provider === "google+local") {
@@ -232,11 +217,7 @@ export const refreshUserAccessToken = async (refreshToken: string) => {
 
   const session = await SessionModel.findById(payload.sessionId);
   const now = Date.now();
-  appAssert(
-    session && session.expiresAt.getTime() > now,
-    UNAUTHORIZED,
-    "Session expired"
-  );
+  appAssert(session && session.expiresAt.getTime() > now, UNAUTHORIZED, "Session expired");
 
   // refresh the session if it expires in the next 24hrs
   const sessionNeedsRefresh = session.expiresAt.getTime() - now <= ONE_DAY_MS;
@@ -279,11 +260,7 @@ export const sendPasswordResetEmail = async (email: string) => {
       type: VerificationCodeType.PasswordReset,
       createdAt: { $gt: fiveMinAgo },
     });
-    appAssert(
-      count <= 1,
-      TOO_MANY_REQUESTS,
-      "Too many requests, please try again later"
-    );
+    appAssert(count <= 1, TOO_MANY_REQUESTS, "Too many requests, please try again later");
 
     const expiresAt = oneHourFromNow();
     const verificationCode = await VerificationCodeModel.create({
@@ -301,11 +278,7 @@ export const sendPasswordResetEmail = async (email: string) => {
       ...getPasswordResetTemplate(url),
     });
 
-    appAssert(
-      data?.id,
-      INTERNAL_SERVER_ERROR,
-      `${error?.name} - ${error?.message}`
-    );
+    appAssert(data?.id, INTERNAL_SERVER_ERROR, `${error?.name} - ${error?.message}`);
     return {
       url,
       emailId: data.id,
@@ -321,10 +294,7 @@ type ResetPasswordParams = {
   verificationCode: string;
 };
 
-export const resetPassword = async ({
-  verificationCode,
-  password,
-}: ResetPasswordParams) => {
+export const resetPassword = async ({ verificationCode, password }: ResetPasswordParams) => {
   const validCode = await VerificationCodeModel.findOne({
     _id: verificationCode,
     type: VerificationCodeType.PasswordReset,

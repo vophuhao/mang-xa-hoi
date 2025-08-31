@@ -1,6 +1,4 @@
-import resend from "../config/resend";
-import { EMAIL_SENDER, NODE_ENV } from "../constants/env";
-import transporter from "../config/mailer";
+import transporter from '@/config/mailer';
 
 type Params = {
   to: string;
@@ -8,11 +6,6 @@ type Params = {
   text: string;
   html: string;
 };
-
-const getFromEmail = () =>
-  NODE_ENV === "development" ? "onboarding@resend.dev" : EMAIL_SENDER;
-
-const getToEmail = (to: string) => to;
 
 export const sendMail = async ({ to, subject, text, html }: Params) => {
   try {
@@ -26,7 +19,7 @@ export const sendMail = async ({ to, subject, text, html }: Params) => {
 
     // Giả lập giống Resend API
     return {
-      data: { id: info.messageId }, 
+      data: { id: info.messageId },
       error: null,
     };
   } catch (err: any) {

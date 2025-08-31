@@ -1,5 +1,4 @@
-import { SavedPostDocument } from './savedPost.model';
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 export interface PostDocument extends mongoose.Document {
   user: mongoose.Types.ObjectId;
@@ -13,7 +12,7 @@ export interface PostDocument extends mongoose.Document {
 
 const postSchema = new mongoose.Schema<PostDocument>(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     caption: { type: String },
     mediaUrls: { type: [String], required: true },
     likeCount: { type: Number, default: 0 },
@@ -46,7 +45,5 @@ postSchema.methods.decrementLike = async function () {
   return this.save();
 };
 
-
-
-const PostModel = mongoose.model<PostDocument>("Post", postSchema);
+const PostModel = mongoose.model<PostDocument>('Post', postSchema);
 export default PostModel;

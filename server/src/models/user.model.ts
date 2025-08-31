@@ -1,5 +1,5 @@
+import { compareValue, hashValue } from "@/utils/bcrypt";
 import mongoose from "mongoose";
-import { compareValue, hashValue } from "../utils/bcrypt";
 
 export interface UserDocument extends mongoose.Document {
   email: string;
@@ -37,8 +37,7 @@ const userSchema = new mongoose.Schema<UserDocument>(
     bio: { type: String, default: "" },
     avatarUrl: {
       type: String,
-      default:
-        "https://i.pinimg.com/736x/41/76/b9/4176b9b864c1947320764e82477c168f.jpg",
+      default: "https://i.pinimg.com/736x/41/76/b9/4176b9b864c1947320764e82477c168f.jpg",
     },
     verified: { type: Boolean, default: false },
     provider: {
@@ -62,14 +61,10 @@ const userSchema = new mongoose.Schema<UserDocument>(
 // userSchema.index({ email: 1 });
 // userSchema.index({ googleId: 1 });
 
-// Index để tối ưu query
-// userSchema.index({ email: 1 });
-// userSchema.index({ googleId: 1 });
-
 userSchema.pre("save", async function (next) {
   // Tự động tạo username từ email nếu chưa có username
   if (!this.username || this.username === "User") {
-    this.username = this.email ? this.email.split("@")[0] : "User";
+    this.username = this.email ? this.email.split("@")[0]! : "User";
   }
 
   if (!this.isModified("password") || !this.password) {

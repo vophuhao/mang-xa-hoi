@@ -1,12 +1,16 @@
-import { Request, Response } from "express";
-import { CREATED, BAD_REQUEST, OK } from "../constants/http";
-import catchErrors from "../utils/catchErrors";
-import { createPost } from "../services/post.service";
+import type { AuthenticatedRequest } from '@/types';
+import type { Response } from 'express';
 
-export const createPostHandler = catchErrors(async (req, res) => {
-  const userId = req.userId; // middleware auth gán req.user
+import { createPost } from '@/services/post.service';
+import { AppError } from '@/utils/AppError';
+import catchErrors from '@/utils/catchErrors';
+import { ResponseUtil } from '@/utils/response';
+
+export const createPostHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.userId;
+
   if (!userId) {
-    return res.status(BAD_REQUEST).json({ message: "User not authenticated" });
+    throw AppError.unauthorized('User not authenticated');
   }
 
   const { caption, mediaUrls } = req.body;
@@ -18,10 +22,7 @@ export const createPostHandler = catchErrors(async (req, res) => {
     mediaUrls,
   });
 
-  return res.status(CREATED).json({
-    message: "Post created successfully",
-    post,
-  });
+  return ResponseUtil.created(res, post, 'Post created successfully');
 });
 
 // export const getPostsHandler = catchErrors(async (req: Request, res: Response) => {

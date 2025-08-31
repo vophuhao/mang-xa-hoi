@@ -1,10 +1,17 @@
-import { NOT_FOUND, OK } from "../constants/http";
-import UserModel from "../models/user.model";
-import appAssert from "../utils/appAssert";
-import catchErrors from "../utils/catchErrors";
+import type { AuthenticatedRequest } from '@/types';
+import type { Response } from 'express';
 
-export const getUserHandler = catchErrors(async (req, res) => {
+import UserModel from '@/models/user.model';
+import { AppError } from '@/utils/AppError';
+import catchErrors from '@/utils/catchErrors';
+import { ResponseUtil } from '@/utils/response';
+
+export const getUserHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
   const user = await UserModel.findById(req.userId);
-  appAssert(user, NOT_FOUND, "User not found");
-  return res.status(OK).json(user.omitPassword());
+
+  if (!user) {
+    throw AppError.notFound('User not found');
+  }
+
+  return ResponseUtil.success(res, user.omitPassword(), 'User profile retrieved successfully');
 });

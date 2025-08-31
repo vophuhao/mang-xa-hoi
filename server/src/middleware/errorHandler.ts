@@ -1,30 +1,25 @@
-import { Response, ErrorRequestHandler } from "express";
+import type { ErrorRequestHandler, Response } from "express";
 import { z } from "zod";
-import AppError from "../utils/AppError";
-import { BAD_REQUEST, INTERNAL_SERVER_ERROR } from "../constants/http";
-import { REFRESH_PATH, clearAuthCookies } from "../utils/cookies";
+
+import { AppError } from "@/utils/AppError";
+import { REFRESH_PATH, clearAuthCookies } from "@/utils/cookies";
+import { ResponseUtil } from "@/utils/response";
 
 const handleZodError = (res: Response, error: z.ZodError) => {
-  const errors = error.issues.map((err) => ({
-    path: err.path.join("."),
-    message: err.message,
-  }));
+  const errors = error.issues.map(err => `${err.path.join(".")}: ${err.message}`);
 
-  return res.status(BAD_REQUEST).json({
-    errors,
-    message: error.message,
-  });
+  return ResponseUtil.unprocessableEntity(res, "Validation failed", errors);
 };
 
 const handleAppError = (res: Response, error: AppError) => {
-  return res.status(error.statusCode).json({
-    message: error.message,
-    errorCode: error.errorCode,
-  });
+  return ResponseUtil.error(res, error.message, error.statusCode);
 };
 
-const errorHandler: ErrorRequestHandler = (error, req, res, next) => {
-  console.log(`PATH ${req.path}`, error);
+const errorHandler: ErrorRequestHandler = (error, req, res) => {
+  // Only log in development
+  if (process.env.NODE_ENV === "development") {
+    console.error(`PATH ${req.path}`, error);
+  }
 
   if (req.path === REFRESH_PATH) {
     clearAuthCookies(res);
@@ -38,7 +33,8 @@ const errorHandler: ErrorRequestHandler = (error, req, res, next) => {
     return handleAppError(res, error);
   }
 
-  return res.status(INTERNAL_SERVER_ERROR).send("Internal server error");
+  // Handle unexpected errors
+  return ResponseUtil.error(res, "Internal server error", 500);
 };
 
 export default errorHandler;

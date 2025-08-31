@@ -9,7 +9,7 @@ import {
   resetPasswordHandler,
   verifyEmailHandler,
   googleLoginHandler,
-} from "../controllers/auth.controller";
+} from "@/controllers/auth.controller";
 
 const authRoutes = Router();
 

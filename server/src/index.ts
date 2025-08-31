@@ -1,15 +1,16 @@
+import cookieParser from "cookie-parser";
+import cors from "cors";
 import "dotenv/config";
 import express from "express";
-import cors from "cors";
-import cookieParser from "cookie-parser";
-import connectToDatabase from "./config/db";
-import errorHandler from "./middleware/errorHandler";
-import authenticate from "./middleware/authenticate";
-import authRoutes from "./routes/auth.route";
-import userRoutes from "./routes/user.route";
-import postRoutes from "./routes/post.route"
-import sessionRoutes from "./routes/session.route";
-import { APP_ORIGIN, NODE_ENV, PORT } from "./constants/env";
+
+import connectToDatabase from "@/config/db";
+import { APP_ORIGIN, NODE_ENV, PORT } from "@/constants/env";
+import authenticate from "@/middleware/authenticate";
+import errorHandler from "@/middleware/errorHandler";
+import authRoutes from "@/routes/auth.route";
+import postRoutes from "@/routes/post.route";
+import sessionRoutes from "@/routes/session.route";
+import userRoutes from "@/routes/user.route";
 
 const app = express();
 
@@ -34,7 +35,7 @@ app.get("/", (_, res) => {
 // auth routes
 app.use("/auth", authRoutes);
 
-app.use("",authenticate,postRoutes)
+app.use("", authenticate, postRoutes);
 
 // protected routes
 app.use("/user", authenticate, userRoutes);
