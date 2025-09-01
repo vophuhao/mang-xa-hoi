@@ -45,7 +45,7 @@ app.use("/auth", authRoutes);
 app.use("/posts", authenticate, postRoutes);
 
 // protected routes
-app.use("/user", authenticate, userRoutes);
+app.use("/users", authenticate, userRoutes);
 app.use("/sessions", authenticate, sessionRoutes);
 app.use("/comments", authenticate, commentRoutes);
 app.use("/notifications", authenticate, notificationRoutes);

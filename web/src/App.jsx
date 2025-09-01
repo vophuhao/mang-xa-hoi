@@ -1,156 +1,37 @@
-import { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { Provider, useSelector, useDispatch } from 'react-redux';
-import { ToastContainer } from 'react-toastify';
+import { Provider } from "react-redux";
+import { Route, Routes, useNavigate } from "react-router-dom";
+import { ToastContainer } from "react-toastify";
 
-import { store } from './store';
-import { getCurrentUser } from './store/slices/authSlice';
-
-// Layout
-import Layout from './components/layout/Layout';
-
-// Pages
-import HomePage from './pages/HomePage';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import ProfilePage from './pages/ProfilePage';
-import ExplorePage from './pages/ExplorePage';
-import SearchPage from './pages/SearchPage';
-
-// Styles
-import 'react-toastify/dist/ReactToastify.css';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5,
-      retry: 1,
-    },
-  },
-});
-
-// Protected Route Component
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated } = useSelector((state) => state.auth);
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
-};
-
-// App Content Component
-const AppContent = () => {
-  const dispatch = useDispatch();
-  const { isAuthenticated, isLoading, user } = useSelector((state) => state.auth);
-  const [isInitialized, setIsInitialized] = useState(false);
-
-  useEffect(() => {
-    // Only try to get current user once on app startup
-    if (!isInitialized) {
-      dispatch(getCurrentUser()).finally(() => {
-        setIsInitialized(true);
-      });
-    }
-  }, [dispatch, isInitialized]);
-
-  // Show loading only during initial load
-  if (!isInitialized) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-500 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <Routes>
-      {/* Public Routes */}
-      <Route 
-        path="/login" 
-        element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} 
-      />
-      <Route 
-        path="/register" 
-        element={isAuthenticated ? <Navigate to="/" replace /> : <RegisterPage />} 
-      />
-
-      {/* Protected Routes */}
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <HomePage />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/explore"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <ExplorePage />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/search"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <SearchPage />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/profile/:username"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <ProfilePage />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      
-      {/* Default redirect */}
-      <Route 
-        path="*" 
-        element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />} 
-      />
-    </Routes>
-  );
-};
+import "react-toastify/dist/ReactToastify.css";
+import AppContainer from "./components/AppContainer";
+import { setNavigate } from "./lib/navigation";
+import ForgotPassword from "./pages/ForgotPassword";
+import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ResetPassword from "./pages/ResetPassword";
+import VerifyEmail from "./pages/VerifyEmail";
+import store from "./store";
 
 function App() {
+  // set the navigate function on our API client for use in the axios error interceptor
+  // this allows us to redirect to the login page when an auth error occurs
+  const navigate = useNavigate();
+  setNavigate(navigate);
+
   return (
     <Provider store={store}>
-      <QueryClientProvider client={queryClient}>
-        <Router>
-          <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
-            <AppContent />
-            
-            <ToastContainer
-              position="top-right"
-              autoClose={3000}
-              hideProgressBar={false}
-              newestOnTop={false}
-              closeOnClick
-              rtl={false}
-              pauseOnFocusLoss
-              draggable
-              pauseOnHover
-              theme="colored"
-            />
-          </div>
-          <ReactQueryDevtools initialIsOpen={false} />
-        </Router>
-      </QueryClientProvider>
+      <Routes>
+        <Route path="/" element={<AppContainer />}></Route>
+        <Route path="/home" element={<Home />}></Route>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/email/verify/:code" element={<VerifyEmail />} />
+        <Route path="/password/forgot" element={<ForgotPassword />} />
+        <Route path="/password/reset" element={<ResetPassword />} />
+      </Routes>
+
+      <ToastContainer position="top-right" autoClose={1000} />
     </Provider>
   );
 }

@@ -15,13 +15,15 @@
     "react-dom": "$react-dom"
   },
   "dependencies": {
+    "@chakra-ui/react": "2.8.2",
+    "@emotion/react": "11.11.4",
+    "@emotion/styled": "11.11.5",
     "@react-oauth/google": "^0.12.2",
     "@reduxjs/toolkit": "^2.8.2",
     "@tailwindcss/vite": "^4.1.10",
     "@tanstack/react-query": "5.36.0",
     "@tanstack/react-query-devtools": "5.36.0",
     "axios": "1.6.8",
-    "clsx": "^2.1.1",
     "framer-motion": "11.1.9",
     "js-cookie": "^3.0.5",
     "lucide-react": "^0.515.0",
@@ -31,8 +33,8 @@
     "react-redux": "^9.2.0",
     "react-router-dom": "6.23.1",
     "react-toastify": "^11.0.5",
-    "tailwind-merge": "^2.6.0",
-    "tailwindcss": "^4.1.10"
+    "tailwindcss": "^4.1.10",
+    "zustand": "^5.0.5"
   },
   "devDependencies": {
     "@types/react": "18.2.66",
