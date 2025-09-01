@@ -21,6 +21,19 @@ export const getUserHandler = catchErrors(async (req: AuthenticatedRequest, res:
 });
 
 /**
+ * Get suggested users
+ * @route GET /user/suggestions
+ */
+export const getSuggestedUsersHandler = catchErrors(
+  async (req: AuthenticatedRequest, res: Response) => {
+    console.log("Getting suggested users for user:", req.userId);
+    const suggestions = await UserService.getSuggestedUsers((req.userId as any).toString());
+    console.log("Found suggestions:", suggestions.length);
+    return ResponseUtil.success(res, suggestions);
+  }
+);
+
+/**
  * Get user profile by username
  * @route GET /user/:username
  */

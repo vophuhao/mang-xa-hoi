@@ -334,6 +334,43 @@ export class UserService {
       },
     };
   }
+
+  /**
+   * Get suggested users for the current user
+   */
+  static async getSuggestedUsers(currentUserId: string, limit: number = 10) {
+    try {
+      // Get users that the current user is not following
+      const followingIds = await FollowModel.find({
+        follower: currentUserId,
+        isActive: true,
+      }).select("following");
+
+      const followingUserIds = followingIds.map(follow => follow.following.toString());
+      followingUserIds.push(currentUserId); // Exclude current user
+
+      // Find users not being followed, sorted by followers count
+      const suggestedUsers = await UserModel.find({
+        _id: { $nin: followingUserIds },
+      })
+        .select("_id username fullName avatarUrl bio isVerified")
+        .limit(limit)
+        .sort({ createdAt: -1 }); // Sort by newest users first
+
+      return suggestedUsers.map(user => ({
+        _id: user._id,
+        username: user.username,
+        fullName: user.fullName,
+        avatar: user.avatarUrl,
+        bio: user.bio,
+        isVerified: user.isVerified,
+        isFollowing: false,
+      }));
+    } catch (error) {
+      console.error("Error fetching suggested users:", error);
+      return [];
+    }
+  }
 }
 
 export default UserService;

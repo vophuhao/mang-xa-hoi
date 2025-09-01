@@ -2,6 +2,7 @@ import {
   followUserHandler,
   getFollowersHandler,
   getFollowingHandler,
+  getSuggestedUsersHandler,
   getUserByUsernameHandler,
   getUserHandler,
   getUserPostsHandler,
@@ -19,6 +20,9 @@ userRoutes.use(authenticate);
 
 // Get current user profile
 userRoutes.get("/me", getUserHandler);
+
+// Get suggested users
+userRoutes.get("/suggestions", getSuggestedUsersHandler);
 
 // Update current user profile
 userRoutes.patch("/me", updateProfileHandler);
