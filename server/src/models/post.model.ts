@@ -26,6 +26,9 @@ export interface PostDocument extends mongoose.Document {
   createdAt: Date;
   updatedAt: Date;
 
+  // Virtual fields
+  comments?: any[]; // Virtual populate for comments
+
   // Methods
   incrementComment(): Promise<PostDocument>;
   decrementComment(): Promise<PostDocument>;
@@ -146,6 +149,25 @@ postSchema.methods.incrementView = async function () {
   this.viewCount += 1;
   return this.save();
 };
+
+// Virtual populate for comments
+postSchema.virtual("comments", {
+  ref: "Comment",
+  localField: "_id",
+  foreignField: "post",
+  options: {
+    sort: { createdAt: -1 },
+    limit: 3,
+    populate: {
+      path: "user",
+      select: "username fullName avatarUrl isVerified",
+    },
+  },
+});
+
+// Ensure virtual fields are serialized
+postSchema.set("toJSON", { virtuals: true });
+postSchema.set("toObject", { virtuals: true });
 
 const PostModel = mongoose.model<PostDocument>("Post", postSchema);
 export default PostModel;

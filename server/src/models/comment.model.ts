@@ -21,6 +21,9 @@ export interface CommentDocument extends mongoose.Document {
   createdAt: Date;
   updatedAt: Date;
 
+  // Virtual fields
+  replies?: CommentDocument[]; // Virtual populate for replies
+
   // Methods
   incrementLike(): Promise<CommentDocument>;
   decrementLike(): Promise<CommentDocument>;
@@ -106,6 +109,20 @@ commentSchema.methods.decrementReply = async function () {
   if (this.replyCount > 0) this.replyCount -= 1;
   return this.save();
 };
+
+// Virtual populate for replies
+commentSchema.virtual("replies", {
+  ref: "Comment",
+  localField: "_id",
+  foreignField: "parentComment",
+  options: {
+    sort: { createdAt: 1 },
+  },
+});
+
+// Ensure virtual fields are serialized
+commentSchema.set("toJSON", { virtuals: true });
+commentSchema.set("toObject", { virtuals: true });
 
 const CommentModel = mongoose.model<CommentDocument>("Comment", commentSchema);
 export default CommentModel;

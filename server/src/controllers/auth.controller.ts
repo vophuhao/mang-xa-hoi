@@ -1,9 +1,9 @@
 import { BAD_REQUEST, OK, UNAUTHORIZED } from "@/constants/http";
-import SessionModel from "@/models/session.model";
 import {
   createAccount,
   loginUser,
   loginWithGoogle,
+  logoutUser,
   refreshUserAccessToken,
   resetPassword,
   sendEmailVerification,
@@ -83,7 +83,7 @@ export const loginHandler = catchErrors(async (req, res) => {
 
   // set cookies and send response
   setAuthCookies({ res, accessToken, refreshToken });
-  return ResponseUtil.success(res, undefined, "Login successful");
+  return ResponseUtil.success(res, accessToken, "Login successful");
 });
 
 export const logoutHandler = catchErrors(async (req, res) => {
@@ -92,7 +92,7 @@ export const logoutHandler = catchErrors(async (req, res) => {
 
   if (payload) {
     // remove session from db
-    await SessionModel.findByIdAndDelete(payload.sessionId);
+    await logoutUser(payload.sessionId as string);
   }
 
   // clear cookies

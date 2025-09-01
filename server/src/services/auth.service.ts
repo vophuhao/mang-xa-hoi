@@ -1,3 +1,4 @@
+import { AppErrorCode } from "@/constants/appErrorCode";
 import { APP_ORIGIN } from "@/constants/env";
 import {
   CONFLICT,
@@ -78,12 +79,17 @@ type LoginParams = {
 
 export const loginUser = async ({ email, password, userAgent }: LoginParams) => {
   const user = await UserModel.findOne({ email });
-  appAssert(user, UNAUTHORIZED, "Invalid email or password");
+  appAssert(user, UNAUTHORIZED, "Invalid email or password", AppErrorCode.INVALID_CREDENTIALS);
 
   const isValid = await user.comparePassword(password);
-  appAssert(isValid, UNAUTHORIZED, "Invalid email or password");
+  appAssert(isValid, UNAUTHORIZED, "Invalid email or password", AppErrorCode.INVALID_CREDENTIALS);
 
-  appAssert(user.verified, UNAUTHORIZED, "Please verify your email before logging in");
+  appAssert(
+    user.verified,
+    UNAUTHORIZED,
+    "Please verify your email before logging in",
+    AppErrorCode.EMAIL_NOT_VERIFIED
+  );
 
   const userId = user._id;
   const session = await SessionModel.create({
@@ -313,4 +319,8 @@ export const resetPassword = async ({ verificationCode, password }: ResetPasswor
   await SessionModel.deleteMany({ userId: validCode.userId });
 
   return { user: updatedUser.omitPassword() };
+};
+
+export const logoutUser = async (sessionId: string) => {
+  await SessionModel.findByIdAndDelete(sessionId);
 };

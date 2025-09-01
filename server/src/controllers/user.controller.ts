@@ -1,196 +1,123 @@
 import type { AuthenticatedRequest } from "@/types";
 import type { Response } from "express";
 
-import FollowModel from "@/models/follow.model";
-import UserModel from "@/models/user.model";
-import { AppError } from "@/utils/AppError";
+import UserService from "@/services/user.service";
 import catchErrors from "@/utils/catchErrors";
 import { ResponseUtil } from "@/utils/response";
 import {
   followUserSchema,
-  getUserByUsernameSchema as getUserProfileSchema,
+  getUserByUsernameSchema,
   searchUsersSchema,
-  updateProfileSchema as updateUserProfileSchema,
-} from "@/validators";
+  updateProfileSchema,
+} from "@/validators/user.validator";
 
-// Get current user profile
+/**
+ * Get current user profile
+ * @route GET /user/me
+ */
 export const getUserHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
-  const user = await UserModel.findById(req.userId);
-
-  if (!user) {
-    throw AppError.notFound("User not found");
-  }
-
-  return ResponseUtil.success(res, user.omitPassword(), "User profile retrieved successfully");
+  const user = await UserService.getCurrentUser((req.userId as any).toString());
+  return ResponseUtil.success(res, user);
 });
 
-// Get user profile by username
-export const getUserProfileHandler = catchErrors(
+/**
+ * Get user profile by username
+ * @route GET /user/:username
+ */
+export const getUserByUsernameHandler = catchErrors(
   async (req: AuthenticatedRequest, res: Response) => {
-    const { username } = getUserProfileSchema.parse(req.params);
-
-    const user = await UserModel.findOne({ username }).select("-password");
-
-    if (!user) {
-      throw AppError.notFound("User not found");
-    }
-
-    // Check if current user is following this user
-    let isFollowing = false;
-    let isFollowedBy = false;
-
-    if (req.userId) {
-      const followRelation = await FollowModel.findOne({
-        follower: req.userId,
-        following: user._id,
-      });
-      isFollowing = !!followRelation;
-
-      const followedByRelation = await FollowModel.findOne({
-        follower: user._id,
-        following: req.userId,
-      });
-      isFollowedBy = !!followedByRelation;
-    }
-
-    const profile = {
-      ...user.toObject(),
-      isFollowing,
-      isFollowedBy,
-      isOwnProfile: req.userId?.toString() === (user._id as any).toString(),
-    };
-
-    return ResponseUtil.success(res, profile);
-  }
-);
-
-// Update user profile
-export const updateUserProfileHandler = catchErrors(
-  async (req: AuthenticatedRequest, res: Response) => {
-    const updateData = updateUserProfileSchema.parse(req.body);
-
-    const user = await UserModel.findByIdAndUpdate(
-      req.userId,
-      { $set: updateData },
-      { new: true, runValidators: true }
+    const { username } = getUserByUsernameSchema.parse(req.params);
+    const userProfile = await UserService.getUserByUsername(
+      username,
+      (req.userId as any).toString()
     );
-
-    if (!user) {
-      throw AppError.notFound("User not found");
-    }
-
-    return ResponseUtil.success(res, user.omitPassword());
+    return ResponseUtil.success(res, userProfile);
   }
 );
 
-// Follow a user
+/**
+ * Follow a user
+ * @route POST /user/:userId/follow
+ */
 export const followUserHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
-  const { userId: targetUserId } = followUserSchema.parse(req.params);
-  const currentUserId = req.userId;
-
-  if (currentUserId.toString() === targetUserId) {
-    throw AppError.badRequest("Cannot follow yourself");
-  }
-
-  // Check if target user exists
-  const targetUser = await UserModel.findById(targetUserId);
-  if (!targetUser) {
-    throw AppError.notFound("User not found");
-  }
-
-  // Check if already following
-  const existingFollow = await FollowModel.findOne({
-    follower: currentUserId,
-    following: targetUserId,
-  });
-
-  if (existingFollow) {
-    return ResponseUtil.success(res, { message: "Already following this user", isFollowing: true });
-  }
-
-  // Create follow relationship
-  await FollowModel.create({
-    follower: currentUserId,
-    following: targetUserId,
-  });
-
-  // Update follower/following counts
-  await Promise.all([
-    UserModel.findByIdAndUpdate(currentUserId, { $inc: { followingCount: 1 } }),
-    UserModel.findByIdAndUpdate(targetUserId, { $inc: { followersCount: 1 } }),
-  ]);
-
-  return ResponseUtil.success(res, { message: "User followed successfully", isFollowing: true });
+  const { userId: userToFollowId } = followUserSchema.parse(req.params);
+  const result = await UserService.followUser(userToFollowId, (req.userId as any).toString());
+  return ResponseUtil.success(res, result);
 });
 
-// Unfollow a user
+/**
+ * Unfollow a user
+ * @route DELETE /user/:userId/follow
+ */
 export const unfollowUserHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
-  const { userId: targetUserId } = followUserSchema.parse(req.params);
-  const currentUserId = req.userId;
-
-  // Remove follow relationship
-  const deletedFollow = await FollowModel.findOneAndDelete({
-    follower: currentUserId,
-    following: targetUserId,
-  });
-
-  if (deletedFollow) {
-    // Update follower/following counts
-    await Promise.all([
-      UserModel.findByIdAndUpdate(currentUserId, { $inc: { followingCount: -1 } }),
-      UserModel.findByIdAndUpdate(targetUserId, { $inc: { followersCount: -1 } }),
-    ]);
-  }
-
-  return ResponseUtil.success(res, { message: "User unfollowed successfully", isFollowing: false });
+  const { userId: userToUnfollowId } = followUserSchema.parse(req.params);
+  const result = await UserService.unfollowUser(userToUnfollowId, (req.userId as any).toString());
+  return ResponseUtil.success(res, result);
 });
 
-// Search users
-export const searchUsersHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
-  const { q, page = 1, limit = 20 } = searchUsersSchema.parse(req.query);
-  const skip = (page - 1) * limit;
+/**
+ * Get user's followers
+ * @route GET /user/:username/followers
+ */
+export const getFollowersHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const { username } = getUserByUsernameSchema.parse(req.params);
+  const { page = 1, limit = 20 } = req.query as any;
 
-  const users = await UserModel.find({
-    $or: [{ username: { $regex: q, $options: "i" } }, { fullName: { $regex: q, $options: "i" } }],
-  })
-    .select("username fullName avatarUrl isVerified isPrivate followersCount")
-    .skip(skip)
-    .limit(limit)
-    .sort({ followersCount: -1, username: 1 });
-
-  const total = await UserModel.countDocuments({
-    $or: [{ username: { $regex: q, $options: "i" } }, { fullName: { $regex: q, $options: "i" } }],
-  });
-
-  return ResponseUtil.paginated(res, users, {
-    page,
-    limit,
-    total,
-    totalPages: Math.ceil(total / limit),
-    hasNext: page < Math.ceil(total / limit),
-    hasPrev: page > 1,
-  });
+  const result = await UserService.getUserFollowers(username, Number(page), Number(limit));
+  return ResponseUtil.paginated(res, result.data, result.pagination);
 });
 
-// Get suggested users (people you might know)
-export const getSuggestedUsersHandler = catchErrors(
+/**
+ * Get user's following
+ * @route GET /user/:username/following
+ */
+export const getFollowingHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const { username } = getUserByUsernameSchema.parse(req.params);
+  const { page = 1, limit = 20 } = req.query as any;
+
+  const result = await UserService.getUserFollowing(username, Number(page), Number(limit));
+  return ResponseUtil.paginated(res, result.data, result.pagination);
+});
+
+/**
+ * Update user profile
+ * @route PATCH /user/me
+ */
+export const updateProfileHandler = catchErrors(
   async (req: AuthenticatedRequest, res: Response) => {
-    const currentUserId = req.userId;
-    const limit = 10;
-
-    // Get users that current user is not following
-    const followingIds = await FollowModel.find({ follower: currentUserId }).distinct("following");
-
-    const suggestedUsers = await UserModel.find({
-      _id: {
-        $nin: [...followingIds, currentUserId],
-      },
-      isPrivate: false,
-    })
-      .select("username fullName avatarUrl isVerified followersCount")
-      .limit(limit)
-      .sort({ followersCount: -1, createdAt: -1 });
-
-    return ResponseUtil.success(res, suggestedUsers);
+    const updateData = updateProfileSchema.parse(req.body);
+    const updatedUser = await UserService.updateProfile(
+      (req.userId as any).toString(),
+      updateData as any
+    );
+    return ResponseUtil.success(res, updatedUser, "Profile updated successfully");
   }
 );
+
+/**
+ * Search users
+ * @route GET /user/search
+ */
+export const searchUsersHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const { q: query, page = 1, limit = 20 } = searchUsersSchema.parse(req.query);
+
+  const result = await UserService.searchUsers({
+    query,
+    page: Number(page),
+    limit: Number(limit),
+  });
+
+  return ResponseUtil.paginated(res, result.data, result.pagination);
+});
+
+/**
+ * Get user's posts
+ * @route GET /user/:username/posts
+ */
+export const getUserPostsHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const { username } = getUserByUsernameSchema.parse(req.params);
+  const { page = 1, limit = 12 } = req.query as any;
+
+  const result = await UserService.getUserPosts(username, Number(page), Number(limit));
+  return ResponseUtil.paginated(res, result.data, result.pagination);
+});

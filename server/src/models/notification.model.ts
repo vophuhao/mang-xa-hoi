@@ -60,7 +60,7 @@ const notificationSchema = new mongoose.Schema<NotificationDocument>(
     readAt: Date,
 
     // Grouping
-    groupKey: { type: String, index: true },
+    groupKey: { type: String },
     isGrouped: { type: Boolean, default: false },
   },
   { timestamps: true }

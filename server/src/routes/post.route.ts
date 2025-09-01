@@ -1,10 +1,11 @@
 import {
   createPostHandler,
   deletePostHandler,
-  getExplorePostsHandler,
-  getFeedHandler,
-  getPostHandler,
+  getFeedPostsHandler,
+  getPostByIdHandler,
+  getTrendingPostsHandler,
   likePostHandler,
+  updatePostHandler,
 } from "@/controllers/post.controller";
 import authenticate from "@/middleware/authenticate";
 import { Router } from "express";
@@ -16,12 +17,13 @@ postRoutes.use(authenticate);
 
 // Post CRUD
 postRoutes.post("/", createPostHandler);
-postRoutes.get("/feed", getFeedHandler);
-postRoutes.get("/explore", getExplorePostsHandler);
-postRoutes.get("/:id", getPostHandler);
+postRoutes.get("/feed", getFeedPostsHandler);
+postRoutes.get("/trending", getTrendingPostsHandler);
+postRoutes.get("/:id", getPostByIdHandler);
+postRoutes.put("/:id", updatePostHandler);
 postRoutes.delete("/:id", deletePostHandler);
 
 // Post interactions
-postRoutes.post("/like", likePostHandler);
+postRoutes.post("/:postId/like", likePostHandler);
 
 export default postRoutes;
