@@ -1,7 +1,9 @@
+import { useState } from "react";
+
 import { useQuery } from "@tanstack/react-query";
 import { useParams, Link } from "react-router-dom";
+
 import { verifyEmail, sendEmailVerification } from "../lib/api";
-import { useState } from "react";
 
 const VerifyEmail = () => {
   const { code } = useParams();

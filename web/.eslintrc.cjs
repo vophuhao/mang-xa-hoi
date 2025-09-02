@@ -22,7 +22,7 @@ module.exports = {
     ],
     "no-unused-vars": "warn",
     "import/order": [
-      "warn",
+      "error",
       {
         groups: [
           "builtin",
@@ -45,7 +45,14 @@ module.exports = {
         ],
         pathGroupsExcludedImportTypes: ["react"],
         "newlines-between": "always",
+        alphabetize: {
+          order: "asc",
+          caseInsensitive: true,
+        },
       },
     ],
+    "import/first": "error",
+    "import/newline-after-import": "error",
+    "import/no-duplicates": "error",
   },
 };

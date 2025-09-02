@@ -1,4 +1,5 @@
 import { Alert, AlertIcon, Center, Heading, Text } from "@chakra-ui/react";
+
 import useAuth from "../hooks/useAuth";
 
 const Profile = () => {

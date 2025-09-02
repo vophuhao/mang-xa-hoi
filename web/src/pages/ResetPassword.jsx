@@ -1,4 +1,3 @@
-import { useSearchParams, Link } from "react-router-dom";
 import {
   Container,
   Flex,
@@ -8,6 +7,8 @@ import {
   AlertIcon,
   Text,
 } from "@chakra-ui/react";
+import { useSearchParams, Link } from "react-router-dom";
+
 import ResetPasswordForm from "../components/ResetPasswordForm";
 
 const ResetPassword = () => {

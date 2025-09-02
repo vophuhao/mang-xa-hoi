@@ -1,11 +1,14 @@
 import { useState } from "react";
+
 import { FaShoppingCart, FaBars, FaTimes } from "react-icons/fa";
 import { FiChevronDown } from "react-icons/fi";
+import { toast } from 'react-toastify';
+
+import useAuth from "../hooks/useAuth";
+import { logout } from "../lib/api";
+
 import LoginModal from "./AuthModal";
 
-import { toast } from 'react-toastify';
-import { logout } from "../lib/api";
-import useAuth from "../hooks/useAuth";
 export default function Header() {
 
     const [showLogin, setShowLogin] = useState(false);

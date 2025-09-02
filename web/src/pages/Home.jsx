@@ -1,15 +1,16 @@
 import { useState } from "react";
-import Sidebar from "../components/SideBar";
-import SearchPanel from "../components/SearchPanel";
+
 import MessagePanel from "../components/MessagePanel";
 import ProfilePanel from "../components/ProfilePanel";
+import SearchPanel from "../components/SearchPanel";
+import Sidebar from "../components/SideBar";
 
 const Home = () => {
   const [activeMenu, setActiveMenu] = useState("home"); // home | explore | reels | profile | search | message
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen dark:bg-gray-900">
       {/* Sidebar */}
       <Sidebar
         activeMenu={activeMenu}
@@ -20,21 +21,29 @@ const Home = () => {
 
       {/* Sidebar panel phụ */}
       {activeMenu === "search" && (
-        <div className="w-100 border-gray-800 bg-white animate-slideIn rounded-tr-4xl rounded-br-4xl">
+        <div className="animate-slideIn w-100 rounded-tr-4xl rounded-br-4xl border-gray-800 bg-white dark:border-gray-700 dark:bg-gray-800">
           <SearchPanel />
         </div>
       )}
       {activeMenu === "message" && (
-        <div className="w-80 border-r bg-white animate-slideIn">
+        <div className="animate-slideIn w-80 border-r bg-white dark:border-gray-700 dark:bg-gray-800">
           <MessagePanel />
         </div>
       )}
 
       {/* Nội dung chính */}
-      <div className="flex-1 bg-gray-50 overflow-auto">
-        {activeMenu === "home" && <div className="p-6">🏠 Home Page</div>}
-        {activeMenu === "explore" && <div className="p-6">🔍 Explore Page</div>}
-        {activeMenu === "reels" && <div className="p-6">🎬 Reels Page</div>}
+      <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
+        {activeMenu === "home" && (
+          <div className="p-6 text-gray-900 dark:text-white">🏠 Home Page</div>
+        )}
+        {activeMenu === "explore" && (
+          <div className="p-6 text-gray-900 dark:text-white">
+            🔍 Explore Page
+          </div>
+        )}
+        {activeMenu === "reels" && (
+          <div className="p-6 text-gray-900 dark:text-white">🎬 Reels Page</div>
+        )}
         {activeMenu === "profile" && <ProfilePanel />}
       </div>
     </div>
@@ -42,4 +51,3 @@ const Home = () => {
 };
 
 export default Home;
-

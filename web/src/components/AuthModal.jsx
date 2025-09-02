@@ -1,7 +1,10 @@
-import { X } from "lucide-react";
 import { useState } from "react";
-import RegisterForm from "./RegisterForm";
+
+import { X } from "lucide-react";
+
 import LoginForm from "./LoginForm";
+import RegisterForm from "./RegisterForm";
+
 export default function AuthModal({ isOpen, onClose }) {
     
     const [isRegistering, setIsRegistering] = useState(false);
