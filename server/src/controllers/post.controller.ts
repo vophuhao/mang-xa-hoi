@@ -19,6 +19,7 @@ export const createPostHandler = catchErrors(async (req, res) => {
   });
 
   return res.status(CREATED).json({
+    status : OK,
     message: "Post created successfully",
     post,
   });

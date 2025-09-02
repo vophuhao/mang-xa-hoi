@@ -14,6 +14,7 @@ import {
   SwitchCamera,
   PlusSquare
 } from "lucide-react";
+import CreatePostModal from "../modals/CreatePostModal";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { logout } from "../lib/api";
@@ -28,6 +29,8 @@ export default function Sidebar({
 }) {
   const [showMore, setShowMore] = useState(false);
   const navigate = useNavigate();
+  const [isPostModalOpen, setIsPostModalOpen] = useState(false);
+
   const navItems = [
     { id: "home", label: "Trang chủ", icon: <Home size={23} /> },
     { id: "search", label: "Tìm kiếm", icon: <Search size={23} /> },
@@ -36,22 +39,19 @@ export default function Sidebar({
     { id: "post", label: "Tạo", icon: <PlusSquare size={23} /> },
     { id: "reels", label: "Reels", icon: <Video size={23} /> },
     { id: "profile", label: "Trang cá nhân", icon: <User size={23} /> },
-    
-  ];
 
+  ];
   const {
     mutate: handleLogout
     , } = useMutation({
       mutationFn: logout,
-      onSuccess: () => {      
+      onSuccess: () => {
         navigate("/login");
       },
       onError: () => {
         toast.error("Đăng xuất thất bại, vui lòng thử lại!");
       }
     });
-
-
   const handleClick = (item) => {
     if (item.id === "more") {
       setShowMore(!showMore);
@@ -66,8 +66,10 @@ export default function Sidebar({
       setActiveMenu(item.id);
       setIsCollapsed(false);
     }
+    if (item.id === "post") {
+      setIsPostModalOpen(true)
+    }
   };
-
   return (
     <div
       className={`${isCollapsed ? "w-16" : "w-60"}
@@ -190,6 +192,13 @@ export default function Sidebar({
         </div>
 
       </div>
+      {isPostModalOpen && (
+        <CreatePostModal
+          isOpen={isPostModalOpen}
+          onClose={() => setIsPostModalOpen(false)}
+        />
+      )}
+
     </div>
   );
 }

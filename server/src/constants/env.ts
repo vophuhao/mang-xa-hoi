@@ -18,3 +18,6 @@ export const EMAIL_SENDER = getEnv("EMAIL_SENDER");
 export const EMAIL_PASS = getEnv("EMAIL_PASS");
 export const RESEND_API_KEY = getEnv("RESEND_API_KEY");
 export const GOOGLE_CLIENT_ID=getEnv("GOOGLE_CLIENT_ID")
+export const CLOUDINARY_CLOUD_NAME=getEnv("CLOUDINARY_CLOUD_NAME")
+export const CLOUDINARY_API_KEY=getEnv("CLOUDINARY_API_KEY")
+export const CLOUDINARY_API_SECRET=getEnv("CLOUDINARY_API_SECRET")

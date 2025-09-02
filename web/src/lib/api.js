@@ -1,9 +1,13 @@
 import API from "../config/apiClient";
 
-export const register = async (data) => API.post("/auth/register", data);
-export const login = async (data) => API.post("/auth/login", data);
-export const googleLogin = async (data) => API.post("/auth/login/google", data);
-export const logout = async () => API.get("/auth/logout");
+export const register = async (data) => 
+  API.post("/auth/register", data);
+export const login = async (data) => 
+  API.post("/auth/login", data);
+export const googleLogin = async (data) => 
+  API.post("/auth/login/google", data);
+export const logout = async () => 
+  API.get("/auth/logout");
 export const sendEmailVerification = async (email) =>
   API.post("/auth/email/verification", { email });
 export const verifyEmail = async (verificationCode) =>
@@ -12,7 +16,22 @@ export const sendPasswordResetEmail = async (email) =>
   API.post("/auth/password/forgot", { email });
 export const resetPassword = async ({ verificationCode, password }) =>
   API.post("/auth/password/reset", { verificationCode, password });
-
-export const getUser = async () => API.get("/user");
-export const getSessions = async () => API.get("/sessions");
-export const deleteSession = async (id) => API.delete(`/sessions/${id}`);
+export const getUser = async () => 
+  API.get("/user");
+export const getSessions = async () => 
+  API.get("/sessions");
+export const deleteSession = async (id) => 
+  API.delete(`/sessions/${id}`);
+// lib/api.js
+// Gửi file lên server
+export const saveImage = async (formData) => {
+  return API.post("/media/image/save", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+};
+// Gửi caption + url ảnh để tạo post
+export const savePost = async (caption, imageUrl) => {
+  return API.post("/post/save", { caption, imageUrl });
+};

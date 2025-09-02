@@ -10,6 +10,7 @@ import userRoutes from "./routes/user.route";
 import postRoutes from "./routes/post.route"
 import sessionRoutes from "./routes/session.route";
 import { APP_ORIGIN, NODE_ENV, PORT } from "./constants/env";
+import mediaRoutes from "./routes/media.route";
 
 const app = express();
 
@@ -39,6 +40,8 @@ app.use("",authenticate,postRoutes)
 // protected routes
 app.use("/user", authenticate, userRoutes);
 app.use("/sessions", authenticate, sessionRoutes);
+
+app.use("/media",authenticate,mediaRoutes)
 
 // error handler
 app.use(errorHandler);
