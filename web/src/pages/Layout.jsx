@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 import { useDispatch, useSelector } from "react-redux";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import MobileFooter from "@/components/MobileFooter";
 import MobileHeader from "@/components/MobileHeader";
@@ -10,15 +10,43 @@ import SidePanel from "@/components/SidePanel";
 import {
   closePanels,
   isPanelMenu,
+  setActiveMenu,
   setScreenSize,
   togglePanel,
 } from "@/store/slices/layoutSlice";
 
+// Route mappings (outside component to avoid recreating)
+const routeMap = {
+  home: "/",
+  explore: "/explore",
+  reels: "/reels",
+  message: "/direct/inbox",
+  profile: "/profile",
+};
+
+const pathToMenu = {
+  "/": "home",
+  "/explore": "explore",
+  "/reels": "reels",
+  "/direct/inbox": "message",
+  "/profile": "profile",
+};
+
 const Layout = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { activeMenu, isCollapsed, isMobile } = useSelector(
     (state) => state.layout
   );
+
+  // Sync activeMenu with current route on mount/route change
+  useEffect(() => {
+    const currentMenu = pathToMenu[location.pathname];
+    if (currentMenu && activeMenu !== currentMenu && !isPanelMenu(activeMenu)) {
+      dispatch(setActiveMenu(currentMenu));
+    }
+  }, [location.pathname, activeMenu, dispatch]);
 
   // Responsive breakpoints detection
   useEffect(() => {
@@ -46,7 +74,19 @@ const Layout = () => {
   }, [dispatch]);
 
   const handleMenuClick = (menuId) => {
-    dispatch(togglePanel(menuId));
+    // Handle panel menus (search, notifications)
+    if (isPanelMenu(menuId)) {
+      dispatch(togglePanel(menuId));
+    } else {
+      // Handle page menus (home, explore, reels, message, profile)
+      dispatch(setActiveMenu(menuId));
+
+      // Navigate to the corresponding route
+      const route = routeMap[menuId];
+      if (route) {
+        navigate(route);
+      }
+    }
   };
 
   const handleOutsideClick = () => {

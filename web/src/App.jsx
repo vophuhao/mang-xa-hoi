@@ -14,9 +14,12 @@ import ResetPassword from "@/pages/ResetPassword";
 import VerifyEmail from "@/pages/VerifyEmail";
 import store from "@/store";
 
-import Explore from "./components/Explore";
-import Feed from "./components/Feed";
+import DirectInbox from "./pages/DirectInbox";
+import Explore from "./pages/Explore";
+import Feed from "./pages/Feed";
 import Layout from "./pages/Layout";
+import Profile from "./pages/Profile";
+import Reels from "./pages/Reels";
 
 function App() {
   // set the navigate function on our API client for use in the axios error interceptor
@@ -40,6 +43,10 @@ function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<Feed />} />
           <Route path="explore" element={<Explore />} />
+          <Route path="reels" element={<Reels />} />
+          <Route path="direct/inbox" element={<DirectInbox />} />
+          <Route path="profile" element={<Profile />} />{" "}
+          {/* route Profile này để tạm thôi nha mấy ní, khoan hả đụng */}
         </Route>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

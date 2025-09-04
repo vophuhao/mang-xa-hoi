@@ -170,21 +170,29 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
 
   return (
     <div
-      className={`${isCollapsed ? "w-18" : "w-64"} relative flex h-full flex-col border-r border-gray-200 bg-white transition-all duration-300 ease-in-out dark:border-gray-800 dark:bg-black`}
+      className={`${isCollapsed ? "w-18" : "w-55"} relative flex h-full flex-col border-r border-gray-200 bg-white transition-all duration-300 ease-in-out dark:border-gray-800 dark:bg-black`}
     >
       {/* Logo */}
-      <div className="flex items-center px-6 py-8">
-        <span
-          className={`font-pacifico overflow-hidden pb-3 text-4xl font-normal tracking-tight whitespace-nowrap text-black transition-all duration-300 ease-in-out dark:text-white ${isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"} `}
+      <div
+        className={`relative flex items-center py-8 ${isCollapsed ? "justify-center px-3" : "px-6"}`}
+      >
+        <button
+          onClick={() => onMenuClick("home")}
+          className="transition-opacity hover:opacity-80"
         >
-          Pixyy
-        </span>
+          <span
+            className={`font-pacifico overflow-hidden pb-3 text-4xl font-normal tracking-tight whitespace-nowrap text-black dark:text-white ${isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"} `}
+          >
+            Pixyy
+          </span>
+        </button>
         {isCollapsed && (
-          <img
-            src={logo_pixyy}
-            alt="Pixyy Logo"
-            className="absolute h-7 w-auto"
-          />
+          <button
+            onClick={() => onMenuClick("home")}
+            className="absolute inset-0 flex items-center justify-center transition-opacity hover:opacity-80"
+          >
+            <img src={logo_pixyy} alt="Pixyy Logo" className="h-7 w-auto" />
+          </button>
         )}
       </div>
 
