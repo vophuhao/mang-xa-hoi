@@ -1,13 +1,4 @@
-import {
-  Container,
-  Flex,
-  Link as ChakraLink,
-  VStack,
-  Alert,
-  AlertIcon,
-  Text,
-} from "@chakra-ui/react";
-import { useSearchParams, Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import ResetPasswordForm from "../components/ResetPasswordForm";
 
@@ -19,24 +10,40 @@ const ResetPassword = () => {
   const linkIsValid = code && exp && exp > now;
 
   return (
-    <Flex minH="100vh" justify="center">
-      <Container mx="auto" maxW="md" py={12} px={6} textAlign="center">
+    <div className="flex min-h-screen justify-center">
+      <div className="mx-auto max-w-md px-6 py-12 text-center">
         {linkIsValid ? (
           <ResetPasswordForm code={code} />
         ) : (
-          <VStack align="center" spacing={6}>
-            <Alert status="error" w="fit-content" borderRadius={12}>
-              <AlertIcon />
+          <div className="flex flex-col items-center space-y-6">
+            <div className="flex items-center rounded border border-red-400 bg-red-100 px-4 py-3 text-red-700">
+              <svg
+                className="mr-2 h-4 w-4"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
+              </svg>
               Invalid Link
-            </Alert>
-            <Text color="gray.400">The link is either invalid or expired.</Text>
-            <ChakraLink as={Link} to="/password/forgot" replace>
+            </div>
+            <p className="text-gray-400">
+              The link is either invalid or expired.
+            </p>
+            <Link
+              to="/password/forgot"
+              replace
+              className="text-blue-500 underline hover:text-blue-700"
+            >
               Request a new password reset link
-            </ChakraLink>
-          </VStack>
+            </Link>
+          </div>
         )}
-      </Container>
-    </Flex>
+      </div>
+    </div>
   );
 };
 export default ResetPassword;

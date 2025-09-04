@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useMutation } from "@tanstack/react-query";
 import {
   AlertCircle,
+  Bell,
   Bookmark,
   Compass,
   Home,
@@ -25,23 +26,21 @@ import logo_pixyy from "@/assets/images/logo_pixyy.png";
 import useTheme from "@/hooks/useTheme";
 import { logout } from "@/lib/api";
 
-export default function Sidebar({
-  activeMenu,
-  setActiveMenu,
-  isCollapsed,
-  setIsCollapsed,
-}) {
+export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
   const [showMore, setShowMore] = useState(false);
+  const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const { theme, changeTheme } = useTheme();
+
   const navItems = [
-    { id: "home", label: "Trang chủ", icon: <Home size={23} /> },
-    { id: "search", label: "Tìm kiếm", icon: <Search size={23} /> },
-    { id: "message", label: "Tin nhắn", icon: <MessageCircle size={23} /> },
-    { id: "explore", label: "Khám phá", icon: <Compass size={23} /> },
-    { id: "post", label: "Tạo", icon: <PlusSquare size={23} /> },
-    { id: "reels", label: "Reels", icon: <Video size={23} /> },
-    { id: "profile", label: "Trang cá nhân", icon: <User size={23} /> },
+    { id: "home", label: "Trang chủ", icon: <Home size={24} /> },
+    { id: "search", label: "Tìm kiếm", icon: <Search size={24} /> },
+    { id: "explore", label: "Khám phá", icon: <Compass size={24} /> },
+    { id: "reels", label: "Reels", icon: <Video size={24} /> },
+    { id: "message", label: "Tin nhắn", icon: <MessageCircle size={24} /> },
+    { id: "notifications", label: "Thông báo", icon: <Bell size={24} /> },
+    { id: "post", label: "Tạo", icon: <PlusSquare size={24} /> },
+    { id: "profile", label: "Trang cá nhân", icon: <User size={24} /> },
   ];
 
   const { mutate: handleLogout } = useMutation({
@@ -58,13 +57,16 @@ export default function Sidebar({
     const nextTheme =
       theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
     changeTheme(nextTheme);
-    // toast.success(
-    //   nextTheme === "light"
-    //     ? "Đã chuyển sang chế độ sáng"
-    //     : nextTheme === "dark"
-    //       ? "Đã chuyển sang chế độ tối"
-    //       : "Đã chuyển sang chế độ hệ thống"
-    // );
+  };
+
+  const handleDropdownItemClick = (item) => {
+    if (item.action) {
+      item.action();
+    }
+
+    if (item.closeOnClick) {
+      setShowMore(false);
+    }
   };
 
   const getThemeIcon = () => {
@@ -79,30 +81,101 @@ export default function Sidebar({
     return "Hệ thống";
   };
 
+  // Define dropdown items after all functions are available
+  const dropdownItems = [
+    {
+      id: "settings",
+      label: "Cài đặt",
+      icon: <Settings size={20} />,
+      action: () => console.log("Settings clicked"),
+      closeOnClick: true,
+    },
+    {
+      id: "saved",
+      label: "Đã lưu",
+      icon: <Bookmark size={20} />,
+      action: () => console.log("Saved clicked"),
+      closeOnClick: true,
+    },
+    {
+      id: "theme",
+      label: getThemeText(),
+      icon: getThemeIcon(),
+      action: handleThemeToggle,
+      closeOnClick: false, // Không đóng dropdown khi thay đổi theme
+    },
+    {
+      id: "report",
+      label: "Báo cáo sự cố",
+      icon: <AlertCircle size={20} />,
+      action: () => console.log("Report clicked"),
+      closeOnClick: true,
+    },
+    {
+      type: "divider", // Separator
+    },
+    {
+      id: "switch",
+      label: "Chuyển tài khoản",
+      icon: <SwitchCamera size={20} />,
+      action: () => console.log("Switch account clicked"),
+      closeOnClick: true,
+    },
+    {
+      id: "logout",
+      label: "Đăng xuất",
+      icon: <LogOut size={20} />,
+      action: () => handleLogout(),
+      closeOnClick: true,
+    },
+  ];
+
   const handleClick = (item) => {
     if (item.id === "more") {
       setShowMore(!showMore);
       return;
     }
-    if (activeMenu === item.id) return;
 
-    if (item.id === "search" || item.id === "message") {
-      setActiveMenu(item.id);
-      setIsCollapsed(true);
-    } else {
-      setActiveMenu(item.id);
-      setIsCollapsed(false);
-    }
+    // Remove the early return for active menu items to allow toggling
+    // if (activeMenu === item.id) return;
+
+    // Always use onMenuClick since we're now using Redux
+    onMenuClick(item.id);
   };
+
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowMore(false);
+      }
+    };
+
+    const handleEscapeKey = (event) => {
+      if (event.key === "Escape") {
+        setShowMore(false);
+      }
+    };
+
+    if (showMore) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleEscapeKey);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscapeKey);
+    };
+  }, [showMore]);
 
   return (
     <div
-      className={`${isCollapsed ? "w-16" : "w-60"} relative flex flex-col border-r border-gray-200 bg-white py-6 shadow-sm transition-all duration-500 ease-in-out dark:border-gray-800 dark:bg-gray-900`}
+      className={`${isCollapsed ? "w-18" : "w-64"} relative flex h-full flex-col border-r border-gray-200 bg-white transition-all duration-300 ease-in-out dark:border-gray-800 dark:bg-black`}
     >
       {/* Logo */}
-      <div className="flex items-center px-6 py-4 pb-8 transition-all duration-500 ease-in-out">
+      <div className="flex items-center px-6 py-8">
         <span
-          className={`font-pacifico text-primary-default overflow-hidden p-[12px] text-4xl font-extrabold tracking-tight whitespace-nowrap transition-all duration-500 ease-in-out dark:text-white ${isCollapsed ? "w-0 text-xl opacity-0" : "w-auto text-2xl opacity-100"} `}
+          className={`font-pacifico overflow-hidden pb-3 text-4xl font-normal tracking-tight whitespace-nowrap text-black transition-all duration-300 ease-in-out dark:text-white ${isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"} `}
         >
           Pixyy
         </span>
@@ -110,37 +183,37 @@ export default function Sidebar({
           <img
             src={logo_pixyy}
             alt="Pixyy Logo"
-            className="absolute h-6 w-auto"
+            className="absolute h-7 w-auto"
           />
         )}
       </div>
 
-      {/* Nav items (trên cùng) */}
-      <div className="flex flex-col space-y-4 px-2">
+      {/* Nav items */}
+      <div className="flex flex-1 flex-col space-y-2 px-3">
         {navItems.map((item) => (
           <button
             key={item.id}
             onClick={() => handleClick(item)}
-            className={`group flex transform items-center rounded-xl px-4 py-3 transition-all duration-300 ease-out hover:scale-[1.02] active:scale-[0.97] ${
+            className={`group flex items-center rounded-lg px-3 py-3 transition-all duration-200 ease-in-out ${
               activeMenu === item.id
-                ? "text-primary-default font-bold dark:text-white"
-                : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+                ? "bg-gray-100 dark:bg-gray-800"
+                : "hover:bg-gray-50 dark:hover:bg-gray-800"
             }`}
           >
             <span
-              className={`h-6 w-6 transition-colors duration-300 ${
+              className={`flex-shrink-0 transition-colors duration-200 ${
                 activeMenu === item.id
-                  ? "text-primary-default dark:text-white"
-                  : "text-gray-600 group-hover:text-black dark:text-gray-400 dark:group-hover:text-white"
+                  ? "text-black dark:text-white"
+                  : "text-black dark:text-white"
               }`}
             >
               {item.icon}
             </span>
             <span
-              className={`ml-4 overflow-hidden whitespace-nowrap transition-all duration-500 ease-in-out ${isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"} ${
+              className={`ml-4 overflow-hidden text-base font-normal whitespace-nowrap transition-all duration-300 ease-in-out ${isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"} ${
                 activeMenu === item.id
-                  ? "text-primary-default font-bold dark:text-white"
-                  : "text-gray-700 dark:text-gray-300"
+                  ? "font-semibold text-black dark:text-white"
+                  : "text-black dark:text-white"
               }`}
             >
               {item.label}
@@ -150,28 +223,28 @@ export default function Sidebar({
       </div>
 
       {/* Nút Xem thêm (dưới cùng) */}
-      <div className="relative mt-auto px-2">
+      <div className="relative px-3 pb-6" ref={dropdownRef}>
         <button
           onClick={() => handleClick({ id: "more" })}
-          className={`group flex w-full transform items-center rounded-xl px-4 py-3 transition-all duration-300 ease-out hover:scale-[1.02] active:scale-[0.97] ${
+          className={`group flex w-full items-center rounded-lg px-3 py-3 transition-all duration-200 ease-in-out ${
             activeMenu === "more"
-              ? "text-primary-default font-bold dark:text-white"
-              : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+              ? "bg-gray-100 dark:bg-gray-800"
+              : "hover:bg-gray-50 dark:hover:bg-gray-800"
           }`}
         >
           <Menu
-            size={25}
-            className={`transition-colors duration-300 ${
+            size={24}
+            className={`flex-shrink-0 transition-colors duration-200 ${
               activeMenu === "more"
-                ? "text-primary-default dark:text-white"
-                : "text-gray-600 group-hover:text-black dark:text-gray-400 dark:group-hover:text-white"
+                ? "text-black dark:text-white"
+                : "text-black dark:text-white"
             }`}
           />
           <span
-            className={`ml-4 overflow-hidden whitespace-nowrap transition-all duration-500 ease-in-out ${isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"} ${
+            className={`ml-4 overflow-hidden text-base font-normal whitespace-nowrap transition-all duration-300 ease-in-out ${isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"} ${
               activeMenu === "more"
-                ? "text-primary-default font-bold dark:text-white"
-                : "text-gray-700 dark:text-gray-300"
+                ? "font-semibold text-black dark:text-white"
+                : "text-black dark:text-white"
             }`}
           >
             Xem thêm
@@ -180,36 +253,24 @@ export default function Sidebar({
 
         {/* Dropdown */}
         <div
-          className={`absolute bottom-16 left-5 z-50 w-64 transform rounded-2xl bg-white py-2 shadow-2xl transition-all duration-300 ease-out dark:bg-gray-800 ${showMore ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"} `}
+          className={`absolute bottom-16 left-5 z-50 w-64 transform rounded-xl bg-white py-2 shadow-2xl transition-all duration-300 ease-out dark:bg-gray-800 ${showMore ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"} `}
         >
           <div className="max-h-80 overflow-y-auto">
-            {" "}
-            {/* 👈 chỉnh chiều cao tối đa */}
-            <button className="flex w-full items-center px-4 py-3 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">
-              <Settings size={18} className="mr-3" /> Cài đặt
-            </button>
-            <button className="flex w-full items-center px-4 py-3 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">
-              <Bookmark size={18} className="mr-3" /> Đã lưu
-            </button>
-            <button
-              className="flex w-full items-center px-4 py-3 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
-              onClick={handleThemeToggle}
-            >
-              <span className="mr-3">{getThemeIcon()}</span> {getThemeText()}
-            </button>
-            <button className="flex w-full items-center px-4 py-3 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">
-              <AlertCircle size={18} className="mr-3" /> Báo cáo sự cố
-            </button>
-            <hr className="my-1 dark:border-gray-700" />
-            <button className="flex w-full items-center px-4 py-3 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">
-              <SwitchCamera size={18} className="mr-3" /> Chuyển tài khoản
-            </button>
-            <button
-              className="flex w-full items-center px-4 py-3 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
-              onClick={() => handleLogout()}
-            >
-              <LogOut size={18} className="mr-3" /> Đăng xuất
-            </button>
+            {dropdownItems.map((item, index) => {
+              if (item.type === "divider") {
+                return <hr key={index} className="my-1 dark:border-gray-700" />;
+              }
+
+              return (
+                <button
+                  key={item.id}
+                  className="flex w-full items-center px-4 py-3 text-sm hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
+                  onClick={() => handleDropdownItemClick(item)}
+                >
+                  <span className="mr-3">{item.icon}</span> {item.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

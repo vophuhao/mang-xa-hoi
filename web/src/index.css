@@ -14,7 +14,7 @@
   --breakpoint-xl: 80rem;
 
   --font-*: initial;
-  --font-sans: "Roboto", sans-serif;
+  /* --font-sans: "Roboto", sans-serif; */
   --font-pacifico: "Pacifico", sans-serif;
 
   --animate-fade-in: fade-in 0.5s ease-in-out;
