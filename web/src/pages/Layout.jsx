@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 import { useDispatch, useSelector } from "react-redux";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import MobileFooter from "@/components/MobileFooter";
 import MobileHeader from "@/components/MobileHeader";
@@ -10,19 +10,43 @@ import SidePanel from "@/components/SidePanel";
 import {
   closePanels,
   isPanelMenu,
+  setActiveMenu,
   setScreenSize,
-  setIsCollapsed,
   togglePanel,
-  isPageMenu,
-  setActiveMenu
 } from "@/store/slices/layoutSlice";
+
+// Route mappings (outside component to avoid recreating)
+const routeMap = {
+  home: "/",
+  explore: "/explore",
+  reels: "/reels",
+  message: "/direct/inbox",
+  profile: "/profile",
+};
+
+const pathToMenu = {
+  "/": "home",
+  "/explore": "explore",
+  "/reels": "reels",
+  "/direct/inbox": "message",
+  "/profile": "profile",
+};
 
 const Layout = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { activeMenu, isCollapsed, isMobile } = useSelector(
     (state) => state.layout
   );
+
+  // Sync activeMenu with current route on mount/route change
+  useEffect(() => {
+    const currentMenu = pathToMenu[location.pathname];
+    if (currentMenu && activeMenu !== currentMenu && !isPanelMenu(activeMenu)) {
+      dispatch(setActiveMenu(currentMenu));
+    }
+  }, [location.pathname, activeMenu, dispatch]);
 
   // Responsive breakpoints detection
   useEffect(() => {
@@ -49,42 +73,26 @@ const Layout = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, [dispatch]);
 
-// ...existing code...
-const handleMenuClick = (menuId) => {
-  if (isPanelMenu(menuId)) {
-    dispatch(togglePanel(menuId));
-  } else if (isPageMenu(menuId)) {
-    // Set active menu cho page trước
-    dispatch(setActiveMenu(menuId));
+  const handleMenuClick = (menuId) => {
+    // Handle panel menus (search, notifications)
+    if (isPanelMenu(menuId)) {
+      dispatch(togglePanel(menuId));
+    } else {
+      // Handle page menus (home, explore, reels, message, profile)
+      dispatch(setActiveMenu(menuId));
 
-    // Điều hướng
-    if (menuId === "home") {
-      navigate("/");
-      if (!isMobile) dispatch(setIsCollapsed(false));
-    } else if (menuId === "explore") {
-      navigate("/explore");
-      if (!isMobile) dispatch(setIsCollapsed(false));
-    } else if (menuId === "message") {
-      navigate("/message");
-      dispatch(setIsCollapsed(true)); // luôn thu nhỏ
-    } else if (menuId === "profile") {
-      navigate("/profile");
-      if (!isMobile) dispatch(setIsCollapsed(false));
-    } else if (menuId === "reels") {
-      navigate("/reels");
-      if (!isMobile) dispatch(setIsCollapsed(false));
+      // Navigate to the corresponding route
+      const route = routeMap[menuId];
+      if (route) {
+        navigate(route);
+      }
     }
-
-    // Đóng panel nếu đang mở (không làm thay đổi activeMenu của page)
-    dispatch(closePanels());
-  }
-};
-// ...existing code...
+  };
 
   const handleOutsideClick = () => {
     dispatch(closePanels());
   };
-  console.log("Rendering Layout with activeMenu:", activeMenu)
+  console.log("Rendering Layout with activeMenu:", activeMenu);
 
   return (
     <div className="flex h-screen flex-col bg-gray-50 md:flex-row dark:bg-gray-900">

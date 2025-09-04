@@ -15,13 +15,14 @@ import VerifyEmail from "@/pages/VerifyEmail";
 import store from "@/store";
 
 import Audio from "./components/Audio";
-import Explore from "./components/Explore";
-import Feed from "./components/Feed";
 import HashtagPanel from "./components/HashtagPanel";
-import ProfilePanel from "./components/ProfilePanel"; 
-import Reel from "./components/Reel";
+import DirectInbox from "./pages/DirectInbox";
+import Explore from "./pages/Explore";
+import Feed from "./pages/Feed";
 import Layout from "./pages/Layout";
 import Messages from "./pages/Messages";
+import Profile from "./pages/Profile";
+import Reels from "./pages/Reels";
 
 function App() {
   // set the navigate function on our API client for use in the axios error interceptor
@@ -42,8 +43,17 @@ function App() {
   return (
     <Provider store={store}>
       <Routes>
-        {/* Khi mở "/" thì redirect sang /login */}
-        <Route path="/" element={<Login />} />
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Feed />} />
+          <Route path="explore" element={<Explore />} />
+          <Route path="reels" element={<Reels />} />
+          <Route path="direct/inbox" element={<DirectInbox />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="audio/:id" element={<Audio />} />
+          <Route path="hashtags/:name" element={<HashtagPanel />} />
+          <Route path="message" element={<Messages />} />
+          {/* route Profile này để tạm thôi nha mấy ní, khoan hả đụng */}
+        </Route>
 
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -51,21 +61,8 @@ function App() {
         <Route path="/password/forgot" element={<ForgotPassword />} />
         <Route path="/password/reset" element={<ResetPassword />} />
 
-        {/* Các route chính sau khi login */}
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Feed />} />
-          <Route path="explore" element={<Explore />} />
-          <Route path="users/userid/:userId" element={<ProfilePanel />} />
-          <Route path="hashtags/:name" element={<HashtagPanel />} />          
-          <Route path="message" element={<Messages />} />
-          <Route path="reels" element={<Reel />} />  
-           <Route path="audio/:id" element={<Audio/>} />       
-        </Route>
-
+        <ToastContainer position="top-right" autoClose={2000} />
       </Routes>
-
-
-      <ToastContainer position="top-right" autoClose={2000} />
     </Provider>
   );
 }
