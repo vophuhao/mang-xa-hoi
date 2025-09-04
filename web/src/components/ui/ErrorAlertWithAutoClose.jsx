@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { useDispatch } from "react-redux";
 
-import { clearError } from "../../store/slices/authSlice";
+import { clearError } from "@/store/slices/authSlice";
 
 const ErrorAlertWithAutoClose = ({ message, autoCloseDelay = 5000 }) => {
   const dispatch = useDispatch();

@@ -21,9 +21,9 @@ import {
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
-import logo_pixyy from "../assets/images/logo_pixyy.png";
-import useTheme from "../hooks/useTheme";
-import { logout } from "../lib/api";
+import logo_pixyy from "@/assets/images/logo_pixyy.png";
+import useTheme from "@/hooks/useTheme";
+import { logout } from "@/lib/api";
 
 export default function Sidebar({
   activeMenu,

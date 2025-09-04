@@ -4,8 +4,8 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 
-import App from "./App.jsx";
-import queryClient from "./config/queryClient.js";
+import App from "@/App.jsx";
+import queryClient from "@/config/queryClient.js";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
@@ -15,5 +15,5 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <ReactQueryDevtools position="bottom-right" initialIsOpen={false} />
       </BrowserRouter>
     </QueryClientProvider>
-  </GoogleOAuthProvider>,
+  </GoogleOAuthProvider>
 );

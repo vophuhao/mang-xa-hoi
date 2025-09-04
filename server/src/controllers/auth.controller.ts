@@ -107,6 +107,7 @@ export const refreshHandler = catchErrors(async (req, res) => {
   if (newRefreshToken) {
     res.cookie("refreshToken", newRefreshToken, getRefreshTokenCookieOptions());
   }
+
   return res
     .status(OK)
     .cookie("accessToken", accessToken, getAccessTokenCookieOptions())

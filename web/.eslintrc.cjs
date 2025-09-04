@@ -10,7 +10,15 @@ module.exports = {
   ],
   ignorePatterns: ["dist", ".eslintrc.cjs"],
   parserOptions: { ecmaVersion: "latest", sourceType: "module" },
-  settings: { react: { version: "18.2" } },
+  settings: {
+    react: { version: "18.2" },
+    "import/resolver": {
+      alias: {
+        map: [["@", "./src"]],
+        extensions: [".js", ".jsx", ".json"],
+      },
+    },
+  },
   plugins: ["react-refresh", "import"],
   rules: {
     //"prettier/prettier": "warn",

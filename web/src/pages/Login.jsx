@@ -3,13 +3,13 @@ import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
-import BackgroundImage from "../components/ui/BackgroundImage";
-import Divider from "../components/ui/Divider";
-import ErrorAlertWithAutoClose from "../components/ui/ErrorAlertWithAutoClose";
-import FloatingInput from "../components/ui/FloatingInput";
-import GoogleLoginButton from "../components/ui/GoogleLoginButton";
-import ThemeToggle from "../components/ui/ThemeToggle";
-import { loginUser } from "../store/slices/authSlice";
+import BackgroundImage from "@/components/ui/BackgroundImage";
+import Divider from "@/components/ui/Divider";
+import ErrorAlertWithAutoClose from "@/components/ui/ErrorAlertWithAutoClose";
+import FloatingInput from "@/components/ui/FloatingInput";
+import GoogleLoginButton from "@/components/ui/GoogleLoginButton";
+import ThemeToggle from "@/components/ui/ThemeToggle";
+import { loginUser } from "@/store/slices/authSlice";
 
 const Login = () => {
   const [email, setEmail] = useState("");
