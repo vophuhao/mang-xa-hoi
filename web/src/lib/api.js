@@ -26,26 +26,27 @@ export const updateProfile = async (data) => API.patch("/users/me", data);
 export const getUserByUsername = async (username) =>
   API.get(`/users/${username}`);
 // Get user's posts
-export const getUserPosts = async (username) =>
-  API.get(`/users/${username}/posts`);
+export const getUserPosts = async (username, page = 1, limit = 12) =>
+  API.get(`/users/${username}/posts?page=${page}&limit=${limit}`);
 // Get user's followers
-export const getFollowers = async (username) =>
-  API.get(`/users/${username}/followers`);
+export const getFollowers = async (username, page = 1, limit = 20) =>
+  API.get(`/users/${username}/followers?page=${page}&limit=${limit}`);
 // Get user's following
-export const getFollowing = async (username) =>
-  API.get(`/users/${username}/following`);
+export const getFollowing = async (username, page = 1, limit = 20) =>
+  API.get(`/users/${username}/following?page=${page}&limit=${limit}`);
 // Follow/unfollow users
 export const followUser = async (userId) => API.post(`/users/${userId}/follow`);
 export const unfollowUser = async (userId) =>
   API.delete(`/users/${userId}/follow`);
 // Search users
 export const searchUsers = async (query, page = 1, limit = 20) => {
-  return API.get(`/users/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`);
+  return API.get(
+    `/users/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`
+  );
 };
 // Get user profile by userId
 export const getUserByUserId = async (userId) =>
   API.get(`/users/userid/${userId}`);
-
 
 // =============== SESSION API ===============
 export const getSessions = async () => API.get("/sessions");
@@ -60,7 +61,7 @@ export const getPostById = async (id) => API.get(`/posts/${id}`);
 export const updatePost = async (id, data) => API.put(`/posts/${id}`, data);
 export const deletePost = async (id) => API.delete(`/posts/${id}`);
 export const likePost = async (id) => API.post(`/posts/${id}/like`);
-export const getReelsFeed = (page,limit) => {
+export const getReelsFeed = (page, limit) => {
   return API.get("/posts/reels", {
     params: { page, limit },
   });
@@ -106,10 +107,17 @@ export const removeReaction = async (messageId) =>
 
 // Message search & filters
 export const searchMessages = async (partnerId, query, page = 1, limit = 20) =>
-  API.get(`/messages/search?partnerId=${partnerId}&query=${encodeURIComponent(query)}&page=${page}&limit=${limit}`);
-export const getMediaMessages = async (partnerId, mediaType = null, page = 1, limit = 20) => {
+  API.get(
+    `/messages/search?partnerId=${partnerId}&query=${encodeURIComponent(query)}&page=${page}&limit=${limit}`
+  );
+export const getMediaMessages = async (
+  partnerId,
+  mediaType = null,
+  page = 1,
+  limit = 20
+) => {
   const params = new URLSearchParams({ partnerId, page, limit });
-  if (mediaType) params.append('mediaType', mediaType);
+  if (mediaType) params.append("mediaType", mediaType);
   return API.get(`/messages/media?${params}`);
 };
 
@@ -123,7 +131,9 @@ export const forwardMessage = async (messageId, recipientIds) =>
 export const getSuggestedMessagingUsers = async (page = 1, limit = 10) =>
   API.get(`/messages/suggested?page=${page}&limit=${limit}`);
 export const searchUsersToMessage = async (query, page = 1, limit = 10) =>
-  API.get(`/messages/search-users?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`);
+  API.get(
+    `/messages/search-users?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`
+  );
 
 // =============== MEDIA API ===============
 //save Media
@@ -157,13 +167,11 @@ export const getAudioList = async (q = "") => {
   });
 };
 
-
 export const trimVideo = (formData) =>
   API.post("/audio/trim-video", formData, { responseType: "blob" });
- 
 
- export const fetchPreviewUrl = async (deezerId) => {
-   return API.get(`/audio/preview/${deezerId}`);
+export const fetchPreviewUrl = async (deezerId) => {
+  return API.get(`/audio/preview/${deezerId}`);
 };
 
 export const createAudio = async (data) => API.post("/audio/create", data);
@@ -172,38 +180,37 @@ export const extracAudio = async (formData) => {
   return API.post("/audio/extract", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
-}
+};
 
 export const checkVideoHasAudio = async (formData) => {
   return API.post("/audio/check-audio", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
-}
+};
 
 export const getReelByAudioId = async (audioId) =>
-  API.get(`/audio/${audioId}/reels`); 
+  API.get(`/audio/${audioId}/reels`);
 
-export const getAudio = async (id) => 
-  API.get(`/audio/${id}`);
+export const getAudio = async (id) => API.get(`/audio/${id}`);
 
 export const getPostsByHashtag = async (name, page = 1, limit = 30) =>
   API.get(`/hashtags/${name}/posts`, { params: { page, limit } });
 
 export const searchAll = async (query, page = 1, limit = 10) => {
   // Thêm từ khóa await để nhận đúng response
-  const response = await API.get(`/api/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`);
+  const response = await API.get(
+    `/api/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`
+  );
   return response; // Đảm bảo trả về response, không phải response.data
 };
 
-export const saveAudio = async (audioId) => 
-  API.post(`/audio/save/${audioId}`);
+export const saveAudio = async (audioId) => API.post(`/audio/save/${audioId}`);
 
-export const checkSavedAudio = async (audioId) => 
+export const checkSavedAudio = async (audioId) =>
   API.get(`/audio/check-saved/${audioId}`);
 
 export const increasePostView = async (postId) =>
   API.post(`/posts/views/${postId}`);
-
 
 //report
 // ✅ Hàm gọi API chuẩn theo backend

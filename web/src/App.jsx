@@ -30,6 +30,8 @@ function App() {
   const navigate = useNavigate();
   setNavigate(navigate);
 
+  const { currentUser } = useUser();
+
   // Splash screen logic
   const { showSplash, isAppReady, hideSplash } = useSplashScreen();
   if (showSplash) {

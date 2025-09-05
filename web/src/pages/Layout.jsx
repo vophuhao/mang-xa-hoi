@@ -7,6 +7,7 @@ import MobileFooter from "@/components/MobileFooter";
 import MobileHeader from "@/components/MobileHeader";
 import Sidebar from "@/components/SideBar";
 import SidePanel from "@/components/SidePanel";
+import useUser from "@/hooks/useUser";
 import {
   closePanels,
   isPanelMenu,
@@ -39,14 +40,25 @@ const Layout = () => {
   const { activeMenu, isCollapsed, isMobile } = useSelector(
     (state) => state.layout
   );
+  const { currentUser } = useUser();
 
   // Sync activeMenu with current route on mount/route change
   useEffect(() => {
-    const currentMenu = pathToMenu[location.pathname];
+    const currentPath = location.pathname;
+    if (currentPath.startsWith("/") && currentUser?.username) {
+      if (currentPath === `/${currentUser.username}`) {
+        // Only set to profile if not currently showing a panel menu
+        if (!isPanelMenu(activeMenu)) {
+          dispatch(setActiveMenu("profile"));
+        }
+        return;
+      }
+    }
+    const currentMenu = pathToMenu[currentPath];
     if (currentMenu && activeMenu !== currentMenu && !isPanelMenu(activeMenu)) {
       dispatch(setActiveMenu(currentMenu));
     }
-  }, [location.pathname, activeMenu, dispatch]);
+  }, [location.pathname, activeMenu, currentUser, dispatch]);
 
   // Responsive breakpoints detection
   useEffect(() => {
@@ -82,7 +94,11 @@ const Layout = () => {
       dispatch(setActiveMenu(menuId));
 
       // Navigate to the corresponding route
-      const route = routeMap[menuId];
+      let route = routeMap[menuId];
+      if (menuId === "profile" && currentUser?.username) {
+        route = `/${currentUser.username}`;
+      }
+
       if (route) {
         navigate(route);
       }

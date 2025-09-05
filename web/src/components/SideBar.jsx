@@ -23,7 +23,9 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
 import logo_pixyy from "@/assets/images/logo_pixyy.png";
+import queryClient from "@/config/queryClient";
 import useTheme from "@/hooks/useTheme";
+import useUser from "@/hooks/useUser";
 import { logout } from "@/lib/api";
 import CreatePostModal from "@/modals/CreatePostModal";
 
@@ -33,6 +35,7 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const { theme, changeTheme } = useTheme();
+  const { currentUser } = useUser();
 
   const navItems = [
     { id: "home", label: "Trang chủ", icon: <Home size={24} /> },
@@ -48,6 +51,7 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
   const { mutate: handleLogout } = useMutation({
     mutationFn: logout,
     onSuccess: () => {
+      queryClient.clear();
       navigate("/login");
     },
     onError: () => {
@@ -69,7 +73,6 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
     if (item.closeOnClick) {
       setShowMore(false);
     }
-
   };
 
   const getThemeIcon = () => {
@@ -143,7 +146,6 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
       return;
     }
 
-
     // Remove the early return for active menu items to allow toggling
     // if (activeMenu === item.id) return;
 
@@ -206,57 +208,72 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
 
       {/* Nav items */}
       <div className="flex flex-1 flex-col space-y-2 px-3">
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => handleClick(item)}
-            className={`group flex items-center rounded-lg px-3 py-3 transition-all duration-200 ease-in-out ${activeMenu === item.id
-                ? " dark:bg-[#0a0a0a] "
-                : "hover:bg-gray-100 dark:hover:bg-gray-900"
+        {navItems.map((item) => {
+          // Nếu là profile và có currentUser.avatarUrl thì dùng <img>, ngược lại dùng icon mặc định
+          const icon =
+            item.id === "profile" && currentUser?.avatarUrl ? (
+              <img
+                src={currentUser.avatarUrl}
+                alt={currentUser.username}
+                className="h-6 w-6 rounded-full object-cover"
+              />
+            ) : (
+              item.icon
+            );
 
+          return (
+            <button
+              key={item.id}
+              onClick={() => handleClick(item)}
+              className={`group flex items-center rounded-lg px-3 py-3 transition-all duration-200 ease-in-out ${
+                activeMenu === item.id
+                  ? "bg-gray-100 dark:bg-gray-800"
+                  : "hover:bg-gray-50 dark:hover:bg-gray-800"
               }`}
-          >
-            <span
-              className={`flex-shrink-0 transition-colors duration-200 ${activeMenu === item.id
-                  ? "text-black font-extrabold dark:text-white scale-110"
-                  : "text-black dark:text-white "
-                }`}
             >
-              {item.icon}
-            </span>
-            <span
-              className={`ml-4 overflow-hidden text-base font-normal whitespace-nowrap transition-all duration-300 ease-in-out ${isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"} ${activeMenu === item.id
-                  ? "font-semibold text-black dark:text-white"
-                  : "text-black dark:text-white "
+              <span className="flex-shrink-0 text-black transition-colors duration-200 dark:text-white">
+                {icon}
+              </span>
+              <span
+                className={`ml-4 overflow-hidden text-base font-normal whitespace-nowrap transition-all duration-300 ease-in-out ${
+                  isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+                } ${
+                  activeMenu === item.id
+                    ? "font-semibold text-black dark:text-white"
+                    : "text-black dark:text-white"
                 }`}
-            >
-              {item.label}
-            </span>
-          </button>
-        ))}
+              >
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Nút Xem thêm (dưới cùng) */}
       <div className="relative px-3 pb-6" ref={dropdownRef}>
         <button
           onClick={() => handleClick({ id: "more" })}
-          className={`group flex w-full items-center rounded-lg px-3 py-3 transition-all duration-200 ease-in-out ${activeMenu === "more"
+          className={`group flex w-full items-center rounded-lg px-3 py-3 transition-all duration-200 ease-in-out ${
+            activeMenu === "more"
               ? "bg-gray-100 dark:bg-gray-800"
               : "hover:bg-gray-50 dark:hover:bg-gray-800"
-            }`}
+          }`}
         >
           <Menu
             size={24}
-            className={`flex-shrink-0 transition-colors duration-200 ${activeMenu === "more"
+            className={`flex-shrink-0 transition-colors duration-200 ${
+              activeMenu === "more"
                 ? "text-black dark:text-white"
                 : "text-black dark:text-white"
-              }`}
+            }`}
           />
           <span
-            className={`ml-4 overflow-hidden text-base font-normal whitespace-nowrap transition-all duration-300 ease-in-out ${isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"} ${activeMenu === "more"
+            className={`ml-4 overflow-hidden text-base font-normal whitespace-nowrap transition-all duration-300 ease-in-out ${isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"} ${
+              activeMenu === "more"
                 ? "font-semibold text-black dark:text-white"
                 : "text-black dark:text-white"
-              }`}
+            }`}
           >
             Xem thêm
           </span>
@@ -288,9 +305,8 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
 
       <CreatePostModal
         isOpen={showPostModal}
-        onClose={() => setShowPostModal(false)} />
-
+        onClose={() => setShowPostModal(false)}
+      />
     </div>
-
   );
 }
