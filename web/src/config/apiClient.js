@@ -1,7 +1,9 @@
 import axios from "axios";
-import queryClient from "./queryClient";
+
 import { UNAUTHORIZED } from "../constants/http.mjs";
 import { navigate } from "../lib/navigation";
+
+import queryClient from "./queryClient";
 
 const options = {
   baseURL: import.meta.env.VITE_API_URL,
@@ -21,23 +23,19 @@ API.interceptors.response.use(
     const { config, response } = error;
     const { status, data } = response || {};
 
-    if (status === UNAUTHORIZED && data?.errorCode === "InvalidAccessToken") {
+    // try to refresh the access token behind the scenes
+    if (status === UNAUTHORIZED && data?.code === "INVALID_ACCESS_TOKEN") {
       try {
-        // Kiểm tra có refresh token không (ví dụ lưu trong localStorage hoặc cookie)
-        const hasRefreshToken = document.cookie.includes("refreshToken=");
-        if (!hasRefreshToken) {
-          throw new Error("No refresh token");
-        }
-
-        // Refresh token
+        // refresh the access token, then retry the original request
         await TokenRefreshClient.get("/auth/refresh");
-
-        // Retry bằng API (client chính), không phải TokenRefreshClient
-        return API(config);
-      } catch (err) {
+        return TokenRefreshClient(config);
+      } catch (error) {
+        // handle refresh errors by clearing the query cache & redirecting to login
         queryClient.clear();
-        navigate("/login", {
-          state: { redirectUrl: window.location.pathname },
+        navigate("/home", {
+          state: {
+            redirectUrl: window.location.pathname,
+          },
         });
       }
     }

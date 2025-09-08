@@ -10,7 +10,15 @@ module.exports = {
   ],
   ignorePatterns: ["dist", ".eslintrc.cjs"],
   parserOptions: { ecmaVersion: "latest", sourceType: "module" },
-  settings: { react: { version: "18.2" } },
+  settings: {
+    react: { version: "18.2" },
+    "import/resolver": {
+      alias: {
+        map: [["@", "./src"]],
+        extensions: [".js", ".jsx", ".json"],
+      },
+    },
+  },
   plugins: ["react-refresh", "import"],
   rules: {
     //"prettier/prettier": "warn",
@@ -22,7 +30,7 @@ module.exports = {
     ],
     "no-unused-vars": "warn",
     "import/order": [
-      "warn",
+      "error",
       {
         groups: [
           "builtin",
@@ -45,7 +53,14 @@ module.exports = {
         ],
         pathGroupsExcludedImportTypes: ["react"],
         "newlines-between": "always",
+        alphabetize: {
+          order: "asc",
+          caseInsensitive: true,
+        },
       },
     ],
+    "import/first": "error",
+    "import/newline-after-import": "error",
+    "import/no-duplicates": "error",
   },
 };

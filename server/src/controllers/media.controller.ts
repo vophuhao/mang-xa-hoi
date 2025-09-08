@@ -3,37 +3,51 @@ import { BAD_REQUEST } from "../constants/http";
 import catchErrors from "../utils/catchErrors";
 import cloudinary from "../config/cloudinary";
 
-// mở rộng type cho Request có file
-interface MulterRequest extends Request {
-  file?: Express.Multer.File;
+// Mở rộng type cho Request khi dùng Multer
+export interface MulterRequest extends Request {
+  files?: Express.Multer.File[] | { [fieldname: string]: Express.Multer.File[] };
 }
 
-// Hàm upload ảnh lên Cloudinary
-export const saveImageHandler = catchErrors(async (req: MulterRequest, res: Response) => {
-  if (!req.file) {
+// Hàm upload 1 file buffer lên Cloudinary
+const uploadBufferToCloudinary = (file: Express.Multer.File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: "mang-xa-hoi-image",
+        resource_type: "auto", // hỗ trợ cả ảnh & video
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        if (!result) return reject(new Error("Upload failed"));
+        resolve(result.secure_url);
+      }
+    );
+
+    stream.end(file.buffer);
+  });
+};
+
+// Handler upload nhiều file
+export const saveMediaHandler = catchErrors(async (req: MulterRequest, res: Response) => {
+  // Chuyển đổi files về mảng
+  let filesArray: Express.Multer.File[] = [];
+
+  if (Array.isArray(req.files)) {
+    filesArray = req.files;
+  } else if (req.files && typeof req.files === "object") {
+    filesArray = Object.values(req.files).flat();
+  }
+
+  if (!filesArray || filesArray.length === 0) {
     return res.status(BAD_REQUEST).json({ message: "Không có file nào được upload" });
   }
 
-  // Promise để chờ upload_stream hoàn thành
-  const uploadToCloudinary = (): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        { folder: "mang-xa-hoi-image" }, // 👉 có thể bỏ nếu không muốn folder
-        (error, result) => {
-          if (error) return reject(error);
-          if (!result) return reject("Upload failed");
-          resolve(result.secure_url); // URL ảnh Cloudinary
-        }
-      );
-      stream.end(req.file!.buffer); // dùng `!` vì đã check ở trên
-    });
-  };
-
   try {
-    const imageUrl = await uploadToCloudinary();
+    const urls = await Promise.all(filesArray.map(uploadBufferToCloudinary));
+
     return res.json({
       message: "Upload thành công",
-      url: imageUrl,
+      urls,
     });
   } catch (err) {
     return res.status(500).json({ message: "Upload thất bại", error: err });

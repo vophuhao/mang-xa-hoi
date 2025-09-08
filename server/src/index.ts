@@ -1,15 +1,22 @@
+import cookieParser from "cookie-parser";
+import cors from "cors";
 import "dotenv/config";
 import express from "express";
-import cors from "cors";
-import cookieParser from "cookie-parser";
-import connectToDatabase from "./config/db";
-import errorHandler from "./middleware/errorHandler";
-import authenticate from "./middleware/authenticate";
-import authRoutes from "./routes/auth.route";
-import userRoutes from "./routes/user.route";
-import postRoutes from "./routes/post.route"
-import sessionRoutes from "./routes/session.route";
-import { APP_ORIGIN, NODE_ENV, PORT } from "./constants/env";
+
+import connectToDatabase from "@/config/db";
+import { APP_ORIGIN, NODE_ENV, PORT } from "@/constants/env";
+import authenticate from "@/middleware/authenticate";
+import errorHandler from "@/middleware/errorHandler";
+import analyticsRoutes from "@/routes/analytics.route";
+import authRoutes from "@/routes/auth.route";
+import commentRoutes from "@/routes/comment.route";
+import hashtagRoutes from "@/routes/hashtag.route";
+import notificationRoutes from "@/routes/notification.route";
+import postRoutes from "@/routes/post.route";
+import savedPostRoutes from "@/routes/savedPost.route";
+import sessionRoutes from "@/routes/session.route";
+import storyRoutes from "@/routes/story.route";
+import userRoutes from "@/routes/user.route";
 import mediaRoutes from "./routes/media.route";
 
 const app = express();
@@ -35,14 +42,19 @@ app.get("/", (_, res) => {
 // auth routes
 app.use("/auth", authRoutes);
 
-app.use("",authenticate,postRoutes)
+// post routes
+app.use("/posts", authenticate, postRoutes);
 
 // protected routes
-app.use("/user", authenticate, userRoutes);
+app.use("/users", authenticate, userRoutes);
 app.use("/sessions", authenticate, sessionRoutes);
-
+app.use("/comments", authenticate, commentRoutes);
+app.use("/notifications", authenticate, notificationRoutes);
+app.use("/saved", authenticate, savedPostRoutes);
+app.use("/stories", authenticate, storyRoutes);
+app.use("/hashtags", authenticate, hashtagRoutes);
+app.use("/analytics", authenticate, analyticsRoutes);
 app.use("/media",authenticate,mediaRoutes)
-
 // error handler
 app.use(errorHandler);
 

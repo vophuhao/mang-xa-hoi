@@ -1,5 +1,5 @@
-import mongoose from "mongoose";
-import { thirtyDaysFromNow,oneHourFromNow } from "../utils/date";
+import { oneHourFromNow } from '@/utils/date';
+import mongoose from 'mongoose';
 
 export interface SessionDocument extends mongoose.Document {
   userId: mongoose.Types.ObjectId;
@@ -10,7 +10,7 @@ export interface SessionDocument extends mongoose.Document {
 
 const sessionSchema = new mongoose.Schema<SessionDocument>({
   userId: {
-    ref: "User",
+    ref: 'User',
     type: mongoose.Schema.Types.ObjectId,
     index: true,
   },
@@ -27,5 +27,5 @@ const sessionSchema = new mongoose.Schema<SessionDocument>({
   },
 });
 
-const SessionModel = mongoose.model<SessionDocument>("Session", sessionSchema);
+const SessionModel = mongoose.model<SessionDocument>('Session', sessionSchema);
 export default SessionModel;

@@ -1,5 +1,5 @@
+import { MONGO_URI } from "@/constants/env";
 import mongoose from "mongoose";
-import { MONGO_URI } from "../constants/env";
 
 const connectToDatabase = async () => {
   try {
@@ -11,4 +11,5 @@ const connectToDatabase = async () => {
     process.exit(1);
   }
 };
+
 export default connectToDatabase;

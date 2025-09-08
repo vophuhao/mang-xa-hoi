@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { NOT_FOUND, OK } from "../constants/http";
-import SessionModel from "../models/session.model";
-import catchErrors from "../utils/catchErrors";
-import appAssert from "../utils/appAssert";
+import { NOT_FOUND, OK } from "@/constants/http";
+import SessionModel from "@/models/session.model";
+import catchErrors from "@/utils/catchErrors";
+import appAssert from "@/utils/appAssert";
 
 export const getSessionsHandler = catchErrors(async (req, res) => {
   const sessions = await SessionModel.find(

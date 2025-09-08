@@ -1,5 +1,7 @@
 import { useState } from "react";
+
 import { Grid3x3, Bookmark, Settings, Tag, Heart, MessageCircle } from "lucide-react";
+
 import useAuth from "../hooks/useAuth";
 
 export default function ProfilePanel() {

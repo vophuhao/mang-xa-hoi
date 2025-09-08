@@ -1,6 +1,18 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
-import { login, register } from "../../lib/api";
+import { login, refreshToken, register } from "../../lib/api";
+
+export const refreshTokenThunk = createAsyncThunk(
+  "auth/refreshToken",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await refreshToken();
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.message || "Refresh token thất bại.");
+    }
+  }
+);
 
 export const loginUser = createAsyncThunk(
   "auth/login",
@@ -11,14 +23,14 @@ export const loginUser = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.message || "Đăng nhập thất bại.");
     }
-  },
+  }
 );
 
 export const registerUser = createAsyncThunk(
   "auth/register",
   async (
     { email, username, password, confirmPassword },
-    { rejectWithValue },
+    { rejectWithValue }
   ) => {
     try {
       const response = await register({
@@ -31,7 +43,7 @@ export const registerUser = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.message || "Đăng ký thất bại.");
     }
-  },
+  }
 );
 
 const authSlice = createSlice({
@@ -48,6 +60,13 @@ const authSlice = createSlice({
     },
     resetRegistered: (state) => {
       state.isRegistered = false;
+    },
+    setUser: (state, action) => {
+      state.user = action.payload;
+    },
+    logout: (state) => {
+      state.user = null;
+      state.error = null;
     },
   },
   extraReducers: (builder) => {
@@ -77,9 +96,21 @@ const authSlice = createSlice({
       .addCase(registerUser.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
+      })
+      // Refresh Token
+      .addCase(refreshTokenThunk.pending, (state) => {
+        state.error = null;
+      })
+      .addCase(refreshTokenThunk.fulfilled, (state, action) => {
+        state.user = action.payload;
+      })
+      .addCase(refreshTokenThunk.rejected, (state, action) => {
+        state.error = action.payload;
+        state.user = null; // Clear user on refresh failure
       });
   },
 });
 
-export const { clearError, resetRegistered } = authSlice.actions;
+export const { clearError, resetRegistered, setUser, logout } =
+  authSlice.actions;
 export default authSlice.reducer;

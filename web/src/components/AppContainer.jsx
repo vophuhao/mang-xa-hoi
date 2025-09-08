@@ -1,17 +1,17 @@
-import {  Center, Spinner } from "@chakra-ui/react";
 import { Navigate } from "react-router-dom";
-import useAuth from "../hooks/useAuth";
+
+import useAuth from "@/hooks/useAuth";
 
 const AppContainer = () => {
   const { user, isLoading } = useAuth();
 
   return isLoading ? (
-    <Center w="100vw" h="90vh" flexDir="column">
-      <Spinner mb={4} />
-    </Center>
+    <div className="flex h-screen w-screen items-center justify-center">
+      <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600"></div>
+    </div>
   ) : user ? (
     <Navigate
-      to="/home"
+      to="/"
       replace
       state={{
         redirectUrl: window.location.pathname,
@@ -27,4 +27,5 @@ const AppContainer = () => {
     />
   );
 };
+
 export default AppContainer;

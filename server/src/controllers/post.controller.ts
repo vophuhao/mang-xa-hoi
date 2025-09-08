@@ -1,41 +1,119 @@
-import { Request, Response } from "express";
-import { CREATED, BAD_REQUEST, OK } from "../constants/http";
-import catchErrors from "../utils/catchErrors";
-import { createPost } from "../services/post.service";
+import type { AuthenticatedRequest } from "@/types";
+import type { Response } from "express";
 
-export const createPostHandler = catchErrors(async (req, res) => {
-  const userId = req.userId; // middleware auth gán req.user
-  if (!userId) {
-    return res.status(BAD_REQUEST).json({ message: "User not authenticated" });
-  }
+import { PostService } from "@/services/post.service";
+import catchErrors from "@/utils/catchErrors";
+import { ResponseUtil } from "@/utils/response";
+import {
+  createPostSchema,
+  getFeedPostsSchema,
+  getPostByIdSchema,
+  likePostSchema,
+} from "@/validators";
 
-  const { caption, mediaUrls } = req.body;
+/**
+ * Create a new post
+ * @route POST /posts
+ */
+export const createPostHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const validatedData = createPostSchema.parse(req.body);
 
-  // Gọi service tạo post
-  const post = await createPost({
-    user: userId,
-    caption,
-    mediaUrls,
+  const post = await PostService.createPost({
+    user: req.userId,
+    mediaUrls: validatedData.mediaUrls,
+    tags: validatedData.tags || [],
+    ...(validatedData.location && { location: validatedData.location }),
   });
 
-  return res.status(CREATED).json({
-    status : OK,
-    message: "Post created successfully",
-    post,
-  });
+  return ResponseUtil.created(res, post, "Post created successfully");
 });
 
-// export const getPostsHandler = catchErrors(async (req: Request, res: Response) => {
-//   const posts = await PostModel.find().sort({ createdAt: -1 }).populate("user", "email avatarUrl");
-//   return res.status(OK).json({ posts });
-// });
+/**
+ * Get user's feed posts
+ * @route GET /posts/feed
+ */
+export const getFeedPostsHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const { page = 1, limit = 10 } = getFeedPostsSchema.parse(req.query);
 
-// export const getPostByIdHandler = catchErrors(async (req: Request, res: Response) => {
-//   const postId = req.params.id;
-//   if (!postId) return res.status(BAD_REQUEST).json({ message: "Missing post ID" });
+  const result = await PostService.getFeed({
+    userId: (req.userId as any).toString(),
+    page: Number(page),
+    limit: Number(limit),
+  });
 
-//   const post = await PostModel.findById(postId).populate("user", "email avatarUrl");
-//   if (!post) return res.status(BAD_REQUEST).json({ message: "Post not found" });
+  return ResponseUtil.paginated(res, result.data, result.pagination);
+});
 
-//   return res.status(OK).json({ post });
-// });
+/**
+ * Get post by ID
+ * @route GET /posts/:id
+ */
+export const getPostByIdHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = getPostByIdSchema.parse(req.params);
+
+  const post = await PostService.getPostById({
+    postId: id,
+    userId: (req.userId as any).toString(),
+  });
+
+  return ResponseUtil.success(res, post);
+});
+
+/**
+ * Like/Unlike a post
+ * @route POST /posts/:postId/like
+ */
+export const likePostHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const { postId } = likePostSchema.parse(req.params);
+
+  const result = await PostService.togglePostLike(postId, (req.userId as any).toString());
+
+  return ResponseUtil.success(res, result);
+});
+
+/**
+ * Update a post
+ * @route PATCH /posts/:id
+ */
+export const updatePostHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const updateData = req.body;
+
+  if (!id) {
+    throw new Error("Post ID is required");
+  }
+
+  const updatedPost = await PostService.updatePost(id, (req.userId as any).toString(), updateData);
+
+  return ResponseUtil.success(res, updatedPost, "Post updated successfully");
+});
+
+/**
+ * Delete a post
+ * @route DELETE /posts/:id
+ */
+export const deletePostHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+
+  if (!id) {
+    throw new Error("Post ID is required");
+  }
+
+  await PostService.deletePost(id, (req.userId as any).toString());
+
+  return ResponseUtil.success(res, null, "Post deleted successfully");
+});
+
+/**
+ * Get trending posts
+ * @route GET /posts/trending
+ */
+export const getTrendingPostsHandler = catchErrors(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const { page = 1, limit = 10 } = req.query as any;
+
+    const posts = await PostService.getTrendingPosts(Number(page), Number(limit));
+
+    return ResponseUtil.success(res, posts);
+  }
+);
