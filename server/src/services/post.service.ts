@@ -13,7 +13,9 @@ export type CreateNewPost = {
   mediaUrls: string[];
   tags?: string[];
   location?: string;
-  mentions?: mongoose.Types.ObjectId[];
+  hideLikes: boolean,
+  disableComments: boolean
+  mentions?: string[];
 };
 
 export interface GetFeedParams {
@@ -52,14 +54,26 @@ export class PostService {
     }
 
     // Extract hashtags from caption if not provided in tags
-    let hashtags = data.tags || [];
+    let hashtagNames = data.tags || [];
     if (data.caption) {
-      const hashtagMatches = data.caption.match(/#\w+/g);
-      if (hashtagMatches) {
-        const captionHashtags = hashtagMatches.map(tag => tag.slice(1)); // Remove #
-        hashtags = [...new Set([...hashtags, ...captionHashtags])];
+      const matches = data.caption.match(/#\w+/g);
+      if (matches) {
+        const captionHashtags = matches.map(t => t.slice(1).toLowerCase());
+        hashtagNames = [...new Set([...hashtagNames, ...captionHashtags])];
       }
     }
+
+    const hashtagIds = await Promise.all(
+      hashtagNames.map(async name => {
+        const hashtag = await HashtagModel.incrementPostCount(name);
+        if (!hashtag) throw new Error(`Failed to create or find hashtag: ${name}`);
+        return hashtag._id;
+      })
+    );
+
+    const mentionIds: mongoose.Types.ObjectId[] = (data.mentions || [])
+      .map(id => new mongoose.Types.ObjectId(id));
+
 
     // Create location object if provided
     const location = data.location ? { name: data.location } : undefined;
@@ -70,25 +84,23 @@ export class PostService {
       mediaUrls: data.mediaUrls,
       type,
       location,
-      tags: hashtags,
-      mentions: data.mentions || [],
+      tags: hashtagIds,
+      mentions: mentionIds,
       likeCount: 0,
       commentCount: 0,
       shareCount: 0,
       viewCount: 0,
       isHidden: false,
-      commentsDisabled: false,
-      likesHidden: false,
+      commentsDisabled: data.disableComments,
+      likesHidden: data.hideLikes,
     });
 
     // Update hashtag counts
-    if (hashtags.length > 0) {
-      await Promise.all(hashtags.map(tag => HashtagModel.incrementPostCount(tag)));
-    }
+
 
     // Create notifications for mentioned users
     if (data.mentions && data.mentions.length > 0) {
-      const mentionNotifications = data.mentions.map(mentionedUserId =>
+      const mentionNotifications = mentionIds.map(mentionedUserId =>
         NotificationModel.create({
           recipient: mentionedUserId,
           sender: data.user,
@@ -267,8 +279,11 @@ export class PostService {
 
     // Decrement hashtag counts
     if (post.tags && post.tags.length > 0) {
-      await Promise.all(post.tags.map(tag => HashtagModel.decrementPostCount(tag)));
+      await Promise.all(
+        post.tags.map(tag => HashtagModel.decrementPostCount(tag.toString()))
+      );
     }
+
 
     // Delete the post
     await PostModel.findByIdAndDelete(postId);
@@ -295,17 +310,37 @@ export class PostService {
       throw ErrorFactory.insufficientPermissions("You can only edit your own posts");
     }
 
-    // Update allowed fields
     if (updateData.caption !== undefined) {
       post.caption = updateData.caption;
 
-      // Re-extract hashtags from new caption
       const hashtagMatches = updateData.caption.match(/#\w+/g);
+
       if (hashtagMatches) {
-        const newHashtags = hashtagMatches.map(tag => tag.slice(1));
-        post.tags = [...new Set(newHashtags)];
+        const hashtagNames = [...new Set(hashtagMatches.map(tag => tag.slice(1)))];
+
+        // Ép kiểu rõ ràng cho Promise.all
+        const hashtagIds: mongoose.Types.ObjectId[] = await Promise.all(
+          hashtagNames.map(async (name) => {
+            const hashtag = await HashtagModel.incrementPostCount(name);
+            if (!hashtag) throw new Error("Hashtag creation failed"); // tránh null
+            return hashtag._id as mongoose.Types.ObjectId;
+          })
+        );
+
+        post.tags = hashtagIds;
       }
     }
+    // Update allowed fields
+    // if (updateData.caption !== undefined) {
+    //   post.caption = updateData.caption;
+
+    //   // Re-extract hashtags from new caption
+    //   const hashtagMatches = updateData.caption.match(/#\w+/g);
+    //   if (hashtagMatches) {
+    //     const newHashtags = hashtagMatches.map(tag => tag.slice(1));
+    //     post.tags = [...new Set(newHashtags)];
+    //   }
+    // }
 
     if (updateData.commentsDisabled !== undefined) {
       post.commentsDisabled = updateData.commentsDisabled;

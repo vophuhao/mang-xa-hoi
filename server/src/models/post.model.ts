@@ -9,7 +9,7 @@ export interface PostDocument extends mongoose.Document {
     name: string;
     coordinates?: [number, number]; // [longitude, latitude]
   };
-  tags: string[];
+  tags: mongoose.Types.ObjectId[]
   mentions: mongoose.Types.ObjectId[];
 
   // Social metrics
@@ -87,15 +87,12 @@ const postSchema = new mongoose.Schema<PostDocument>(
         },
       },
     },
-    tags: {
-      type: [String],
-      validate: {
-        validator: function (v: string[]) {
-          return v.length <= 30; // Instagram limit
-        },
-        message: "Maximum 30 hashtags allowed",
+    tags: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Hashtag",
       },
-    },
+    ],
     mentions: [
       {
         type: mongoose.Schema.Types.ObjectId,

@@ -21,6 +21,10 @@ export const createPostHandler = catchErrors(async (req: AuthenticatedRequest, r
   const post = await PostService.createPost({
     user: req.userId,
     mediaUrls: validatedData.mediaUrls,
+    caption: req.body.caption,
+    hideLikes: req.body.hideLikes,
+    disableComments: req.body.disableComments,
+    mentions: req.body.mentions,
     tags: validatedData.tags || [],
     ...(validatedData.location && { location: validatedData.location }),
   });

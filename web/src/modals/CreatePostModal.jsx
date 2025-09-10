@@ -4,7 +4,7 @@ import data from "@emoji-mart/data";
 import { X, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import useAuth from "@/hooks/useAuth";
 import { Toggle } from "@/components/ui/Toggle";
-import { createPost, searchUsers, uploadMedia } from "@/lib/api";
+import { createPost, searchHashtags, searchUsers, uploadMedia } from "@/lib/api";
 import Draggable from "react-draggable";
 import { toast } from "react-toastify";
 import ConfirmPopup from "@/components/popup/ConfirmPopup";
@@ -14,50 +14,134 @@ export default function CreatePostModal({ isOpen, onClose }) {
   const [images, setImages] = useState([]); // nhiều ảnh
   const [currentIndex, setCurrentIndex] = useState(0);
   const [caption, setCaption] = useState("");
-  const [tagList, setTagList] = useState([]);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [hideLikes, setHideLikes] = useState(false);
   const [disableComments, setDisableComments] = useState(false);
-  const maxLength = 220;
   const [popup, setPopup] = useState(null); // {x,y}
   const [search, setSearch] = useState("");
-  const [tags, setTags] = useState([]);
+  const [mentions, setMentions] = useState([]);
   const [isPosting, setIsPosting] = useState(false);
   const [postSuccess, setPostSuccess] = useState(false)
   const [suggestions, setSuggestions] = useState([])
   const pickerRef = useRef(null);
   const buttonRef = useRef(null);
   const popupRef = useRef(null);
+  const [trigger, setTrigger] = useState(null);
+  const textareaRef = useRef(null);
+  const [tags, setTags] = useState([])
+  const [tagList, setTagList] = useState([])
+  const maxLength = 220;
 
- useEffect(() => {
-    const handleClickOutside = (event) => {
-      // nếu click KHÔNG nằm trong picker và KHÔNG phải nút → đóng
-      if (
-        pickerRef.current &&
-        !pickerRef.current.contains(event.target) &&
-        buttonRef.current &&
-        !buttonRef.current.contains(event.target)
-      ) {
-        setShowPicker(false);
+  // Hàm chọn user
+  const handleSelectTag = (user) => {
+    if (!textareaRef.current) return;
+
+    const textarea = textareaRef.current;
+    const cursorPos = textarea.selectionStart;
+
+    // Tìm vị trí @ gần nhất trước con trỏ
+    const textBeforeCursor = caption.substring(0, cursorPos);
+    const match = textBeforeCursor.match(/@[\w\d_]*$/);
+
+    if (!match) return;
+
+    const start = match.index; // vị trí bắt đầu @
+    const end = cursorPos;
+
+    const textBefore = caption.substring(0, start);
+    const textAfter = caption.substring(end);
+
+    const newText = textBefore + "@" + user.username + " " + textAfter;
+
+    setCaption(newText);
+
+    // Đặt lại con trỏ
+    setTimeout(() => {
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd =
+        textBefore.length + user.username.length + 2;
+    }, 0);
+    setSuggestions([])
+    setMentions((prev) => [...prev, user._id]);
+  };
+
+  // Hàm chọn hashtag
+  const handleSelectHashtag = (hashtag) => {
+    if (!textareaRef.current) return;
+
+    const textarea = textareaRef.current;
+    const cursorPos = textarea.selectionStart;
+
+    const textBeforeCursor = caption.substring(0, cursorPos);
+    const match = textBeforeCursor.match(/#[\w\d_]*$/);
+
+    if (!match) return;
+
+    const start = match.index;
+    const end = cursorPos;
+
+    const textBefore = caption.substring(0, start);
+    const textAfter = caption.substring(end);
+
+    const newText = textBefore + "#" + hashtag.name + " " + textAfter;
+
+    setCaption(newText);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd =
+        textBefore.length + hashtag.name.length + 2;
+    }, 0);
+
+    // Chỉ thêm tên hashtag vào mảng tags, không reset
+    setTagList((prev) => [...prev, hashtag.name]);
+  };
+
+
+  const handleChange = async (e) => {
+    const value = e.target.value;
+    setCaption(value);
+
+    const cursorPos = e.target.selectionStart;
+    const textUntilCursor = value.substring(0, cursorPos);
+    const match = textUntilCursor.trimEnd().match(/([@#])([\w\d_]+)?$/);
+    if (match) {
+      const symbol = match[1];
+      const word = match[2] || "";
+      setSearch(word);
+
+      if (symbol === "@") {
+        setTrigger("user");
+        if (word.length > 0) {
+          const res = await searchUsers(word, 1, 20);
+          setSuggestions(res.data || []);
+        } else {
+          setSuggestions([]);
+        }
+      } else if (symbol === "#") {
+        setTrigger("hashtag");
+        if (word.length > 0) {
+          const res = await searchHashtags(word);
+          setTags(res.data || []);
+        } else {
+          setTags([]);
+        }
       }
-    };
-
-    if (showPicker) {
-      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      setTrigger(null);
+      setSuggestions([]);
+      setTags([]);
     }
+  };
 
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [showPicker]);
   useEffect(() => {
     if (search.trim()) {
       const fetchUsers = async () => {
         try {
           // Loại bỏ ký tự @ ở đầu nếu có
           const cleanQuery = search.startsWith("@") ? search.slice(1) : search;
-          const res = await searchUsers(cleanQuery, 1, 10);
+          const res = await searchUsers(cleanQuery, 1, 20);
           setSuggestions(res.data);
         } catch (err) {
           console.error(err);
@@ -98,25 +182,43 @@ export default function CreatePostModal({ isOpen, onClose }) {
       y: popup.y,
     };
 
-    setTags((prev) => [...prev, newTag]);
-    setTagList((prev) => [...prev, { id: userId, username: user.username }]);
-
+    setMentions((prev) => [...prev, newTag]);
     setPopup(null);
     setSearch("");
   };
 
   if (!isOpen) return null;
+  // trong component
+  // Hàm addEmoji
   const addEmoji = (emoji) => {
-    setCaption((prev) => prev + emoji.native);
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const newText = caption.slice(0, start) + emoji.native + caption.slice(end);
+
+    setCaption(newText);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + emoji.native.length;
+    }, 0);
+
+    // picker vẫn mở, không setShowPicker(false)
   };
+
+
+
 
   const resetModal = () => {
     setStep(1);
     setImages([]);
     setCurrentIndex(0);
     setCaption("");
+    setMentions([]);
     setTags([]);
-    setTagList([]);
+    setTagList([])
     setHideLikes(false);
     setDisableComments(false)
   };
@@ -143,17 +245,19 @@ export default function CreatePostModal({ isOpen, onClose }) {
 
       const formData = new FormData();
       images.forEach((img) => formData.append("files", img.file));
-
-      const imageUrls = await uploadMedia(formData);
+      console.log(caption)
+      console.log(mentions)
       console.log(tagList)
+      const imageUrls = await uploadMedia(formData);
+
       const postData = {
         mediaUrls: imageUrls.urls,
         caption,
-        tags: tagList.map(tag => tag.id),
+        mentions: mentions.map(mentions => mentions._id),
         hideLikes,
+        tagList,
         disableComments,
       };
-
       const result = await createPost(postData);
 
       if (result.success) {
@@ -338,7 +442,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
               )}
             </div>
           )}
-          {/* Bước 2: Caption + Tags */}
+          {/* Bước 2: Caption + mentions */}
           {step === 2 && (
             <div className="flex-1 flex">
               {/* Left: Image */}
@@ -417,14 +521,14 @@ export default function CreatePostModal({ isOpen, onClose }) {
                       </div>
                     )}
                     {/* Render tag trên ảnh */}
-                    {tags.map((tag, i) => (
+                    {mentions.map((tag, i) => (
                       <Draggable
                         key={i}
                         bounds="parent" // chỉ kéo trong ảnh
                         position={{ x: tag.x, y: tag.y }}
                         onStop={(e, data) => {
                           // cập nhật vị trí tag khi kéo xong
-                          setTags((prev) => {
+                          setMentions((prev) => {
                             const newTags = [...prev];
                             newTags[i] = { ...newTags[i], x: data.x, y: data.y };
                             return newTags;
@@ -439,7 +543,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
                           <button
                             onClick={(e) => {
                               e.stopPropagation(); // tránh trigger drag
-                              setTags((prev) => prev.filter((_, idx) => idx !== i));
+                              setMentions((prev) => prev.filter((_, idx) => idx !== i));
                             }}
                             className="ml-3 text-white font-bold text-[10px] cursor-pointer "
                           >
@@ -471,7 +575,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
                 )}
               </div>
 
-              {/* Right: Caption + Tags */}
+              {/* Right: Caption + mentions */}
               <div className="w-[320px] flex flex-col ">
                 <div className="p-4 flex-1 space-y-4">
                   <div className="flex items-center">
@@ -486,13 +590,14 @@ export default function CreatePostModal({ isOpen, onClose }) {
                     className="w-full h-35 resize-none p-2 text-sm outline-none border-none focus:outline-none focus:ring-0 focus:border-none"
                     placeholder=""
                     value={caption}
-                    onChange={(e) => setCaption(e.target.value)}
+                    ref={textareaRef}
+                    onChange={handleChange}
                   />
                   <div className="flex items-center justify-between ">
                     {/* emoji button */}
                     <div className="relative">
                       <button
-                      ref={buttonRef}
+                        ref={buttonRef}
                         type="button"
                         onClick={() => setShowPicker((prev) => !prev)}
                         className="p-1"
@@ -502,17 +607,23 @@ export default function CreatePostModal({ isOpen, onClose }) {
 
                       {showPicker && (
                         <div className="absolute top-8 -left-15 z-10">
-                          <div ref={pickerRef} className="scale-90 origin-top-left">
+                          <div
+                            ref={pickerRef}
+                            className="scale-90 origin-top-left"
+                            onMouseDown={(e) => e.preventDefault()} // quan trọng: ngăn picker mất focus
+                          >
                             <Picker
                               data={data}
                               onEmojiSelect={addEmoji}
                               theme="light"
-                              previewPosition="none"   // ẩn phần preview
-                              navPosition="none"       // ẩn menu category
+                              previewPosition="none"
+                              navPosition="none"
                             />
                           </div>
                         </div>
                       )}
+
+
                     </div>
                     {/* counter */}
                     <span className="text-xs text-gray-500">
@@ -521,34 +632,66 @@ export default function CreatePostModal({ isOpen, onClose }) {
                   </div>
                   <div className="mb-5 border-t -ml-4 border-gray-300"></div>
 
-                  <div className="space-y-6 w-full">
-                    {/* Ẩn lượt thích */}
-                    <div className="flex items-start justify-between">
-                      <div className="mr-3">
-                        <p className="text-sm font-medium">Ẩn lượt thích và lượt xem trên bài viết này</p>
-                        <p className="text-xs text-gray-600">
-                          Chỉ bạn mới nhìn thấy tổng số lượt thích và lượt xem bài viết này. Về sau, bạn có thể thay đổi tuỳ chọn này
-                          bằng cách mở menu ... ở đầu bài viết.
-                        </p>
-                      </div>
-                      <Toggle
-                        checked={hideLikes}
-                        onChange={() => setHideLikes(!hideLikes)}
-                      />
-                    </div>
+                  <div className="space-y-6 w-full relative">
+                    {/* UI list overlay */}
+                    {(suggestions.length > 0 || tags.length > 0) && (
+                      <div className="absolute left-0 right-0 top-0 z-50 bg-white shadow-md -ml-4 -mt-5 max-h-60 h-auto overflow-y-auto">
+                        {trigger === "user" &&
+                          suggestions.map((u) => (
+                            <div
+                              key={u._id}
+                              onClick={() => handleSelectTag(u)}
+                              className="flex items-center gap-2 p-3 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
+                            >
+                              <img src={u.avatarUrl} alt="" className="w-6 h-6 rounded-full" />
+                              <span className="text-sm">{u.username}</span>
+                            </div>
+                          ))}
 
-                    {/* Tắt bình luận */}
-                    <div className="flex items-start justify-between">
-                      <div className="mr-3">
-                        <p className="text-sm font-medium">Tắt tính năng bình luận</p>
-                        <p className="text-xs text-gray-600">
-                          Về sau, bạn có thể thay đổi tuỳ chọn này bằng cách mở menu ... ở đầu bài viết.
-                        </p>
+                        {trigger === "hashtag" &&
+                          tags.map((h) => (
+                            <div
+                              key={h._id}
+                              onClick={() => handleSelectHashtag(h)}
+                              className="p-2 text-sm hover:bg-gray-100 cursor-pointer border-b border-gray-200 flex flex-col"
+                            >
+                              <span className="text-bold">#{h.name}</span>
+                              <span className="text-sm text-gray-500">{h.postCount} bài viết </span>
+                            </div>
+
+                          ))}
                       </div>
-                      <Toggle
-                        checked={disableComments}
-                        onChange={() => setDisableComments(!disableComments)}
-                      />
+                    )}
+
+                    {/* 2 option luôn nằm trong container */}
+                    <div className="space-y-6 w-full mt-4 relative z-0">
+                      {/* Ẩn lượt thích */}
+                      <div className="flex items-start justify-between">
+                        <div className="mr-3">
+                          <p className="text-sm font-medium">Ẩn lượt thích và lượt xem trên bài viết này</p>
+                          <p className="text-xs text-gray-600">
+                            Chỉ bạn mới nhìn thấy tổng số lượt thích và lượt xem bài viết này.
+                          </p>
+                        </div>
+                        <Toggle
+                          checked={hideLikes}
+                          onChange={() => setHideLikes(!hideLikes)}
+                        />
+                      </div>
+
+                      {/* Tắt bình luận */}
+                      <div className="flex items-start justify-between">
+                        <div className="mr-3">
+                          <p className="text-sm font-medium">Tắt tính năng bình luận</p>
+                          <p className="text-xs text-gray-600">
+                            Về sau, bạn có thể thay đổi tuỳ chọn này bằng cách mở menu ... ở đầu bài viết.
+                          </p>
+                        </div>
+                        <Toggle
+                          checked={disableComments}
+                          onChange={() => setDisableComments(!disableComments)}
+                        />
+                      </div>
                     </div>
                   </div>
 

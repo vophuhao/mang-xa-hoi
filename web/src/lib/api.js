@@ -82,4 +82,12 @@ export const uploadMedia = async (formData) => {
   });
 };
 
-
+export const searchHashtags = async (key, page = 1, limit = 50) => {
+  return API.get("/hashtags/search", {
+    params: {
+      q: key,
+      page,
+      limit,
+    },
+  });
+};
