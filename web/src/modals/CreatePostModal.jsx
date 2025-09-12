@@ -4,7 +4,7 @@ import data from "@emoji-mart/data";
 import { X, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import useAuth from "@/hooks/useAuth";
 import { Toggle } from "@/components/ui/Toggle";
-import { createPost, searchHashtags, searchUsers, uploadMedia } from "@/lib/api";
+import { analyzeMedia, createPost, searchHashtags, searchUsers, uploadMedia } from "@/lib/api";
 import Draggable from "react-draggable";
 import { toast } from "react-toastify";
 import ConfirmPopup from "@/components/popup/ConfirmPopup";
@@ -21,6 +21,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
   const [popup, setPopup] = useState(null); // {x,y}
   const [search, setSearch] = useState("");
   const [mentions, setMentions] = useState([]);
+  const [mentionsCap, setMentionsCap] = useState({});
   const [isPosting, setIsPosting] = useState(false);
   const [postSuccess, setPostSuccess] = useState(false)
   const [suggestions, setSuggestions] = useState([])
@@ -30,43 +31,74 @@ export default function CreatePostModal({ isOpen, onClose }) {
   const [trigger, setTrigger] = useState(null);
   const textareaRef = useRef(null);
   const [tags, setTags] = useState([])
-  const [tagList, setTagList] = useState([])
+  const [hashtagSug, setHashtagSug] = useState([])
   const maxLength = 220;
-
+  const [isSelecting, setIsSelecting] = useState(false);
   // Hàm chọn user
-  const handleSelectTag = (user) => {
+  const handleSelectMentions = (user) => {
     if (!textareaRef.current) return;
 
     const textarea = textareaRef.current;
     const cursorPos = textarea.selectionStart;
 
-    // Tìm vị trí @ gần nhất trước con trỏ
     const textBeforeCursor = caption.substring(0, cursorPos);
     const match = textBeforeCursor.match(/@[\w\d_]*$/);
-
     if (!match) return;
 
-    const start = match.index; // vị trí bắt đầu @
+    const start = match.index;
     const end = cursorPos;
 
     const textBefore = caption.substring(0, start);
     const textAfter = caption.substring(end);
 
     const newText = textBefore + "@" + user.username + " " + textAfter;
-
     setCaption(newText);
 
-    // Đặt lại con trỏ
     setTimeout(() => {
       textarea.focus();
       textarea.selectionStart = textarea.selectionEnd =
         textBefore.length + user.username.length + 2;
     }, 0);
     setSuggestions([])
-    setMentions((prev) => [...prev, user._id]);
+    setMentionsCap((prev) => ({ ...prev, [user.username]: user._id }));
+
+  };
+  
+  const handleSelectHashtagSug = (hashtag) => {
+    if (!textareaRef.current) return;
+
+    const textarea = textareaRef.current;
+    const cursorPos = textarea.selectionStart;
+
+    const textBeforeCursor = caption.substring(0, cursorPos);
+    const match = textBeforeCursor.match(/#[\w\d_]*$/);
+    if (!match) return;
+
+    const start = match.index;
+    const end = cursorPos;
+
+    const textBefore = caption.substring(0, start);
+    const textAfter = caption.substring(end);
+
+    const newText = textBefore + "#" + hashtag + " " + textAfter;
+
+    setIsSelecting(true); // tránh handleChange vô tình clear list
+    setCaption(newText);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd =
+        textBefore.length + hashtag.length + 2;
+
+      setIsSelecting(false); // ✅ reset để lần gõ tiếp theo nhận bình thường
+    }, 0);
+
+    setTrigger(null);
+    setTags([]);
   };
 
-  // Hàm chọn hashtag
+
+
   const handleSelectHashtag = (hashtag) => {
     if (!textareaRef.current) return;
 
@@ -75,7 +107,6 @@ export default function CreatePostModal({ isOpen, onClose }) {
 
     const textBeforeCursor = caption.substring(0, cursorPos);
     const match = textBeforeCursor.match(/#[\w\d_]*$/);
-
     if (!match) return;
 
     const start = match.index;
@@ -86,6 +117,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
 
     const newText = textBefore + "#" + hashtag.name + " " + textAfter;
 
+    setIsSelecting(true); // ✅ flag bỏ qua handleChange 1 lần
     setCaption(newText);
 
     setTimeout(() => {
@@ -94,18 +126,24 @@ export default function CreatePostModal({ isOpen, onClose }) {
         textBefore.length + hashtag.name.length + 2;
     }, 0);
 
-    // Chỉ thêm tên hashtag vào mảng tags, không reset
-    setTagList((prev) => [...prev, hashtag.name]);
+    setTags([]); // clear list nhưng không set trigger = null
+    setTrigger("hashtag"); // giữ trigger để lần gõ # tiếp theo nhận list ngay
   };
 
 
   const handleChange = async (e) => {
+    if (isSelecting) {
+      setIsSelecting(false);
+      return;
+    }
+
     const value = e.target.value;
     setCaption(value);
 
     const cursorPos = e.target.selectionStart;
     const textUntilCursor = value.substring(0, cursorPos);
     const match = textUntilCursor.trimEnd().match(/([@#])([\w\d_]+)?$/);
+
     if (match) {
       const symbol = match[1];
       const word = match[2] || "";
@@ -121,11 +159,13 @@ export default function CreatePostModal({ isOpen, onClose }) {
         }
       } else if (symbol === "#") {
         setTrigger("hashtag");
-        if (word.length > 0) {
+
+        // ✅ Nếu chỉ gõ # mà word rỗng => hiện hashtagSug
+        if (word.length === 0) {
+          setTags(hashtagSug); // show gợi ý luôn
+        } else {
           const res = await searchHashtags(word);
           setTags(res.data || []);
-        } else {
-          setTags([]);
         }
       }
     } else {
@@ -134,6 +174,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
       setTags([]);
     }
   };
+
 
   useEffect(() => {
     if (search.trim()) {
@@ -185,6 +226,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
     setMentions((prev) => [...prev, newTag]);
     setPopup(null);
     setSearch("");
+    setSuggestions([])
   };
 
   if (!isOpen) return null;
@@ -208,19 +250,17 @@ export default function CreatePostModal({ isOpen, onClose }) {
     // picker vẫn mở, không setShowPicker(false)
   };
 
-
-
-
   const resetModal = () => {
     setStep(1);
     setImages([]);
     setCurrentIndex(0);
     setCaption("");
     setMentions([]);
-    setTags([]);
-    setTagList([])
+    setMentionsCap({}),
+      setTags([]);
     setHideLikes(false);
-    setDisableComments(false)
+    setDisableComments(false),
+      setHashtagSug([])
   };
 
   const handleImageUpload = (e) => {
@@ -237,44 +277,91 @@ export default function CreatePostModal({ isOpen, onClose }) {
     });
   };
 
+
+  const extractMentions = (caption) => {
+    const regex = /@(\w+)/g;
+    const matches = [];
+    let match;
+    while ((match = regex.exec(caption)) !== null) {
+      matches.push(match[1]); // lấy username
+    }
+    return matches;
+  };
+
+const extractHashtags = (caption) => {
+  const regex = /#(\w+)/g;
+  const matches = [];
+  let match;
+  while ((match = regex.exec(caption)) !== null) {
+    matches.push(match[1]);
+  }
+  // Loại trùng
+  return Array.from(new Set(matches));
+};
+
+
+
   const handlePost = async () => {
     try {
-      setStep(3);        // bước 3: hiển thị overlay
+      setStep(3);
       setIsPosting(true);
       setPostSuccess(false);
 
       const formData = new FormData();
       images.forEach((img) => formData.append("files", img.file));
-      console.log(caption)
-      console.log(mentions)
-      console.log(tagList)
       const imageUrls = await uploadMedia(formData);
 
+      // --- Lấy mentions từ caption ---
+      const mentionUsernames = extractMentions(caption); // ["hao", "linh", ...]
+      // mentionsCap là map username -> user object { _id, username, ... }
+      const mentionsFromCaption = mentionUsernames
+        .map((username) => mentionsCap[username])
+        .filter(Boolean); // chỉ lấy user thực sự có trong map
+
+      // --- Lấy hashtags ---
+      const tagsFromCaption = Array.from(new Set(extractHashtags(caption)));
+
+      // --- Lấy user ID từ tag trên ảnh ---
+      const userIdsFromImageTags = mentions.map(tag => tag._id);
+
+      // --- Lấy user ID từ mentions trong caption ---
+      const userIdsFromCaption = mentionsFromCaption.map(user => user._id);
+
+      // --- Gộp 2 nguồn và loại trùng ---
+      const uniqueUserIds = Array.from(new Set([...userIdsFromImageTags, ...userIdsFromCaption]));
+      console.log(uniqueUserIds)
+      // --- Chuẩn bị postData ---
       const postData = {
         mediaUrls: imageUrls.urls,
         caption,
-        mentions: mentions.map(mentions => mentions._id),
+        mentions: uniqueUserIds, // danh sách duy nhất
+        tagList: tagsFromCaption,
         hideLikes,
-        tagList,
         disableComments,
       };
+
       const result = await createPost(postData);
 
       if (result.success) {
-        // Hiển thị thành công
         setPostSuccess(true);
+        setCaption("");
+        setMentions([]);      // xóa tag trên ảnh
+        setMentionsCap({});   // xóa map mentions trong caption
       } else {
         toast.error("Vui lòng thử lại");
-        setStep(2); // quay lại bước 2 nếu lỗi
+        setStep(2);
       }
     } catch (err) {
       console.error(err);
       toast.error("Có lỗi xảy ra");
-      setStep(2); // quay lại bước 2 nếu lỗi
+      setStep(2);
     } finally {
       setIsPosting(false);
     }
   };
+
+
+
 
 
   const handleOverlayClick = (e) => {
@@ -301,6 +388,15 @@ export default function CreatePostModal({ isOpen, onClose }) {
     setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
   };
 
+  const handleClickStep = async () => {
+    const formData = new FormData();
+    images.forEach((img) => formData.append("files", img.file));
+    const res = await analyzeMedia(formData)
+    console.log(res)
+    setHashtagSug(res.hashtags)
+
+    setStep(2)
+  }
   return (
     <div
       className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
@@ -344,7 +440,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
           {/* 👉 nút Tiếp / Chia sẻ */}
           {step === 1 && images.length > 0 && (
             <button
-              onClick={() => setStep(2)}
+              onClick={handleClickStep}
               className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-600 font-semibold cursor-pointer"
             >
               Tiếp
@@ -640,7 +736,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
                           suggestions.map((u) => (
                             <div
                               key={u._id}
-                              onClick={() => handleSelectTag(u)}
+                              onClick={() => handleSelectMentions(u)}
                               className="flex items-center gap-2 p-3 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
                             >
                               <img src={u.avatarUrl} alt="" className="w-6 h-6 rounded-full" />
@@ -648,18 +744,38 @@ export default function CreatePostModal({ isOpen, onClose }) {
                             </div>
                           ))}
 
-                        {trigger === "hashtag" &&
-                          tags.map((h) => (
-                            <div
-                              key={h._id}
-                              onClick={() => handleSelectHashtag(h)}
-                              className="p-2 text-sm hover:bg-gray-100 cursor-pointer border-b border-gray-200 flex flex-col"
-                            >
-                              <span className="text-bold">#{h.name}</span>
-                              <span className="text-sm text-gray-500">{h.postCount} bài viết </span>
-                            </div>
+                        {trigger === "hashtag" && (
+                          <>
+                            {/* Hashtags từ DB */}
+                            {tags
+                              .filter((h) => h && typeof h === "object" && h._id) // thêm check h
+                              .map((h) => (
+                                <div
+                                  key={h._id}
+                                  onClick={() => handleSelectHashtag(h)}
+                                  className="p-2 text-sm hover:bg-gray-100 cursor-pointer border-b border-gray-200 flex flex-col"
+                                >
+                                  <span className="font-bold">#{h.name}</span>
+                                  <span className="text-sm text-gray-500">{h.postCount} bài viết</span>
+                                </div>
+                              ))}
 
-                          ))}
+                            {/* Hashtags gợi ý sẵn (string) */}
+                            {tags
+                              .filter((h) => typeof h === "string")
+                              .map((h, index) => (
+                                <div
+                                  key={index}
+                                  onClick={() => handleSelectHashtagSug(h)}
+                                  className="p-2 text-sm hover:bg-gray-100 cursor-pointer border-b border-gray-200 flex flex-col"
+                                >
+                                  <span className="">#{h}</span>
+                                  <span className="text-sm text-gray-500">Gợi ý</span>
+                                </div>
+                              ))}
+                          </>
+                        )}
+
                       </div>
                     )}
 

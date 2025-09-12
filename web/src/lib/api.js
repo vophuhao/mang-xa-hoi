@@ -82,6 +82,12 @@ export const uploadMedia = async (formData) => {
   });
 };
 
+export const analyzeMedia = async (formData) => {
+  return API.post("/media/analyze", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};
+
 export const searchHashtags = async (key, page = 1, limit = 50) => {
   return API.get("/hashtags/search", {
     params: {
