@@ -10,6 +10,7 @@ export interface UserDocument extends mongoose.Document {
 
   // Instagram-like profile fields
   username: string;
+  userId: String,
   fullName?: string;
   bio?: string;
   avatarUrl?: string;
@@ -56,6 +57,15 @@ const userSchema = new mongoose.Schema<UserDocument>(
       minlength: 1,
       maxlength: 30,
       match: /^[\p{L}\p{N}._\s]+$/u,
+    },
+      userId: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      minlength: 1,
+      maxlength: 30,
+      match: /^[\p{L}\p{N}._]+$/u,
     },
     fullName: {
       type: String,

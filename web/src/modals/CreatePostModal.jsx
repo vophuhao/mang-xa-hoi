@@ -20,8 +20,9 @@ export default function CreatePostModal({ isOpen, onClose }) {
   const [disableComments, setDisableComments] = useState(false);
   const [popup, setPopup] = useState(null); // {x,y}
   const [search, setSearch] = useState("");
-  const [mentions, setMentions] = useState([]);
-  const [mentionsCap, setMentionsCap] = useState({});
+  const [mentionsMedia, setMentionsMedia] = useState([]);
+  const [mentionsRen, setMentionsRen] = useState([])
+  const [mentionsCap, setMentionsCap] = useState([]);
   const [isPosting, setIsPosting] = useState(false);
   const [postSuccess, setPostSuccess] = useState(false)
   const [suggestions, setSuggestions] = useState([])
@@ -51,19 +52,24 @@ export default function CreatePostModal({ isOpen, onClose }) {
     const textBefore = caption.substring(0, start);
     const textAfter = caption.substring(end);
 
-    const newText = textBefore + "@" + user.username + " " + textAfter;
+    const newText = textBefore + "@" + user.userId + " " + textAfter;
     setCaption(newText);
 
     setTimeout(() => {
       textarea.focus();
       textarea.selectionStart = textarea.selectionEnd =
-        textBefore.length + user.username.length + 2;
+        textBefore.length + user.userId.length + 2;
     }, 0);
     setSuggestions([])
-    setMentionsCap((prev) => ({ ...prev, [user.username]: user._id }));
-
+    setMentionsCap(prev => {
+      // Nếu đã có userId thì giữ nguyên, nếu chưa có thì thêm
+      if (prev.includes(user.userId)) {
+        return prev;
+      }
+      return [...prev, user.userId];
+    });
   };
-  
+
   const handleSelectHashtagSug = (hashtag) => {
     if (!textareaRef.current) return;
 
@@ -96,8 +102,6 @@ export default function CreatePostModal({ isOpen, onClose }) {
     setTrigger(null);
     setTags([]);
   };
-
-
 
   const handleSelectHashtag = (hashtag) => {
     if (!textareaRef.current) return;
@@ -136,10 +140,8 @@ export default function CreatePostModal({ isOpen, onClose }) {
       setIsSelecting(false);
       return;
     }
-
     const value = e.target.value;
     setCaption(value);
-
     const cursorPos = e.target.selectionStart;
     const textUntilCursor = value.substring(0, cursorPos);
     const match = textUntilCursor.trimEnd().match(/([@#])([\w\d_]+)?$/);
@@ -151,7 +153,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
 
       if (symbol === "@") {
         setTrigger("user");
-        if (word.length > 0) {
+        if (word.length > 0 && word != "") {
           const res = await searchUsers(word, 1, 20);
           setSuggestions(res.data || []);
         } else {
@@ -184,6 +186,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
           const cleanQuery = search.startsWith("@") ? search.slice(1) : search;
           const res = await searchUsers(cleanQuery, 1, 20);
           setSuggestions(res.data);
+          console.log(res.data)
         } catch (err) {
           console.error(err);
         }
@@ -214,16 +217,23 @@ export default function CreatePostModal({ isOpen, onClose }) {
     if (!popup) return;
 
     // MongoDB dùng _id
-    const userId = user._id
+    const _id = user._id
 
     const newTag = {
-      id: userId,
+      id: _id,
       username: user.username,
+      userId: user.userId,
       x: popup.x,
       y: popup.y,
     };
-
-    setMentions((prev) => [...prev, newTag]);
+    setMentionsMedia(prev => {
+      // Nếu đã có userId thì giữ nguyên, nếu chưa có thì thêm
+      if (prev.includes(user.userId)) {
+        return prev;
+      }
+      return [...prev, user.userId];
+    });
+    setMentionsRen((prev) => [...prev, newTag]);
     setPopup(null);
     setSearch("");
     setSuggestions([])
@@ -255,12 +265,13 @@ export default function CreatePostModal({ isOpen, onClose }) {
     setImages([]);
     setCurrentIndex(0);
     setCaption("");
-    setMentions([]);
-    setMentionsCap({}),
+    setMentionsMedia([]);
+    setMentionsCap([]),
       setTags([]);
     setHideLikes(false);
-    setDisableComments(false),
-      setHashtagSug([])
+    setDisableComments(false);
+    setHashtagSug([]);
+    setMentionsRen([]);
   };
 
   const handleImageUpload = (e) => {
@@ -279,74 +290,52 @@ export default function CreatePostModal({ isOpen, onClose }) {
 
 
   const extractMentions = (caption) => {
-    const regex = /@(\w+)/g;
+    const regex = /@([^\s@]+)/g; // match @ + tất cả ký tự trừ space và @
     const matches = [];
     let match;
     while ((match = regex.exec(caption)) !== null) {
-      matches.push(match[1]); // lấy username
+      matches.push(match[1]);
     }
     return matches;
   };
 
-const extractHashtags = (caption) => {
-  const regex = /#(\w+)/g;
-  const matches = [];
-  let match;
-  while ((match = regex.exec(caption)) !== null) {
-    matches.push(match[1]);
-  }
-  // Loại trùng
-  return Array.from(new Set(matches));
-};
-
-
+  const extractHashtags = (caption) => {
+    const regex = /#(\w+)/g;
+    const matches = [];
+    let match;
+    while ((match = regex.exec(caption)) !== null) {
+      matches.push(match[1]);
+    }
+    // Loại trùng
+    return Array.from(new Set(matches));
+  };
 
   const handlePost = async () => {
     try {
       setStep(3);
       setIsPosting(true);
       setPostSuccess(false);
-
       const formData = new FormData();
       images.forEach((img) => formData.append("files", img.file));
       const imageUrls = await uploadMedia(formData);
-
       // --- Lấy mentions từ caption ---
-      const mentionUsernames = extractMentions(caption); // ["hao", "linh", ...]
-      // mentionsCap là map username -> user object { _id, username, ... }
-      const mentionsFromCaption = mentionUsernames
-        .map((username) => mentionsCap[username])
-        .filter(Boolean); // chỉ lấy user thực sự có trong map
-
+      const mentionsFromCaption = extractMentions(caption);
+      const mentionsUserCapLast = mentionsCap.filter(id => mentionsFromCaption.includes(id));
+      const mentionsUserLast = Array.from(new Set([...mentionsUserCapLast, ...mentionsMedia]));
       // --- Lấy hashtags ---
       const tagsFromCaption = Array.from(new Set(extractHashtags(caption)));
-
-      // --- Lấy user ID từ tag trên ảnh ---
-      const userIdsFromImageTags = mentions.map(tag => tag._id);
-
-      // --- Lấy user ID từ mentions trong caption ---
-      const userIdsFromCaption = mentionsFromCaption.map(user => user._id);
-
-      // --- Gộp 2 nguồn và loại trùng ---
-      const uniqueUserIds = Array.from(new Set([...userIdsFromImageTags, ...userIdsFromCaption]));
-      console.log(uniqueUserIds)
-      // --- Chuẩn bị postData ---
       const postData = {
         mediaUrls: imageUrls.urls,
         caption,
-        mentions: uniqueUserIds, // danh sách duy nhất
+        mentions: mentionsUserLast, // danh sách duy nhất
         tagList: tagsFromCaption,
         hideLikes,
         disableComments,
       };
-
       const result = await createPost(postData);
 
       if (result.success) {
         setPostSuccess(true);
-        setCaption("");
-        setMentions([]);      // xóa tag trên ảnh
-        setMentionsCap({});   // xóa map mentions trong caption
       } else {
         toast.error("Vui lòng thử lại");
         setStep(2);
@@ -359,10 +348,6 @@ const extractHashtags = (caption) => {
       setIsPosting(false);
     }
   };
-
-
-
-
 
   const handleOverlayClick = (e) => {
     if (e.target === e.currentTarget) {
@@ -392,9 +377,7 @@ const extractHashtags = (caption) => {
     const formData = new FormData();
     images.forEach((img) => formData.append("files", img.file));
     const res = await analyzeMedia(formData)
-    console.log(res)
     setHashtagSug(res.hashtags)
-
     setStep(2)
   }
   return (
@@ -460,7 +443,7 @@ const extractHashtags = (caption) => {
         <div className="flex-1 flex">
           {/* Bước 1: Chọn ảnh */}
           {step === 1 && (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center relative">
+            <div className="flex-1 flex flex-col items-center justify-center text-center relative">
               {images.length === 0 ? (
                 <div className="flex flex-col items-center space-y-4">
                   <svg
@@ -487,7 +470,7 @@ const extractHashtags = (caption) => {
                     Kéo ảnh và video vào đây
                   </p>
 
-                  <label className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg cursor-pointer font-semibold">
+                  <label className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-1 rounded-lg cursor-pointer font-semibold">
                     <input
                       type="file"
                       accept="image/*,video/*"
@@ -505,14 +488,14 @@ const extractHashtags = (caption) => {
                       <video
                         src={images[currentIndex].src}
                         controls
-                        className="h-full w-auto object-contain cursor-pointer"
+                        className="w-full h-full object-cover cursor-pointer"
                         onClick={handleImageClick}
                       />
                     ) : (
                       <img
                         src={images[currentIndex].src}
                         alt="preview"
-                        className="h-full w-auto object-contain cursor-pointer"
+                        className="w-full h-full object-cover cursor-pointer"
                         onClick={handleImageClick}
                       />
                     )}
@@ -549,7 +532,7 @@ const extractHashtags = (caption) => {
                       <video
                         src={images[currentIndex].src}
                         controls
-                        className="h-full w-auto object-contain cursor-pointer"
+                        className="w-full h-full object-cover cursor-pointer"
                         onClick={handleImageClick}
                       />
 
@@ -557,7 +540,7 @@ const extractHashtags = (caption) => {
                       <img
                         src={images[currentIndex].src}
                         alt="preview"
-                        className="h-full w-auto object-contain cursor-pointer"
+                        className="w-full h-full object-cover cursor-pointer"
                         onClick={handleImageClick}
                       />
                     )}
@@ -594,37 +577,39 @@ const extractHashtags = (caption) => {
                           </div>
 
                           {search && (
-                            <div className="max-h-48 overflow-y-auto divide-y divide-gray-100">
-                              {suggestions.length > 0 ? (
-                                suggestions.map((f) => (
-                                  <div
-                                    key={f.id}
-                                    onClick={() => handleSelect(f)}
-                                    className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
-                                  >
-                                    <img src={f.avatarUrl} alt="" className="w-8 h-8 rounded-full" />
-                                    <div>
-                                      <p className="text-sm font-medium">{f.username}</p>
-                                    </div>
+                            <div className="max-h-40 overflow-y-auto divide-y divide-gray-100">
+                              {suggestions.map((f) => (
+                                <div
+                                  key={f.id}
+                                  onClick={() => handleSelect(f)}
+                                  className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
+                                >
+                                  <img
+                                    src={f.avatarUrl}
+                                    alt=""
+                                    className="w-8 h-8 rounded-full"
+                                  />
+                                  <div className="flex flex-col leading-tight">
+                                    <span className="text-sm font-medium">{f.username}</span>
+                                    <span className="text-xs text-gray-500">{f.userId}</span>
                                   </div>
-                                ))
-                              ) : (
-                                <p className="text-xs text-gray-500 p-2">Không tìm thấy</p>
-                              )}
+                                </div>
+                              ))}
                             </div>
+
                           )}
                         </div>
                       </div>
                     )}
                     {/* Render tag trên ảnh */}
-                    {mentions.map((tag, i) => (
+                    {mentionsRen.map((tag, i) => (
                       <Draggable
                         key={i}
                         bounds="parent" // chỉ kéo trong ảnh
                         position={{ x: tag.x, y: tag.y }}
                         onStop={(e, data) => {
                           // cập nhật vị trí tag khi kéo xong
-                          setMentions((prev) => {
+                          setMentionsRen((prev) => {
                             const newTags = [...prev];
                             newTags[i] = { ...newTags[i], x: data.x, y: data.y };
                             return newTags;
@@ -633,19 +618,22 @@ const extractHashtags = (caption) => {
                       >
                         <div className="absolute flex items-center bg-black/70 font-bold text-white text-xs px-3 py-1.5 rounded cursor-pointer">
                           {/* Tên người dùng */}
-                          <span>{tag.username}</span>
+                          <span>{tag.userId}</span>
 
                           {/* Nút xóa */}
                           <button
                             onClick={(e) => {
                               e.stopPropagation(); // tránh trigger drag
-                              setMentions((prev) => prev.filter((_, idx) => idx !== i));
+                              const userIdToRemove = tag.userId;
+                              // Xóa khỏi mentionsCap (object)
+                              setMentionsMedia(prev => prev.filter(id => id !== userIdToRemove));
+                              // Xóa khỏi mentionsRen (mảng)
+                              setMentionsRen(prev => prev.filter(m => m.userId !== userIdToRemove));
                             }}
-                            className="ml-3 text-white font-bold text-[10px] cursor-pointer "
+                            className="ml-3 text-white font-bold text-[10px] cursor-pointer"
                           >
                             ✕
                           </button>
-
                         </div>
                       </Draggable>
                     ))}
@@ -740,7 +728,11 @@ const extractHashtags = (caption) => {
                               className="flex items-center gap-2 p-3 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
                             >
                               <img src={u.avatarUrl} alt="" className="w-6 h-6 rounded-full" />
-                              <span className="text-sm">{u.username}</span>
+                              <div className="flex flex-col leading-tight">
+                                <span className="text-sm font-medium">{u.username}</span>
+                                <span className="text-xs text-gray-500">{u.userId}</span>
+                              </div>
+
                             </div>
                           ))}
 

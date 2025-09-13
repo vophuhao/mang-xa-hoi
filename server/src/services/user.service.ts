@@ -276,7 +276,7 @@ export class UserService {
 
     const [users, total] = await Promise.all([
       UserModel.find(searchFilter)
-        .select("username fullName avatarUrl isVerified followersCount")
+        .select("username fullName avatarUrl isVerified followersCount userId")
         .sort({ followersCount: -1, username: 1 })
         .skip(skip)
         .limit(limit),

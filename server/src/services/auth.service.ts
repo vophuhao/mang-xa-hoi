@@ -52,12 +52,35 @@ export const sendEmailVerification = async (email: string) => {
 
   return verificationCode;
 };
+function normalizeUsername(username: string) {
+  return username
+    .trim()              // bỏ khoảng trắng đầu/cuối
+    .toLowerCase()       // chuyển thành chữ thường
+    .replace(/\s+/g, "."); // thay khoảng trắng = dấu chấm
+}
+
+
+function generateUserId(username: string) {
+  const randomNum = Math.floor(1000 + Math.random() * 9000); // số ngẫu nhiên 4 chữ số
+  return `${normalizeUsername(username)}.${randomNum}`;
+}
 
 export const createAccount = async (data: CreateAccountParams) => {
   const existingUser = await UserModel.exists({ email: data.email });
   appAssert(!existingUser, CONFLICT, "Email already in use");
 
+  // tạo userId từ username + số random
+  let userId: string;
+  let isTaken = true;
+
+  do {
+    userId = generateUserId(data.username);
+    const exists = await UserModel.exists({ userId });
+    isTaken = !!exists;
+  } while (isTaken); // nếu trùng thì random lại
+
   const user = await UserModel.create({
+    userId, // thêm userId
     email: data.email,
     username: data.username,
     password: data.password,
@@ -127,11 +150,12 @@ export const loginWithGoogle = async ({
   userAgent: string;
 }) => {
   let user = await UserModel.findOne({ email });
-
+  const userId = generateUserId(username);
   if (!user) {
     // ✅ Chưa có tài khoản nào → tạo mới bằng Google
     user = await UserModel.create({
       email,
+      userId,
       username, // Thêm username vào đây
       provider: "google",
       verified: true,

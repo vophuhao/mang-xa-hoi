@@ -6,7 +6,7 @@ import PostModel from "@/models/post.model";
 import SavedPostModel from "@/models/savedPost.model";
 import ErrorFactory from "@/utils/ErrorFactory";
 import mongoose from "mongoose";
-
+import UserModel from "@/models/user.model";
 export type CreateNewPost = {
   user: mongoose.Types.ObjectId;
   caption?: string;
@@ -71,8 +71,13 @@ export class PostService {
       })
     );
 
-    const mentionIds: mongoose.Types.ObjectId[] = (data.mentions || [])
-      .map(id => new mongoose.Types.ObjectId(id));
+
+    const userDocs = await UserModel.find({
+      userId: { $in: data.mentions || [] }
+    }).select("_id");
+
+    // Lấy mảng ObjectId
+    const mentionIds = userDocs.map(u => u._id);
 
 
     // Create location object if provided
