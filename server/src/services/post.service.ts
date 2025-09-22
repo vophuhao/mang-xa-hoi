@@ -1,14 +1,14 @@
+import { increaseAudioUsedCount } from "@/controllers/audio.controller";
 import FollowModel from "@/models/follow.model";
 import HashtagModel from "@/models/hashtag.model";
 import LikeModel from "@/models/like.model";
 import NotificationModel from "@/models/notification.model";
 import PostModel from "@/models/post.model";
 import SavedPostModel from "@/models/savedPost.model";
-import ErrorFactory from "@/utils/ErrorFactory";
-import mongoose from "mongoose";
 import UserModel from "@/models/user.model";
-import { increaseAudioUsedCount } from "@/controllers/audio.controller";
+import ErrorFactory from "@/utils/ErrorFactory";
 import { getAudioByIdSchema } from "@/validators/audio.validator";
+import mongoose from "mongoose";
 export type CreateNewPost = {
   user: mongoose.Types.ObjectId;
   caption?: string;
@@ -48,14 +48,19 @@ export class PostService {
       throw ErrorFactory.validationFailed("Post must have at least one media item");
     }
 
-    // You can add logic here to detect video based on file extension or metadata
+    // Determine media type
+    let mediaType: "image" | "video" | "carousel" = "image";
 
-    // Determine post type (post | reel)
-    let type: "post" | "reel" = "post";
-    if (data.mediaUrls.length === 1) {
-      const url = data.mediaUrls[0]!;
-      if (url.match(/\.(mp4|mov|webm|avi)$/i)) {
-        type = "reel";
+    if (data.mediaUrls.length > 1) {
+      mediaType = "carousel";
+    } else if (data.mediaUrls.length === 1) {
+      // Check if single media is video
+      const url = data.mediaUrls[0];
+      if (url) {
+        const isVideo = /\.(mp4|webm|ogg|mov|avi|mkv)(\?.*)?$/i.test(url) || url.includes("video");
+        if (isVideo) {
+          mediaType = "video";
+        }
       }
     }
 
@@ -77,18 +82,15 @@ export class PostService {
       })
     );
 
-
     const userDocs = await UserModel.find({
-      userId: { $in: data.mentions || [] }
+      userId: { $in: data.mentions || [] },
     }).select("_id");
 
     // Lấy mảng ObjectId
     const mentionIds = userDocs.map(u => u._id);
 
-
     // Create location object if provided
     const location = data.location ? { name: data.location } : undefined;
-
 
     let audioObjectId: mongoose.Types.ObjectId | undefined = undefined;
     if (data.audioId) {
@@ -117,7 +119,6 @@ export class PostService {
     });
 
     // Update hashtag counts
-
 
     // Create notifications for mentioned users
     if (data.mentions && data.mentions.length > 0) {
@@ -270,7 +271,6 @@ export class PostService {
     return { isLiked, likeCount };
   }
 
-
   /**
    * Delete a post
    */
@@ -299,11 +299,8 @@ export class PostService {
 
     // Decrement hashtag counts
     if (post.tags && post.tags.length > 0) {
-      await Promise.all(
-        post.tags.map(tag => HashtagModel.decrementPostCount(tag.toString()))
-      );
+      await Promise.all(post.tags.map(tag => HashtagModel.decrementPostCount(tag.toString())));
     }
-
 
     // Delete the post
     await PostModel.findByIdAndDelete(postId);
@@ -340,7 +337,7 @@ export class PostService {
 
         // Ép kiểu rõ ràng cho Promise.all
         const hashtagIds: mongoose.Types.ObjectId[] = await Promise.all(
-          hashtagNames.map(async (name) => {
+          hashtagNames.map(async name => {
             const hashtag = await HashtagModel.incrementPostCount(name);
             if (!hashtag) throw new Error("Hashtag creation failed"); // tránh null
             return hashtag._id as mongoose.Types.ObjectId;
@@ -388,10 +385,16 @@ export class PostService {
               { $multiply: ["$commentCount", 5] },
               { $multiply: ["$shareCount", 4] },
               { $multiply: ["$viewCount", 0] },
-              { $cond: [{ $gte: ["$createdAt", new Date(Date.now() - 1000 * 60 * 60 * 24)] }, 1000, 0] }
-            ]
-          }
-        }
+              {
+                $cond: [
+                  { $gte: ["$createdAt", new Date(Date.now() - 1000 * 60 * 60 * 24)] },
+                  1000,
+                  0,
+                ],
+              },
+            ],
+          },
+        },
       },
       // Thông tin user
       {
@@ -399,8 +402,8 @@ export class PostService {
           from: "users",
           localField: "user",
           foreignField: "_id",
-          as: "userInfo"
-        }
+          as: "userInfo",
+        },
       },
       { $unwind: "$userInfo" },
 
@@ -410,16 +413,16 @@ export class PostService {
           from: "comments",
           localField: "_id",
           foreignField: "post",
-          as: "commentsInfo"
-        }
+          as: "commentsInfo",
+        },
       },
       {
         $lookup: {
           from: "users",
           localField: "commentsInfo.user",
           foreignField: "_id",
-          as: "commentUsers"
-        }
+          as: "commentUsers",
+        },
       },
 
       // Thông tin likes
@@ -428,22 +431,22 @@ export class PostService {
           from: "likes",
           localField: "_id",
           foreignField: "post",
-          as: "likeUsers"
-        }
+          as: "likeUsers",
+        },
       },
       {
         $lookup: {
           from: "audios",
           localField: "audioId",
           foreignField: "_id",
-          as: "audioInfo"
-        }
+          as: "audioInfo",
+        },
       },
       {
         $unwind: {
           path: "$audioInfo",
-          preserveNullAndEmptyArrays: true
-        }
+          preserveNullAndEmptyArrays: true,
+        },
       },
       // Lấy thông tin user của audio
       {
@@ -451,14 +454,14 @@ export class PostService {
           from: "users",
           localField: "audioInfo.user",
           foreignField: "_id",
-          as: "audioUser"
-        }
+          as: "audioUser",
+        },
       },
       {
         $unwind: {
           path: "$audioUser",
-          preserveNullAndEmptyArrays: true
-        }
+          preserveNullAndEmptyArrays: true,
+        },
       },
 
       {
@@ -496,22 +499,22 @@ export class PostService {
                     {
                       $filter: {
                         input: "$commentUsers",
-                        cond: { $eq: ["$$this._id", "$$c.user"] }
-                      }
+                        cond: { $eq: ["$$this._id", "$$c.user"] },
+                      },
                     },
-                    0
-                  ]
-                }
-              }
-            }
+                    0,
+                  ],
+                },
+              },
+            },
           },
-          likedUsers: "$likeUsers.user"
-        }
+          likedUsers: "$likeUsers.user",
+        },
       },
 
       { $sort: { score: -1, createdAt: -1 } },
       { $skip: skip },
-      { $limit: limit }
+      { $limit: limit },
     ]);
 
     return reels;
@@ -524,7 +527,6 @@ export class PostService {
     await post.incrementView(); // 👈 dùng method có sẵn trong model
     return post.viewCount; // trả lại số lượt xem sau khi tăng
   }
-
 }
 
 // Legacy function for backward compatibility

@@ -1,4 +1,3 @@
-import { Provider } from "react-redux";
 import { Route, Routes, useNavigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 
@@ -12,7 +11,6 @@ import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import ResetPassword from "@/pages/ResetPassword";
 import VerifyEmail from "@/pages/VerifyEmail";
-import store from "@/store";
 
 import Audio from "./components/Audio";
 import HashtagPanel from "./components/HashtagPanel";
@@ -30,27 +28,20 @@ function App() {
   const navigate = useNavigate();
   setNavigate(navigate);
 
-  const { currentUser } = useUser();
-
   // Splash screen logic
   const { showSplash, isAppReady, hideSplash } = useSplashScreen();
-  if (showSplash) {
-    return <SplashScreen onFinish={hideSplash} />;
-  }
-
-  if (!isAppReady) {
-    return null;
-  }
+  if (showSplash) return <SplashScreen onFinish={hideSplash} />;
+  if (!isAppReady) return null;
 
   return (
-    <Provider store={store}>
+    <>
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Feed />} />
           <Route path="explore" element={<Explore />} />
           <Route path="reels" element={<Reels />} />
           <Route path="direct/inbox" element={<DirectInbox />} />
-          <Route path="profile" element={<Profile />} />
+          <Route path=":username" element={<Profile />} />
           <Route path="audio/:id" element={<Audio />} />
           <Route path="hashtags/:name" element={<HashtagPanel />} />
           <Route path="message" element={<Messages />} />
@@ -65,7 +56,7 @@ function App() {
 
         <ToastContainer position="top-right" autoClose={2000} />
       </Routes>
-    </Provider>
+    </>
   );
 }
 

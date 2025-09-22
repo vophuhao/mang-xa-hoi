@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useDispatch, useSelector } from "react-redux";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
@@ -7,7 +8,7 @@ import MobileFooter from "@/components/MobileFooter";
 import MobileHeader from "@/components/MobileHeader";
 import Sidebar from "@/components/SideBar";
 import SidePanel from "@/components/SidePanel";
-import useUser from "@/hooks/useUser";
+import { USER_QUERY_KEYS } from "@/hooks/useUser";
 import {
   closePanels,
   isPanelMenu,
@@ -37,10 +38,9 @@ const Layout = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const { activeMenu, isCollapsed, isMobile } = useSelector(
-    (state) => state.layout
-  );
-  const { currentUser } = useUser();
+  const { activeMenu, isCollapsed, isMobile } = useSelector((state) => state.layout);
+  const queryClient = useQueryClient();
+  const currentUser = queryClient.getQueryData(USER_QUERY_KEYS.currentUser).data;
 
   // Sync activeMenu with current route on mount/route change
   useEffect(() => {
@@ -117,40 +117,15 @@ const Layout = () => {
 
       {/* Desktop/Tablet Sidebar */}
       {!isMobile && (
-        <Sidebar
-          activeMenu={activeMenu}
-          isCollapsed={isCollapsed}
-          onMenuClick={handleMenuClick}
-        />
+        <Sidebar activeMenu={activeMenu} isCollapsed={isCollapsed} onMenuClick={handleMenuClick} />
       )}
 
       {/* Side Panel (Search/Notifications) */}
-      <SidePanel
-        activeMenu={activeMenu}
-        onClose={handleOutsideClick}
-        isMobile={isMobile}
-      />
+      <SidePanel activeMenu={activeMenu} onClose={handleOutsideClick} isMobile={isMobile} />
 
       {/* Main Content Area */}
-      <div className="flex flex-1 overflow-hidden">
-        <div
-          className="scrollbar-hide flex-1 overflow-y-auto"
-          onClick={handleOutsideClick}
-        >
-          <div className={`mx-auto ${isMobile ? "px-4" : ""}`}>
-            <Outlet />
-          </div>
-        </div>
-
-        {/* Right Sidebar Placeholder - Desktop only */}
-        {!isMobile &&
-          !isCollapsed &&
-          activeMenu === "home" &&
-          !isPanelMenu(activeMenu) && (
-            <div className="hidden w-80 xl:block">
-              {/* Right sidebar content here */}
-            </div>
-          )}
+      <div className="scrollbar-hide flex-1 overflow-y-auto" onClick={handleOutsideClick}>
+        <Outlet />
       </div>
 
       {/* Mobile Footer */}

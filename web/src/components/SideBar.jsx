@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   Bell,
@@ -12,7 +12,7 @@ import {
   MessageCircle,
   Moon,
   PlusSquare,
-  Search, // icon ba gạch (lucide-react)
+  Search,
   Settings,
   Sun,
   SwitchCamera,
@@ -23,9 +23,8 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
 import logo_pixyy from "@/assets/images/logo_pixyy.png";
-import queryClient from "@/config/queryClient";
 import useTheme from "@/hooks/useTheme";
-import useUser from "@/hooks/useUser";
+import { USER_QUERY_KEYS } from "@/hooks/useUser";
 import { logout } from "@/lib/api";
 import CreatePostModal from "@/modals/CreatePostModal";
 
@@ -35,7 +34,8 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const { theme, changeTheme } = useTheme();
-  const { currentUser } = useUser();
+  const queryClient = useQueryClient();
+  const currentUser = queryClient.getQueryData(USER_QUERY_KEYS.currentUser).data;
 
   const navItems = [
     { id: "home", label: "Trang chủ", icon: <Home size={24} /> },
@@ -60,8 +60,7 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
   });
 
   const handleThemeToggle = () => {
-    const nextTheme =
-      theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
+    const nextTheme = theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
     changeTheme(nextTheme);
   };
 
@@ -186,10 +185,7 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
       <div
         className={`relative flex items-center py-8 ${isCollapsed ? "justify-center px-3" : "px-6"}`}
       >
-        <button
-          onClick={() => onMenuClick("home")}
-          className="transition-opacity hover:opacity-80"
-        >
+        <button onClick={() => onMenuClick("home")} className="transition-opacity hover:opacity-80">
           <span
             className={`font-pacifico overflow-hidden pb-3 text-4xl font-normal tracking-tight whitespace-nowrap text-black dark:text-white ${isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"} `}
           >
@@ -263,9 +259,7 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
           <Menu
             size={24}
             className={`flex-shrink-0 transition-colors duration-200 ${
-              activeMenu === "more"
-                ? "text-black dark:text-white"
-                : "text-black dark:text-white"
+              activeMenu === "more" ? "text-black dark:text-white" : "text-black dark:text-white"
             }`}
           />
           <span
