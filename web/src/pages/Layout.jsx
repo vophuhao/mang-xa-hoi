@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 import { useDispatch, useSelector } from "react-redux";
-import { Outlet } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 
 import MobileFooter from "@/components/MobileFooter";
 import MobileHeader from "@/components/MobileHeader";
@@ -12,10 +12,12 @@ import {
   isPanelMenu,
   setScreenSize,
   togglePanel,
+  isPageMenu,
 } from "@/store/slices/layoutSlice";
 
 const Layout = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { activeMenu, isCollapsed, isMobile } = useSelector(
     (state) => state.layout
   );
@@ -46,7 +48,23 @@ const Layout = () => {
   }, [dispatch]);
 
   const handleMenuClick = (menuId) => {
-    dispatch(togglePanel(menuId));
+    // ✅ Handle both panel and page menus
+    if (isPanelMenu(menuId)) {
+      dispatch(togglePanel(menuId));
+    } else if (isPageMenu(menuId)) {
+      // Navigate to page
+      if (menuId === "home") {
+        navigate("/home");
+      } else if (menuId === "explore") {
+        navigate("/home/explore");
+      } else if (menuId === "message") {
+        navigate("/home/message");
+      } else if (menuId === "profile") {
+        navigate("/home/profile");
+      }
+      // Close any open panels
+      dispatch(togglePanel(null));
+    }
   };
 
   const handleOutsideClick = () => {

@@ -18,6 +18,9 @@ export * from "./post.validator";
 // Comment validators
 export * from "./comment.validator";
 
+// Message validators
+export * from "./directMessage.validator";
+
 /**
  * Usage examples:
  *

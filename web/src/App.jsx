@@ -17,6 +17,7 @@ import store from "@/store";
 import Explore from "./components/Explore";
 import Feed from "./components/Feed";
 import Layout from "./pages/Layout";
+import Messages from "./pages/Messages";
 
 function App() {
   // set the navigate function on our API client for use in the axios error interceptor
@@ -50,6 +51,7 @@ function App() {
         <Route path="/home" element={<Layout />}>
           <Route index element={<Feed />} />
           <Route path="explore" element={<Explore />} />
+          <Route path="message" element={<Messages />} />
         </Route>
       </Routes>
 

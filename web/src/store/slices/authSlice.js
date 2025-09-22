@@ -46,14 +46,59 @@ export const registerUser = createAsyncThunk(
   }
 );
 
-const authSlice = createSlice({
-  name: "auth",
-  initialState: {
+// Thêm action để restore user state từ localStorage
+export const restoreAuthState = createAsyncThunk(
+  "auth/restoreAuthState",
+  async (_, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem("authToken");
+      const userStr = localStorage.getItem("user");
+
+      if (token && userStr) {
+        const user = JSON.parse(userStr);
+        return { user, token };
+      } else {
+        return rejectWithValue("No auth data found");
+      }
+    } catch (error) {
+      return rejectWithValue("Invalid auth data");
+    }
+  }
+);
+
+// Trong initialState, thêm restore logic:
+const getInitialAuthState = () => {
+  const token = localStorage.getItem("authToken");
+  const userStr = localStorage.getItem("user");
+
+  if (token && userStr) {
+    try {
+      const user = JSON.parse(userStr);
+      return {
+        user,
+        token,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+      };
+    } catch (error) {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("user");
+    }
+  }
+
+  return {
     user: null,
+    token: null,
+    isAuthenticated: false,
     isLoading: false,
     error: null,
-    isRegistered: false,
-  },
+  };
+};
+
+const authSlice = createSlice({
+  name: "auth",
+  initialState: getInitialAuthState(), // ✅ Use function
   reducers: {
     clearError: (state) => {
       state.error = null;
@@ -107,6 +152,14 @@ const authSlice = createSlice({
       .addCase(refreshTokenThunk.rejected, (state, action) => {
         state.error = action.payload;
         state.user = null; // Clear user on refresh failure
+      })
+      // Restore Auth State
+      .addCase(restoreAuthState.fulfilled, (state, action) => {
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+        state.isAuthenticated = true;
+        state.isLoading = false;
+        state.error = null;
       });
   },
 });

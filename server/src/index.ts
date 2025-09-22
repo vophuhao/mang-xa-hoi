@@ -10,6 +10,7 @@ import errorHandler from "@/middleware/errorHandler";
 import analyticsRoutes from "@/routes/analytics.route";
 import authRoutes from "@/routes/auth.route";
 import commentRoutes from "@/routes/comment.route";
+import directMessageRoutes from "@/routes/directMessage.route";
 import hashtagRoutes from "@/routes/hashtag.route";
 import notificationRoutes from "@/routes/notification.route";
 import postRoutes from "@/routes/post.route";
@@ -54,7 +55,9 @@ app.use("/saved", authenticate, savedPostRoutes);
 app.use("/stories", authenticate, storyRoutes);
 app.use("/hashtags", authenticate, hashtagRoutes);
 app.use("/analytics", authenticate, analyticsRoutes);
-app.use("/media",authenticate,mediaRoutes)
+app.use("/media", authenticate, mediaRoutes);
+app.use("/messages", authenticate, directMessageRoutes);
+
 // error handler
 app.use(errorHandler);
 
