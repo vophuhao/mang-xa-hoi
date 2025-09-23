@@ -16,10 +16,13 @@ export interface MessageData {
     coordinates: [number, number];
   };
   replyTo?: string;
+  conversationId?: string;
+  tempId?: string;
 }
 
 export interface TypingData {
   partnerId: string;
+  conversationId?: string;
 }
 
 export interface ReadMessageData {
@@ -33,9 +36,25 @@ export interface ReactMessageData {
   partnerId: string;
 }
 
-// Extend Socket.IO types
+export interface JoinConversationData {
+  conversationId: string;
+}
+
+export interface UserPresenceData {
+  userId: string;
+  socketId: string;
+  status: 'online' | 'offline';
+}
+
+// ✅ Extend Socket.IO types
 declare module "socket.io" {
   interface Socket {
     userId: string;
+    user?: {
+      id: string;
+      username?: string;
+      fullName?: string;
+      avatarUrl?: string;
+    };
   }
 }
