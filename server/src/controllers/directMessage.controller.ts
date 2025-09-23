@@ -44,7 +44,7 @@ export const sendMessageHandler = catchErrors(async (req: AuthenticatedRequest, 
  */
 export const getConversationHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
   const { partnerId } = getConversationSchema.parse(req.params);
-  const { page = 1, limit = 50 } = req.query as any;
+  const { page = 1, limit = 10 } = req.query as any;
 
   const result = await DirectMessageService.getConversation({
     userId: (req.userId as any).toString(),

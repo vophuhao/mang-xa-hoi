@@ -81,7 +81,7 @@ export const getCommentReplies = async (commentId) =>
 export const sendMessage = async (data) => API.post("/messages", data);
 export const getConversations = async (page = 1, limit = 20) =>
   API.get(`/messages/conversations?page=${page}&limit=${limit}`);
-export const getConversation = async (partnerId, page = 1, limit = 50) =>
+export const getConversation = async (partnerId, page = 1, limit = 10) =>
   API.get(`/messages/conversation/${partnerId}?page=${page}&limit=${limit}`);
 export const getMessageById = async (messageId) =>
   API.get(`/messages/${messageId}`);

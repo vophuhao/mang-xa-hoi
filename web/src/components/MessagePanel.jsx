@@ -1,16 +1,21 @@
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 
-import { useSelector } from "react-redux";
+import useAuth from "@/hooks/useAuth";
 
 import { 
   getConversations, 
   getConversation, 
   sendMessage,
   markAsRead,
+  markAllAsRead,
   reactToMessage 
 } from "../lib/api";
 
 export default function MessagePanel() {
+  const { user } = useAuth();
+
+  const userId = user?.data?._id;
+
   const [selectedChat, setSelectedChat] = useState(null);
   const [conversations, setConversations] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -18,11 +23,14 @@ export default function MessagePanel() {
   const [error, setError] = useState(null);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [newMessage, setNewMessage] = useState("");
-  
-  const { user } = useSelector((state) => state.auth);
 
-  // ✅ Debug user state
-  console.log("👤 Current user:", user);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef();
+  const isInitialLoad = useRef(true);
 
   // Lấy danh sách conversations khi component mount
   useEffect(() => {
@@ -32,11 +40,32 @@ export default function MessagePanel() {
   // Lấy messages khi chọn chat
   useEffect(() => {
     if (selectedChat) {
-      console.log("🎯 Selected chat:", selectedChat);
-      console.log("🎯 Partner ID:", selectedChat.partner._id);
-      fetchMessages(selectedChat.partner._id);
+      setPage(1);
+      isInitialLoad.current = true;
+      fetchMessages(selectedChat.partner._id, 1);
     }
   }, [selectedChat]);
+
+  useEffect(() => {
+    if (isInitialLoad.current && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      isInitialLoad.current = false;
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      if (container.scrollTop === 0 && hasMore && !loadingMore) {
+        handleLoadMore();
+      }
+    };
+
+    container.addEventListener("scroll", handleScroll);
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [hasMore, loadingMore, selectedChat, page]);
 
   const fetchConversations = async () => {
     try {
@@ -65,33 +94,42 @@ export default function MessagePanel() {
     }
   };
 
-  const fetchMessages = async (partnerId) => {
+  const fetchMessages = async (partnerId, pageToLoad = 1) => {
     try {
-      console.log("🔍 Fetching messages for partner:", partnerId);
-      const response = await getConversation(partnerId, 1, 50);
-      console.log("📨 Messages response:", response);
-      
+      const response = await getConversation(partnerId, pageToLoad, 10);
       if (response && response.success && response.data) {
-        console.log("✅ Setting messages:", response.data);
-        setMessages(response.data);
+        const newMessages = response.data.slice().reverse(); // đảo lại cho đúng thứ tự cũ -> mới
+        if (pageToLoad === 1) {
+          setMessages(newMessages);
+        } else {
+          setMessages(prev => [...newMessages, ...prev]);
+        }
+        setHasMore(response.pagination.hasNext);
+
+        // Gọi markAllAsRead sau khi lấy tin nhắn thành công
+        try {
+          await markAllAsRead(partnerId);
+        } catch (err) {
+          // Silent error
+        }
+        
       } else {
-        console.log("❌ No messages found");
-        setMessages([]);
+        if (pageToLoad === 1) setMessages([]);
+        setHasMore(false);
       }
     } catch (error) {
-      console.error("💥 Error fetching messages:", error);
-      setMessages([]);
+      if (pageToLoad === 1) setMessages([]);
+      setHasMore(false);
     }
   };
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    
     if (!newMessage.trim() || !selectedChat || sendingMessage) return;
 
     try {
       setSendingMessage(true);
-      
+
       const messageData = {
         recipientId: selectedChat.partner._id,
         content: newMessage.trim(),
@@ -99,18 +137,25 @@ export default function MessagePanel() {
       };
 
       const response = await sendMessage(messageData);
-      
+
       if (response && response.success && response.data) {
-        setMessages(prev => [response.data, ...prev]);
+        setMessages(prev => [...prev, response.data]);
         setNewMessage("");
-        
-        setConversations(prev => 
-          prev.map(conv => 
-            conv.partner._id === selectedChat.partner._id 
+
+        setConversations(prev =>
+          prev.map(conv =>
+            conv.partner._id === selectedChat.partner._id
               ? { ...conv, lastMessage: response.data }
               : conv
           )
         );
+
+        // Cuộn xuống cuối sau khi gửi tin nhắn
+        setTimeout(() => {
+          if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+          }
+        }, 0);
       }
     } catch (error) {
       alert("Không thể gửi tin nhắn. Vui lòng thử lại!");
@@ -131,7 +176,7 @@ export default function MessagePanel() {
         )
       );
     } catch (error) {
-      console.error("Error marking message as read:", error);
+      // Silent error
     }
   };
 
@@ -143,7 +188,7 @@ export default function MessagePanel() {
         fetchMessages(selectedChat.partner._id);
       }
     } catch (error) {
-      console.error("Error adding reaction:", error);
+      // Silent error
     }
   };
 
@@ -194,19 +239,50 @@ export default function MessagePanel() {
 
   // ✅ Enhanced function to check if message is from current user
   const isOwnMessage = (message) => {
-    if (!user || !message) return false;
-    
-    // Check multiple possible user ID formats
-    const currentUserId = user.id || user._id;
+    if (!userId || !message) return false;
     const messageSenderId = message.sender?._id || message.sender;
-    
-    console.log("🔍 Checking message ownership:", {
-      currentUserId,
-      messageSenderId,
-      isOwn: currentUserId === messageSenderId
+    return String(userId) === String(messageSenderId);
+  };
+
+  const groupMessagesByDate = (messages) => {
+    const groups = [];
+    let lastDate = null;
+
+    messages.forEach((msg) => {
+      const msgDate = new Date(msg.createdAt);
+      const dateStr = msgDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+      if (dateStr !== lastDate) {
+        groups.push({ type: 'date', date: dateStr });
+        lastDate = dateStr;
+      }
+      groups.push({ type: 'message', message: msg });
     });
-    
-    return currentUserId === messageSenderId;
+
+    return groups;
+  };
+
+  const handleLoadMore = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+
+    // 1. Ghi lại chiều cao và vị trí scroll trước khi load thêm
+    const container = messagesContainerRef.current;
+    const prevScrollHeight = container ? container.scrollHeight : 0;
+    const prevScrollTop = container ? container.scrollTop : 0;
+
+    const nextPage = page + 1;
+    await fetchMessages(selectedChat.partner._id, nextPage);
+    setPage(nextPage);
+    setLoadingMore(false);
+
+    // 2. Sau khi messages cập nhật, điều chỉnh scrollTop để giữ vị trí cũ
+    setTimeout(() => {
+      if (container) {
+        const newScrollHeight = container.scrollHeight;
+        container.scrollTop = newScrollHeight - prevScrollHeight + prevScrollTop;
+      }
+    }, 0);
   };
 
   if (loading) {
@@ -236,9 +312,11 @@ export default function MessagePanel() {
     );
   }
 
+  const groupedMessages = groupMessagesByDate(messages);
+
   return (
-    <div className="h-screen flex">
-      {/* Danh sách chat - Left Panel */}
+    <div className="flex h-full">
+      {/* Danh sách hội thoại */}
       <div className="w-80 border-r bg-white flex-shrink-0">
         <div className="p-4 font-bold border-b bg-gray-50">
           <h2 className="text-lg">Tin nhắn</h2>
@@ -295,7 +373,7 @@ export default function MessagePanel() {
                   </div>
                   
                   <p className={`text-sm truncate ${conversation.unreadCount > 0 ? 'text-gray-900 font-medium' : 'text-gray-500'}`}>
-                    {conversation.lastMessage?.sender === user?.id ? "Bạn: " : ""}
+                    {(conversation.lastMessage?.sender?._id || conversation.lastMessage?.sender) === userId ? "Bạn: " : ""}
                     {getMessagePreview(conversation.lastMessage)}
                   </p>
                   
@@ -306,8 +384,7 @@ export default function MessagePanel() {
           )}
         </div>
       </div>
-
-      {/* Chat Area - Right Panel */}
+      {/* Khu vực chat */}
       <div className="flex-1 flex flex-col bg-white min-w-0">
         {selectedChat ? (
           <>
@@ -330,104 +407,113 @@ export default function MessagePanel() {
             </div>
             
             {/* Messages Area */}
-            <div className="flex-1 p-4 space-y-3 overflow-y-auto bg-gray-50">
+            <div
+              ref={messagesContainerRef}
+              className="flex-1 p-4 space-y-3 overflow-y-auto bg-gray-50"
+            >
               {messages.length === 0 ? (
                 <div className="text-center text-gray-500 py-8">
                   Chưa có tin nhắn nào. Hãy bắt đầu cuộc trò chuyện!
                 </div>
               ) : (
-                messages.slice().reverse().map((message) => {
-                  const isOwn = isOwnMessage(message); // ✅ Use enhanced function
-                  
-                  console.log("🔄 Rendering message:", { // Debug log
-                    messageId: message._id,
-                    content: message.content,
-                    sender: message.sender,
-                    isOwn: isOwn
-                  });
-                  
-                  return (
-                    <div key={message._id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
-                      {/* ✅ Show avatar for friend's messages */}
-                      {!isOwn && (
-                        <img
-                          src={selectedChat.partner?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedChat.partner?.username || 'User')}&background=random`}
-                          alt={selectedChat.partner?.username || 'User'}
-                          className="w-8 h-8 rounded-full object-cover mr-2 mt-1"
-                        />
-                      )}
-                      
-                      <div 
-                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl cursor-pointer ${
-                          isOwn 
-                            ? 'bg-blue-500 text-white rounded-br-md' // ✅ User: Blue bubble, right side
-                            : 'bg-white text-gray-900 border rounded-bl-md' // ✅ Friend: White bubble, left side
-                        }`}
-                        onClick={() => !isOwn && !message.isRead && handleMarkAsRead(message._id)}
-                        onDoubleClick={() => handleReaction(message._id, "❤️")}
-                      >
-                        {message.messageType === "text" && (
-                          <p className="text-sm">{message.content}</p>
-                        )}
-                        
-                        {message.messageType === "media" && message.mediaUrl && (
-                          <div>
-                            {message.mediaType === "image" ? (
-                              <img 
-                                src={message.mediaUrl} 
-                                alt="Shared media" 
-                                className="rounded-lg max-w-full h-auto"
-                              />
-                            ) : (
-                              <video 
-                                src={message.mediaUrl} 
-                                controls 
-                                className="rounded-lg max-w-full h-auto"
-                              />
-                            )}
-                            {message.content && (
-                              <p className="text-sm mt-2">{message.content}</p>
-                            )}
-                          </div>
-                        )}
-                        
-                        {message.messageType === "location" && message.location && (
-                          <div>
-                            <p className="text-sm">📍 {message.location.name}</p>
-                            <p className="text-xs opacity-75">
-                              {message.location.coordinates[1]}, {message.location.coordinates[0]}
-                            </p>
-                          </div>
-                        )}
-                        
-                        <div className={`text-xs mt-1 opacity-75 ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
-                          {formatTime(message.createdAt)}
-                          {isOwn && message.isRead && " • Đã xem"}
+                <>
+                  {groupedMessages.map((item, idx) => {
+                    if (item.type === 'date') {
+                      return (
+                        <div key={`date-${idx}`} className="flex items-center my-4">
+                          <div className="flex-grow border-t border-gray-300"></div>
+                          <span className="mx-4 text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{item.date}</span>
+                          <div className="flex-grow border-t border-gray-300"></div>
                         </div>
-
-                        {/* Reactions */}
-                        {message.reactions && message.reactions.length > 0 && (
-                          <div className="flex space-x-1 mt-1">
-                            {message.reactions.map((reaction, idx) => (
-                              <span key={idx} className="text-xs">
-                                {reaction.emoji}
-                              </span>
-                            ))}
+                      );
+                    }
+                    // Tin nhắn
+                    const message = item.message;
+                    const isOwn = isOwnMessage(message);
+                    return (
+                      <div key={message._id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                        {/* ✅ Show avatar for friend's messages */}
+                        {!isOwn && (
+                          <img
+                            src={selectedChat.partner?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedChat.partner?.username || 'User')}&background=random`}
+                            alt={selectedChat.partner?.username || 'User'}
+                            className="w-8 h-8 rounded-full object-cover mr-2 mt-1"
+                          />
+                        )}
+                        
+                        <div 
+                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl cursor-pointer ${
+                            isOwn 
+                              ? 'bg-blue-500 text-white rounded-br-md'
+                              : 'bg-white text-gray-900 border rounded-bl-md'
+                          }`}
+                          onClick={() => !isOwn && !message.isRead && handleMarkAsRead(message._id)}
+                          onDoubleClick={() => handleReaction(message._id, "❤️")}
+                        >
+                          {message.messageType === "text" && (
+                            <p className="text-sm">{message.content}</p>
+                          )}
+                          
+                          {message.messageType === "media" && message.mediaUrl && (
+                            <div>
+                              {message.mediaType === "image" ? (
+                                <img 
+                                  src={message.mediaUrl} 
+                                  alt="Shared media" 
+                                  className="rounded-lg max-w-full h-auto"
+                                />
+                              ) : (
+                                <video 
+                                  src={message.mediaUrl} 
+                                  controls 
+                                  className="rounded-lg max-w-full h-auto"
+                                />
+                              )}
+                              {message.content && (
+                                <p className="text-sm mt-2">{message.content}</p>
+                              )}
+                            </div>
+                          )}
+                          
+                          {message.messageType === "location" && message.location && (
+                            <div>
+                              <p className="text-sm">📍 {message.location.name}</p>
+                              <p className="text-xs opacity-75">
+                                {message.location.coordinates[1]}, {message.location.coordinates[0]}
+                              </p>
+                            </div>
+                          )}
+                          
+                          <div className={`text-xs mt-1 opacity-75 ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
+                            {formatTime(message.createdAt)}
+                            {isOwn && message.isRead && " • Đã xem"}
                           </div>
+
+                          {/* Reactions */}
+                          {message.reactions && message.reactions.length > 0 && (
+                            <div className="flex space-x-1 mt-1">
+                              {message.reactions.map((reaction, idx) => (
+                                <span key={idx} className="text-xs">
+                                  {reaction.emoji}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* ✅ Show avatar for user's messages */}
+                        {isOwn && (
+                          <img
+                            src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || user?.username || 'You')}&background=random`}
+                            alt="You"
+                            className="w-8 h-8 rounded-full object-cover ml-2 mt-1"
+                          />
                         )}
                       </div>
-                      
-                      {/* ✅ Show avatar for user's messages */}
-                      {isOwn && (
-                        <img
-                          src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || user?.username || 'You')}&background=random`}
-                          alt="You"
-                          className="w-8 h-8 rounded-full object-cover ml-2 mt-1"
-                        />
-                      )}
-                    </div>
-                  );
-                })
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </>
               )}
             </div>
             

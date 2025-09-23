@@ -133,7 +133,7 @@ export class DirectMessageService {
   /**
    * Get conversation between two users
    */
-  static async getConversation({ userId, partnerId, page = 1, limit = 50 }: GetConversationParams) {
+  static async getConversation({ userId, partnerId, page = 1, limit = 10 }: GetConversationParams) {
     const skip = (page - 1) * limit;
 
     // Validate users exist

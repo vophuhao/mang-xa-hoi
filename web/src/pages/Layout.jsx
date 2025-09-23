@@ -11,6 +11,7 @@ import {
   closePanels,
   isPanelMenu,
   setScreenSize,
+  setIsCollapsed,
   togglePanel,
   isPageMenu,
 } from "@/store/slices/layoutSlice";
@@ -59,6 +60,7 @@ const Layout = () => {
         navigate("/home/explore");
       } else if (menuId === "message") {
         navigate("/home/message");
+        dispatch(setIsCollapsed(true));
       } else if (menuId === "profile") {
         navigate("/home/profile");
       }

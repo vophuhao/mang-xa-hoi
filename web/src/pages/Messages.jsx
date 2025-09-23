@@ -2,7 +2,7 @@ import MessagePanel from "@/components/MessagePanel";
 
 const Messages = () => {
   return (
-    <div className="h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50">
       <MessagePanel />
     </div>
   );
