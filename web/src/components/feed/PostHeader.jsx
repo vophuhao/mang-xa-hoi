@@ -1,6 +1,6 @@
 import { MoreHorizontal } from "lucide-react";
 
-const PostHeader = ({ user, location, onOptionsClick }) => {
+const PostHeader = ({ user, location, onOptionsClick, showOptions = true }) => {
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center">
@@ -40,12 +40,14 @@ const PostHeader = ({ user, location, onOptionsClick }) => {
       </div>
 
       {/* Options Button */}
-      <button
-        onClick={onOptionsClick}
-        className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-      >
-        <MoreHorizontal size={20} />
-      </button>
+      {showOptions && (
+        <button
+          onClick={onOptionsClick}
+          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+        >
+          <MoreHorizontal size={20} />
+        </button>
+      )}
     </div>
   );
 };

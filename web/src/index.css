@@ -222,7 +222,7 @@ input:-webkit-autofill {
 }
 
 /* Scrollbar hide utility */
-.scrollbar-hide {
+@utility scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }

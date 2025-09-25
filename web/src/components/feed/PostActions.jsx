@@ -77,7 +77,7 @@ const PostActions = ({ post, onCommentClick, onShareClick }) => {
       {/* Like Count */}
       {likeCount > 0 && (
         <span className="text-sm font-semibold text-gray-900 dark:text-white">
-          {likeCount.toLocaleString()} {likeCount === 1 ? "like" : "likes"}
+          {likeCount.toLocaleString()} lượt thích
         </span>
       )}
     </>
