@@ -10,8 +10,7 @@ export const sendEmailVerification = async (email) =>
   API.post("/auth/email/verification", { email });
 export const verifyEmail = async (verificationCode) =>
   API.get(`/auth/email/verify/${verificationCode}`);
-export const sendPasswordResetEmail = async (email) =>
-  API.post("/auth/password/forgot", { email });
+export const sendPasswordResetEmail = async (email) => API.post("/auth/password/forgot", { email });
 export const resetPassword = async ({ verificationCode, password }) =>
   API.post("/auth/password/reset", { verificationCode, password });
 
@@ -23,8 +22,7 @@ export const getSuggestedUsers = async () => API.get("/users/suggestions");
 // Update current user profile
 export const updateProfile = async (data) => API.patch("/users/me", data);
 // Get user profile by username
-export const getUserByUsername = async (username) =>
-  API.get(`/users/${username}`);
+export const getUserByUsername = async (username) => API.get(`/users/${username}`);
 // Get user's posts
 export const getUserPosts = async (username, page = 1, limit = 12) =>
   API.get(`/users/${username}/posts?page=${page}&limit=${limit}`);
@@ -36,17 +34,13 @@ export const getFollowing = async (username, page = 1, limit = 20) =>
   API.get(`/users/${username}/following?page=${page}&limit=${limit}`);
 // Follow/unfollow users
 export const followUser = async (userId) => API.post(`/users/${userId}/follow`);
-export const unfollowUser = async (userId) =>
-  API.delete(`/users/${userId}/follow`);
+export const unfollowUser = async (userId) => API.delete(`/users/${userId}/follow`);
 // Search users
 export const searchUsers = async (query, page = 1, limit = 20) => {
-  return API.get(
-    `/users/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`
-  );
+  return API.get(`/users/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`);
 };
 // Get user profile by userId
-export const getUserByUserId = async (userId) =>
-  API.get(`/users/userid/${userId}`);
+export const getUserByUserId = async (userId) => API.get(`/users/userid/${userId}`);
 
 // =============== SESSION API ===============
 export const getSessions = async () => API.get("/sessions");
@@ -69,20 +63,19 @@ export const getReelsFeed = (page, limit) => {
 };
 // =============== COMMENT API ===============
 // Comment CRUD for posts
-export const addComment = async (postId, data) =>
-  API.post(`/comments/post/${postId}`, data);
-export const getComments = async (postId) =>
-  API.get(`/comments/post/${postId}`);
-export const updateComment = async (commentId, data) =>
-  API.put(`/comments/${commentId}`, data);
-export const deleteComment = async (commentId) =>
-  API.delete(`/comments/${commentId}`);
+export const addComment = async (postId, data) => API.post(`/comments/post/${postId}`, data);
+export const getComments = async (postId, { page = 1, limit = 10 } = {}) => {
+  console.log(`Calling getComments API: /comments/post/${postId}?page=${page}&limit=${limit}`);
+  const response = await API.get(`/comments/post/${postId}?page=${page}&limit=${limit}`);
+  console.log("getComments response:", response);
+  return response;
+};
+export const updateComment = async (commentId, data) => API.put(`/comments/${commentId}`, data);
+export const deleteComment = async (commentId) => API.delete(`/comments/${commentId}`);
 // Comment interactions
-export const likeComment = async (commentId) =>
-  API.post(`/comments/${commentId}/like`);
+export const likeComment = async (commentId) => API.post(`/comments/${commentId}/like`);
 // Reply system
-export const getCommentReplies = async (commentId) =>
-  API.get(`/comments/${commentId}/replies`);
+export const getCommentReplies = async (commentId) => API.get(`/comments/${commentId}/replies`);
 
 // =============== MESSAGE API ===============
 // Message CRUD
@@ -91,32 +84,23 @@ export const getConversations = async (page = 1, limit = 20) =>
   API.get(`/messages/conversations?page=${page}&limit=${limit}`);
 export const getConversation = async (partnerId, page = 1, limit = 10) =>
   API.get(`/messages/conversation/${partnerId}?page=${page}&limit=${limit}`);
-export const getMessageById = async (messageId) =>
-  API.get(`/messages/${messageId}`);
-export const deleteMessage = async (messageId) =>
-  API.delete(`/messages/${messageId}`);
+export const getMessageById = async (messageId) => API.get(`/messages/${messageId}`);
+export const deleteMessage = async (messageId) => API.delete(`/messages/${messageId}`);
 
 // Message interactions
-export const markAsRead = async (messageId) =>
-  API.put(`/messages/${messageId}/read`);
+export const markAsRead = async (messageId) => API.put(`/messages/${messageId}/read`);
 export const markAllAsRead = async (partnerId) =>
   API.put(`/messages/conversation/${partnerId}/read-all`);
 export const reactToMessage = async (messageId, emoji) =>
   API.post(`/messages/${messageId}/react`, { emoji });
-export const removeReaction = async (messageId) =>
-  API.delete(`/messages/${messageId}/react`);
+export const removeReaction = async (messageId) => API.delete(`/messages/${messageId}/react`);
 
 // Message search & filters
 export const searchMessages = async (partnerId, query, page = 1, limit = 20) =>
   API.get(
     `/messages/search?partnerId=${partnerId}&query=${encodeURIComponent(query)}&page=${page}&limit=${limit}`
   );
-export const getMediaMessages = async (
-  partnerId,
-  mediaType = null,
-  page = 1,
-  limit = 20
-) => {
+export const getMediaMessages = async (partnerId, mediaType = null, page = 1, limit = 20) => {
   const params = new URLSearchParams({ partnerId, page, limit });
   if (mediaType) params.append("mediaType", mediaType);
   return API.get(`/messages/media?${params}`);
@@ -132,9 +116,7 @@ export const forwardMessage = async (messageId, recipientIds) =>
 export const getSuggestedMessagingUsers = async (page = 1, limit = 10) =>
   API.get(`/messages/suggested?page=${page}&limit=${limit}`);
 export const searchUsersToMessage = async (query, page = 1, limit = 10) =>
-  API.get(
-    `/messages/search-users?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`
-  );
+  API.get(`/messages/search-users?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`);
 
 // =============== MEDIA API ===============
 //save Media
@@ -189,8 +171,7 @@ export const checkVideoHasAudio = async (formData) => {
   });
 };
 
-export const getReelByAudioId = async (audioId) =>
-  API.get(`/audio/${audioId}/reels`);
+export const getReelByAudioId = async (audioId) => API.get(`/audio/${audioId}/reels`);
 
 export const getAudio = async (id) => API.get(`/audio/${id}`);
 
@@ -207,11 +188,9 @@ export const searchAll = async (query, page = 1, limit = 10) => {
 
 export const saveAudio = async (audioId) => API.post(`/audio/save/${audioId}`);
 
-export const checkSavedAudio = async (audioId) =>
-  API.get(`/audio/check-saved/${audioId}`);
+export const checkSavedAudio = async (audioId) => API.get(`/audio/check-saved/${audioId}`);
 
-export const increasePostView = async (postId) =>
-  API.post(`/posts/views/${postId}`);
+export const increasePostView = async (postId) => API.post(`/posts/views/${postId}`);
 
 //report
 // ✅ Hàm gọi API chuẩn theo backend

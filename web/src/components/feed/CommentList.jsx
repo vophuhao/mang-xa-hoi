@@ -1,12 +1,34 @@
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Plus } from "lucide-react";
 
-import { useCommentActions, useComments } from "@/hooks/useComment";
+import { useCommentActions, useInfiniteComments } from "@/hooks/useComment";
 
 import CommentItem from "./CommentItem";
 
-const CommentList = ({ postId, currentUserId, post, onUsernameClick }) => {
-  const { data: comments, isLoading, error } = useComments(postId);
+const CommentList = ({ postId, currentUserId, post, onUsernameClick, onReplyStateChange }) => {
+  const {
+    data: commentsData,
+    isLoading,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteComments(postId, 10);
   const { likeComment, deleteComment } = useCommentActions();
+
+  // Flatten all pages of comments into a single array
+  // Server returns { success, data: [...], pagination } format
+  const comments = commentsData?.pages?.flatMap((page) => page.data || []) || [];
+
+  console.log("Infinite comments debug:", {
+    commentsData,
+    pages: commentsData?.pages,
+    comments,
+    hasNextPage,
+    isLoading,
+  });
+
+  console.log("hasNextPage value:", hasNextPage);
+  console.log("typeof hasNextPage:", typeof hasNextPage);
 
   // Create a fake comment object for post caption
   const createCaptionComment = (post) => {
@@ -23,23 +45,38 @@ const CommentList = ({ postId, currentUserId, post, onUsernameClick }) => {
     };
   };
 
-  const handleReply = (comment) => {
-    // Scroll to comment input or focus it
-    const commentInput = document.querySelector("[data-comment-input]");
-    if (commentInput) {
-      commentInput.focus();
-      commentInput.value = `@${comment.user.username} `;
+  const handleReply = (targetComment, replyingToComment = null) => {
+    // Set reply state for parent component to handle
+    if (onReplyStateChange) {
+      // If replying to a reply, mention the reply author but use the parent comment ID
+      const mentionUsername = replyingToComment
+        ? replyingToComment.user.username
+        : targetComment.user.username;
+
+      onReplyStateChange({
+        parentId: targetComment._id,
+        parentUsername: targetComment.user.username,
+        initialContent: `@${mentionUsername} `,
+      });
     }
   };
 
-  const handleLike = (commentId) => {
-    likeComment(commentId, { postId });
+  const handleLike = (commentId, additionalData) => {
+    // additionalData contains: { postId, parentId, isLiked, likeCount }
+    likeComment({
+      commentId,
+      postId: additionalData?.postId || postId,
+      parentId: additionalData?.parentId,
+    });
   };
 
-  const handleDelete = (commentId) => {
-    if (confirm("Bạn có chắc chắn muốn xóa bình luận này?")) {
-      deleteComment(commentId, { postId });
-    }
+  const handleDelete = (commentId, additionalData) => {
+    // additionalData contains: { postId, parentId, isReply }
+    deleteComment({
+      commentId,
+      postId: additionalData?.postId || postId,
+      parentId: additionalData?.parentId,
+    });
   };
 
   const handleReport = (comment) => {
@@ -72,7 +109,7 @@ const CommentList = ({ postId, currentUserId, post, onUsernameClick }) => {
     );
   }
 
-  if (!comments?.data?.length && !post?.caption) {
+  if (!comments?.length && !post?.caption) {
     return (
       <div className="flex-1 p-2 text-center text-gray-500 dark:text-gray-400">
         <MessageCircle size={48} className="mx-auto mb-4 opacity-50" />
@@ -83,7 +120,7 @@ const CommentList = ({ postId, currentUserId, post, onUsernameClick }) => {
   }
 
   return (
-    <div className="scrollbar-hide max-h-130 flex-1 space-y-1 overflow-y-auto p-2">
+    <div className="scrollbar-hide max-h-133 flex-1 space-y-1 overflow-y-auto p-2">
       {/* Show caption as first comment if exists */}
       {post?.caption && (
         <CommentItem
@@ -96,11 +133,12 @@ const CommentList = ({ postId, currentUserId, post, onUsernameClick }) => {
           onReport={() => {}} // Caption can't be reported
           onUsernameClick={onUsernameClick}
           isCaption={true}
+          postId={postId}
         />
       )}
 
       {/* Regular comments */}
-      {comments?.data?.map((comment) => (
+      {comments?.map((comment) => (
         <CommentItem
           key={comment._id}
           comment={comment}
@@ -110,8 +148,27 @@ const CommentList = ({ postId, currentUserId, post, onUsernameClick }) => {
           onDelete={handleDelete}
           onReport={handleReport}
           onUsernameClick={onUsernameClick}
+          postId={postId}
         />
       ))}
+
+      {/* Load More Button */}
+      {hasNextPage && (
+        <div className="flex justify-center py-3">
+          <button
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 transition-colors hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-800 dark:hover:bg-gray-700"
+            aria-label="Tải thêm bình luận"
+          >
+            {isFetchingNextPage ? (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-500 border-t-transparent"></div>
+            ) : (
+              <Plus size={16} className="text-gray-600 dark:text-gray-300" />
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

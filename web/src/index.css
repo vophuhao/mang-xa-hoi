@@ -223,11 +223,11 @@ input:-webkit-autofill {
 
 /* Scrollbar hide utility */
 @utility scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
 }
 .scrollbar-hide::-webkit-scrollbar {
-  display: none;
+  display: none !important;
 }
 
 /* SearchPanel styles - Instagram style, hỗ trợ sáng/tối */

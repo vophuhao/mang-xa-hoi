@@ -16,6 +16,14 @@ const PostModal = ({ post, isOpen, onClose, onUsernameClick, onShareClick }) => 
   const queryClient = useQueryClient();
   const currentUser = queryClient.getQueryData(USER_QUERY_KEYS.currentUser).data;
   const [showPostOptions, setShowPostOptions] = useState(false);
+  const [replyState, setReplyState] = useState(null);
+
+  // Reply state structure:
+  // {
+  //   parentId: string,
+  //   parentUsername: string,
+  //   initialContent: string
+  // }
 
   // Close modal on Escape key
   useEffect(() => {
@@ -75,6 +83,16 @@ const PostModal = ({ post, isOpen, onClose, onUsernameClick, onShareClick }) => 
     alert("Đã sao chép liên kết!");
   };
 
+  // Handle reply state change
+  const handleReplyStateChange = (newReplyState) => {
+    setReplyState(newReplyState);
+  };
+
+  // Handle reply cancel
+  const handleReplyCancel = () => {
+    setReplyState(null);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
@@ -117,13 +135,14 @@ const PostModal = ({ post, isOpen, onClose, onUsernameClick, onShareClick }) => 
               />
             </div>
 
+            {/* Comments List - Scrollable area */}
             <div className="min-h-0 flex-1 overflow-y-auto">
-              {/* Comments List - Scrollable area */}
               <CommentList
                 postId={post._id}
                 currentUserId={currentUser?._id}
                 post={post}
                 onUsernameClick={onUsernameClick}
+                onReplyStateChange={handleReplyStateChange}
               />
             </div>
 
@@ -144,7 +163,15 @@ const PostModal = ({ post, isOpen, onClose, onUsernameClick, onShareClick }) => 
 
             {/* Comment Input */}
             <div className="flex-shrink-0">
-              <CommentInput postId={post._id} placeholder="Thêm bình luận..." />
+              <CommentInput
+                postId={post._id}
+                placeholder={
+                  replyState ? `Trả lời @${replyState.parentUsername}...` : "Thêm bình luận..."
+                }
+                parentId={replyState?.parentId}
+                initialContent={replyState?.initialContent}
+                onReplyCancel={handleReplyCancel}
+              />
             </div>
           </div>
         </div>
