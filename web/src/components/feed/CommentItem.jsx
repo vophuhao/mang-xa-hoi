@@ -134,7 +134,7 @@ const CommentItem = ({
             >
               <span
                 className="mr-2 cursor-pointer text-sm font-semibold text-gray-900 hover:underline dark:text-white"
-                onClick={() => onUsernameClick?.(comment?.user)}
+                onClick={() => onUsernameClick?.(comment?.user?.username)}
               >
                 {comment?.user?.username}
               </span>

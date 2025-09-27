@@ -1,28 +1,61 @@
 import { MoreHorizontal } from "lucide-react";
 
-const PostHeader = ({ user, location, onOptionsClick, showOptions = true }) => {
+const PostHeader = ({
+  user,
+  location,
+  onOptionsClick,
+  onUserClick,
+  showOptions = true,
+  className = "",
+}) => {
+  const handleUserClick = () => {
+    if (onUserClick && user) {
+      onUserClick(user.username || user._id);
+    }
+  };
+
+  const handleOptionsClick = (e) => {
+    e.stopPropagation(); // Prevent event bubbling
+    e.preventDefault(); // Prevent default behavior
+    console.log("PostHeader options clicked"); // Debug log
+    if (onOptionsClick) {
+      onOptionsClick();
+    }
+  };
+
   return (
-    <div className="flex items-center justify-between">
+    <div className={`flex items-center justify-between ${className}`}>
+      {/* User Info Section */}
       <div className="flex items-center">
-        {/* User Avatar */}
-        <div className="mr-3">
+        {/* User Avatar - Clickable */}
+        <button
+          onClick={handleUserClick}
+          className="mr-3 transition-opacity hover:opacity-80"
+          disabled={!onUserClick}
+          type="button"
+        >
           {user?.avatarUrl ? (
             <img
               src={user.avatarUrl}
               alt={user.username}
-              className="h-8 w-8 rounded-full object-cover"
+              className="h-8 w-8 cursor-pointer rounded-full object-cover ring-1 ring-gray-200 hover:ring-gray-300 dark:ring-gray-700 dark:hover:ring-gray-600"
             />
           ) : (
             <div className="h-8 w-8 rounded-full bg-gray-300 dark:bg-gray-600" />
           )}
-        </div>
+        </button>
 
-        {/* User Info */}
+        {/* User Info - Clickable */}
         <div className="flex flex-col">
           <div className="flex items-center">
-            <span className="text-sm font-semibold text-gray-900 dark:text-white">
+            <button
+              onClick={handleUserClick}
+              className="cursor-pointer text-sm font-semibold text-gray-900 transition-colors hover:underline dark:text-white"
+              disabled={!onUserClick}
+              type="button"
+            >
               {user?.username}
-            </span>
+            </button>
             {user?.isVerified && (
               <svg className="ml-1 h-3 w-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
                 <path
@@ -40,10 +73,12 @@ const PostHeader = ({ user, location, onOptionsClick, showOptions = true }) => {
       </div>
 
       {/* Options Button */}
-      {showOptions && (
+      {showOptions && onOptionsClick && (
         <button
-          onClick={onOptionsClick}
-          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          onClick={handleOptionsClick}
+          className="relative z-20 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+          aria-label="More options"
+          type="button"
         >
           <MoreHorizontal size={20} />
         </button>

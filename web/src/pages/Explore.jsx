@@ -1,10 +1,13 @@
 import { useState } from "react";
 
+import { useNavigate } from "react-router-dom";
+
 import ExploreGrid from "@/components/explore/ExploreGrid";
 import ExploreHeader from "@/components/explore/ExploreHeader";
 import PostModal from "@/components/feed/PostModal";
 
 const Explore = () => {
+  const navigate = useNavigate();
   const [selectedPost, setSelectedPost] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -14,6 +17,10 @@ const Explore = () => {
 
   const handleCloseModal = () => {
     setSelectedPost(null);
+  };
+
+  const handleUsernameClick = (username) => {
+    navigate(`/${username}`);
   };
 
   const handleSearch = (query) => {
@@ -62,7 +69,12 @@ const Explore = () => {
 
         {/* Post Modal */}
         {selectedPost && (
-          <PostModal post={selectedPost} isOpen={!!selectedPost} onClose={handleCloseModal} />
+          <PostModal
+            post={selectedPost}
+            isOpen={!!selectedPost}
+            onClose={handleCloseModal}
+            onUsernameClick={handleUsernameClick}
+          />
         )}
       </div>
     </div>

@@ -1,16 +1,33 @@
 import { useCallback, useRef, useState } from "react";
 
+import { usePostActions } from "@/hooks/usePostActions";
+
 import PostActions from "./PostActions";
 import PostCaption from "./PostCaption";
 import PostComments from "./PostComments";
 import PostHeader from "./PostHeader";
 import PostMedia from "./PostMedia";
 import PostModal from "./PostModal";
+import PostOptionsModal from "./PostOptionsModal";
 import PostTimestamp from "./PostTimestamp";
 
 const PostCard = ({ post, onUsernameClick, onTagClick, onShareClick }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const postMediaRef = useRef(null);
+
+  // Use centralized post actions hook
+  const {
+    currentUser,
+    showPostOptions,
+    handleOptionsClick,
+    handleCloseOptions,
+    handlePostEdit,
+    handlePostDelete,
+    handlePostReport,
+    handleCopyLink,
+    handleShare,
+    handleUserClick,
+  } = usePostActions(post, { onUsernameClick });
 
   const pausePostVideos = useCallback(() => {
     if (postMediaRef.current) {
@@ -38,11 +55,6 @@ const PostCard = ({ post, onUsernameClick, onTagClick, onShareClick }) => {
 
   if (!post) return null;
 
-  const handleOptionsClick = () => {
-    // TODO: Show post options menu
-    console.log("Options clicked for post:", post._id);
-  };
-
   const handleViewAllComments = () => {
     pausePostVideos();
     setIsModalOpen(true);
@@ -64,7 +76,12 @@ const PostCard = ({ post, onUsernameClick, onTagClick, onShareClick }) => {
   return (
     <article className="mb-6 space-y-2 overflow-hidden bg-transparent">
       {/* Post Header */}
-      <PostHeader user={post.user} location={post.location} onOptionsClick={handleOptionsClick} />
+      <PostHeader
+        user={post.user}
+        location={post.location}
+        onOptionsClick={handleOptionsClick}
+        onUserClick={handleUserClick}
+      />
 
       {/* Post Media */}
       <div ref={postMediaRef}>
@@ -80,7 +97,7 @@ const PostCard = ({ post, onUsernameClick, onTagClick, onShareClick }) => {
         <PostActions
           post={post}
           onCommentClick={handleCommentClick}
-          onShareClick={() => onShareClick?.(post)}
+          onShareClick={() => handleShare(post, onShareClick)}
         />
 
         {/* Post Caption */}
@@ -105,6 +122,19 @@ const PostCard = ({ post, onUsernameClick, onTagClick, onShareClick }) => {
         onClose={handleCloseModal}
         onUsernameClick={onUsernameClick}
         onShareClick={onShareClick}
+      />
+
+      {/* Post Options Modal */}
+      <PostOptionsModal
+        isOpen={showPostOptions}
+        onClose={handleCloseOptions}
+        post={post}
+        currentUserId={currentUser?._id}
+        onEdit={handlePostEdit}
+        onDelete={handlePostDelete}
+        onReport={handlePostReport}
+        onCopyLink={handleCopyLink}
+        onShare={(post) => handleShare(post, onShareClick)}
       />
     </article>
   );

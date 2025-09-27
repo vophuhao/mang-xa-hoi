@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 
-import { useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 
-import { USER_QUERY_KEYS } from "@/hooks/useUser";
+import { usePostActions } from "@/hooks/usePostActions";
 
 import CommentInput from "./CommentInput";
 import CommentList from "./CommentList";
@@ -13,10 +12,21 @@ import PostMedia from "./PostMedia";
 import PostOptionsModal from "./PostOptionsModal";
 
 const PostModal = ({ post, isOpen, onClose, onUsernameClick, onShareClick }) => {
-  const queryClient = useQueryClient();
-  const currentUser = queryClient.getQueryData(USER_QUERY_KEYS.currentUser).data;
-  const [showPostOptions, setShowPostOptions] = useState(false);
   const [replyState, setReplyState] = useState(null);
+
+  // Use centralized post actions hook
+  const {
+    currentUser,
+    showPostOptions,
+    handleOptionsClick,
+    handleCloseOptions,
+    handlePostEdit,
+    handlePostDelete,
+    handlePostReport,
+    handleCopyLink,
+    handleShare,
+    handleUserClick,
+  } = usePostActions(post, { onUsernameClick });
 
   // Reply state structure:
   // {
@@ -53,35 +63,6 @@ const PostModal = ({ post, isOpen, onClose, onUsernameClick, onShareClick }) => 
   };
 
   if (!isOpen || !post) return null;
-
-  const handleOptionsClick = () => {
-    setShowPostOptions(true);
-  };
-
-  const handlePostEdit = (post) => {
-    console.log("Edit post:", post._id);
-    // TODO: Implement edit post functionality
-  };
-
-  const handlePostDelete = (postId) => {
-    if (confirm("Bạn có chắc chắn muốn xóa bài viết này?")) {
-      console.log("Delete post:", postId);
-      // TODO: Implement delete post functionality
-      onClose(); // Close modal after deletion
-    }
-  };
-
-  const handlePostReport = (post) => {
-    console.log("Report post:", post._id);
-    alert(`Đã báo cáo bài viết của ${post.user.username}`);
-    // TODO: Implement report post functionality
-  };
-
-  const handleCopyLink = (post) => {
-    const url = `${window.location.origin}/post/${post._id}`;
-    navigator.clipboard.writeText(url);
-    alert("Đã sao chép liên kết!");
-  };
 
   // Handle reply state change
   const handleReplyStateChange = (newReplyState) => {
@@ -131,6 +112,7 @@ const PostModal = ({ post, isOpen, onClose, onUsernameClick, onShareClick }) => 
                 user={post.user}
                 location={post.location}
                 onOptionsClick={handleOptionsClick}
+                onUserClick={handleUserClick}
                 showOptions={true}
               />
             </div>
@@ -180,14 +162,14 @@ const PostModal = ({ post, isOpen, onClose, onUsernameClick, onShareClick }) => 
       {/* Post Options Modal */}
       <PostOptionsModal
         isOpen={showPostOptions}
-        onClose={() => setShowPostOptions(false)}
+        onClose={handleCloseOptions}
         post={post}
         currentUserId={currentUser?._id}
         onEdit={handlePostEdit}
         onDelete={handlePostDelete}
         onReport={handlePostReport}
         onCopyLink={handleCopyLink}
-        onShare={onShareClick}
+        onShare={handleShare}
       />
     </div>
   );

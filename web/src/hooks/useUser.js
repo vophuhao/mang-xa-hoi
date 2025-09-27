@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   followUser,
@@ -85,14 +85,20 @@ export const useUserFollowing = (username, page = 1) => {
 };
 
 /**
- * Hook to get user's posts
+ * Hook to get user's posts with infinite scroll
  */
-export const useUserPosts = (username, page = 1) => {
-  return useQuery({
-    queryKey: USER_QUERY_KEYS.userPosts(username, page),
-    queryFn: () => getUserPosts(username, page),
+export const useUserPosts = (username) => {
+  return useInfiniteQuery({
+    queryKey: ["user", "posts", username],
+    queryFn: ({ pageParam = 1 }) => getUserPosts(username, pageParam, 12),
+    getNextPageParam: (lastPage, pages) => {
+      if (!lastPage?.data?.length || lastPage.data.length < 12) {
+        return undefined;
+      }
+      return pages.length + 1;
+    },
     enabled: !!username,
-    keepPreviousData: true,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };
 

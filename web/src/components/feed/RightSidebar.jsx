@@ -117,11 +117,10 @@ const RightSidebar = ({
 
     // Fallback when no suggestions available
     return [
-      { id: 1, username: "nhutanh.na", subtitle: "Gợi ý cho bạn" },
-      { id: 2, username: "sonofgod.2507", subtitle: "Đang theo dõi ciixxcham" },
-      { id: 3, username: "t_c_a_l_t", subtitle: "Gợi ý cho bạn" },
-      { id: 4, username: "_shinzi_", subtitle: "Đang theo dõi dhknhii" },
-      { id: 5, username: "a_tuyet2902_4", subtitle: "Gợi ý cho bạn" },
+      { id: 1, username: "khoi.deptrai", subtitle: "Gợi ý cho bạn" },
+      { id: 2, username: "hao.van.sua.111", subtitle: "Đang theo dõi khoi.deptrai" },
+      { id: 3, username: "_hon_lung_", subtitle: "Gợi ý cho bạn" },
+      { id: 4, username: "_dat09", subtitle: "Đang theo dõi khoi.deptrai" },
     ].map((user) => (
       <div key={user.id} className="flex items-center justify-between">
         <div className="flex items-center">
