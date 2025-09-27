@@ -51,7 +51,8 @@ export const deleteSession = async (id) => API.delete(`/sessions/${id}`);
 export const createPost = async (data) => API.post("/posts", data);
 export const getFeedPosts = async ({ page = 1, limit = 10 } = {}) =>
   API.get(`/posts/feed?page=${page}&limit=${limit}`);
-export const getTrendingPosts = async () => API.get("/posts/trending");
+export const getTrendingPosts = async ({ page = 1, limit = 20 } = {}) =>
+  API.get(`/posts/trending?page=${page}&limit=${limit}`);
 export const getPostById = async (id) => API.get(`/posts/${id}`);
 export const updatePost = async (id, data) => API.put(`/posts/${id}`, data);
 export const deletePost = async (id) => API.delete(`/posts/${id}`);
