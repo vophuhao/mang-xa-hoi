@@ -248,7 +248,7 @@ export const getUserHashtagsHandler = catchErrors(
       .flatMap(post => post.tags || [])
       .reduce(
         (acc, tag) => {
-          acc[tag] = (acc[tag] || 0) + 1;
+          acc[String(tag)] = (acc[String(tag)] || 0) + 1;
           return acc;
         },
         {} as Record<string, number>

@@ -15,10 +15,12 @@ const CLARIFAI_MODEL_VERSION_ID = "aa7f35c01e0642fda5cf400f543e7c40"; // ID chí
 const CLARIFAI_API_URL = `https://api.clarifai.com/v2/models/${CLARIFAI_MODEL_ID}/versions/${CLARIFAI_MODEL_VERSION_ID}/outputs`;
 
 export interface MulterRequest extends Request {
+  // eslint-disable-next-line no-undef
   files?: Express.Multer.File[] | { [fieldname: string]: Express.Multer.File[] };
 }
 
 // ✅ Hàm phân tích ảnh bằng Clarifai (từ buffer)
+// eslint-disable-next-line no-undef
 export async function getHashtagsFromImageBuffer(file: Express.Multer.File): Promise<string[]> {
   const base64 = file.buffer.toString("base64");
 
@@ -47,6 +49,7 @@ export async function getHashtagsFromImageBuffer(file: Express.Multer.File): Pro
 
 // ✅ API Handler
 export const analyzeMediaHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  // eslint-disable-next-line no-undef
   let filesArray: Express.Multer.File[] = [];
 
   if (Array.isArray(req.files)) {
@@ -67,8 +70,8 @@ export const analyzeMediaHandler = catchErrors(async (req: AuthenticatedRequest,
         const tags = await getHashtagsFromImageBuffer(file);
         hashtags = hashtags.concat(tags);
       } else if (file.mimetype.startsWith("video/")) {
-        hashtags.push("#video", "#clip");
-        // 🚀 Nếu muốn phân tích video thực sự thì dùng model "general-video-recognition"
+        hashtags.push("");
+        
       }
     }
 
@@ -86,6 +89,7 @@ export const analyzeMediaHandler = catchErrors(async (req: AuthenticatedRequest,
 
 
 // Hàm upload 1 file buffer lên Cloudinary
+// eslint-disable-next-line no-undef
 const uploadBufferToCloudinary = (file: Express.Multer.File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
@@ -107,6 +111,7 @@ const uploadBufferToCloudinary = (file: Express.Multer.File): Promise<string> =>
 // Handler upload nhiều file
 export const saveMediaHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
   // Chuyển đổi files về mảng
+  // eslint-disable-next-line no-undef
   let filesArray: Express.Multer.File[] = [];
 
   if (Array.isArray(req.files)) {
@@ -130,3 +135,5 @@ export const saveMediaHandler = catchErrors(async (req: AuthenticatedRequest, re
     return res.status(500).json({ message: "Upload thất bại", error: err });
   }
 });
+
+

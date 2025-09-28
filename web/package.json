@@ -20,6 +20,7 @@
   "dependencies": {
     "@emoji-mart/data": "^1.2.1",
     "@emoji-mart/react": "^1.1.1",
+    "@ffmpeg/ffmpeg": "^0.10.1",
     "@react-oauth/google": "^0.12.2",
     "@reduxjs/toolkit": "^2.8.2",
     "@tailwindcss/vite": "^4.1.10",
@@ -30,6 +31,7 @@
     "framer-motion": "^12.23.12",
     "js-cookie": "^3.0.5",
     "lucide-react": "^0.515.0",
+    "rc-slider": "^11.1.9",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-draggable": "^4.5.0",

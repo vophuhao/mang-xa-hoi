@@ -7,14 +7,19 @@ import SavedPostModel from "@/models/savedPost.model";
 import ErrorFactory from "@/utils/ErrorFactory";
 import mongoose from "mongoose";
 import UserModel from "@/models/user.model";
+import { increaseAudioUsedCount } from "@/controllers/audio.controller";
+import { getAudioByIdSchema } from "@/validators/audio.validator";
 export type CreateNewPost = {
   user: mongoose.Types.ObjectId;
   caption?: string;
   mediaUrls: string[];
   tags?: string[];
   location?: string;
-  hideLikes: boolean,
-  disableComments: boolean
+  muteOriginal?: boolean;
+  audioId?: mongoose.Types.ObjectId;
+  hasOriginalAudio?: boolean;
+  hideLikes: boolean;
+  disableComments: boolean;
   mentions?: string[];
 };
 
@@ -33,6 +38,9 @@ export interface GetPostParams {
  * Post service containing all post-related business logic
  */
 export class PostService {
+  static getTrendingPosts(arg0: number, arg1: number) {
+    throw new Error("Method not implemented.");
+  }
   /**
    * Create a new post
    */
@@ -83,6 +91,13 @@ export class PostService {
     // Create location object if provided
     const location = data.location ? { name: data.location } : undefined;
 
+
+    const { id } = getAudioByIdSchema.parse({ id: data.audioId });
+    if (data.audioId) {
+      
+      increaseAudioUsedCount(id);
+    }
+
     const post = await PostModel.create({
       user: data.user,
       caption: data.caption,
@@ -92,6 +107,9 @@ export class PostService {
       tags: hashtagIds,
       mentions: mentionIds,
       likeCount: 0,
+      muteOriginal: data.muteOriginal,
+      hasOriginalAudio: data.hasOriginalAudio,
+      audioId: id,
       commentCount: 0,
       shareCount: 0,
       viewCount: 0,
@@ -211,50 +229,49 @@ export class PostService {
   /**
    * Like/unlike a post
    */
-  static async togglePostLike(postId: string, userId: string) {
-    const post = await PostModel.findById(postId);
+static async togglePostLike(postId: string, userId: string) {
+  const post = await PostModel.findById(postId);
+  if (!post) throw ErrorFactory.resourceNotFound("Post");
 
-    if (!post) {
-      throw ErrorFactory.resourceNotFound("Post");
-    }
+  const existingLike = await LikeModel.findOne({ user: userId, post: postId });
 
-    const existingLike = await LikeModel.findOne({ user: userId, post: postId });
+  let isLiked: boolean;
+  let likeCount: number;
 
-    if (existingLike) {
-      // Unlike
-      await LikeModel.findByIdAndDelete(existingLike._id);
-      post.likeCount = Math.max(0, post.likeCount - 1);
-      await post.save();
+  if (existingLike) {
+    await LikeModel.findByIdAndDelete(existingLike._id);
+    // atomic update
+    const updatedPost = await PostModel.findByIdAndUpdate(
+      postId,
+      { $inc: { likeCount: -1 } },
+      { new: true }
+    );
+    likeCount = updatedPost!.likeCount;
+    isLiked = false;
+  } else {
+    await LikeModel.create({ user: userId, post: postId, type: "post" });
+    const updatedPost = await PostModel.findByIdAndUpdate(
+      postId,
+      { $inc: { likeCount: 1 } },
+      { new: true }
+    );
+    likeCount = updatedPost!.likeCount;
+    isLiked = true;
 
-      return {
-        isLiked: false,
-        likeCount: post.likeCount,
-        message: "Post unliked",
-      };
-    } else {
-      // Like
-      await LikeModel.create({ user: userId, post: postId, type: "post" });
-      post.likeCount += 1;
-      await post.save();
-
-      // Create notification for post owner (if not self-liking)
-      if (post.user.toString() !== userId) {
-        await NotificationModel.create({
-          recipient: post.user,
-          sender: userId,
-          type: "like",
-          post: postId,
-          message: "liked your post",
-        });
-      }
-
-      return {
-        isLiked: true,
-        likeCount: post.likeCount,
-        message: "Post liked",
-      };
+    if (post.user && post.user.toString() !== userId) {
+      await NotificationModel.create({
+        recipient: post.user,
+        sender: userId,
+        type: "like",
+        post: postId,
+        message: "liked your post",
+      });
     }
   }
+
+  return { isLiked, likeCount };
+}
+
 
   /**
    * Delete a post
@@ -360,27 +377,103 @@ export class PostService {
   /**
    * Get trending posts
    */
-  static async getTrendingPosts(page: number = 1, limit: number = 10) {
-    const skip = (page - 1) * limit;
+  static async getReelsFeed(page: number, limit: number) {
+  const skip = (page - 1) * limit;
 
-    // Get posts from last 7 days with high engagement
-    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const reels = await PostModel.aggregate([
+    { $match: { type: "reel", isHidden: false } },
+    { $addFields: { score: { 
+        $add: [
+          { $multiply: ["$likeCount", 3] },
+          { $multiply: ["$commentCount", 5] },
+          { $multiply: ["$shareCount", 4] },
+          { $multiply: ["$viewCount", 0] },
+          { $cond: [{ $gte: ["$createdAt", new Date(Date.now() - 1000*60*60*24)] }, 1000, 0] }
+        ]
+      } 
+    } },
+    // Thông tin user
+    { $lookup: {
+        from: "users",
+        localField: "user",
+        foreignField: "_id",
+        as: "userInfo"
+      }
+    },
+    { $unwind: "$userInfo" },
+    
+    // Thông tin comment
+    { $lookup: {
+        from: "comments",
+        localField: "_id",
+        foreignField: "post",
+        as: "commentsInfo"
+      }
+    },
+    { $lookup: {
+        from: "users",
+        localField: "commentsInfo.user",
+        foreignField: "_id",
+        as: "commentUsers"
+      }
+    },
 
-    const posts = await PostModel.find({
-      createdAt: { $gte: weekAgo },
-      isHidden: false,
-    })
-      .populate("user", "username fullName avatarUrl isVerified")
-      .sort({
-        likeCount: -1,
-        commentCount: -1,
-        createdAt: -1,
-      })
-      .skip(skip)
-      .limit(limit);
+    // Thông tin likes
+    { $lookup: {
+        from: "likes",
+        localField: "_id",
+        foreignField: "post",
+        as: "likeUsers"
+      }
+    },
 
-    return posts;
-  }
+    { $project: {
+        caption: 1,
+        mediaUrls: 1,
+        likeCount: 1,
+        commentCount: 1,
+        shareCount: 1,
+        viewCount: 1,
+        createdAt: 1,
+        updatedAt: 1,
+        "user._id": "$userInfo._id",
+        "user.username": "$userInfo.userId",
+        "user.avatar": "$userInfo.avatarUrl",
+        comments: {
+          $map: {
+            input: "$commentsInfo",
+            as: "c",
+            in: {
+              _id: "$$c._id",
+              content: "$$c.content",
+              user: {
+                $arrayElemAt: [
+                  {
+                    $filter: {
+                      input: "$commentUsers",
+                      cond: { $eq: ["$$this._id", "$$c.user"] }
+                    }
+                  },
+                  0
+                ]
+              }
+            }
+          }
+        },
+        likedUsers: "$likeUsers.user"
+      }
+    },
+
+    { $sort: { score: -1, createdAt: -1 } },
+    { $skip: skip },
+    { $limit: limit }
+  ]);
+
+  return reels;
+}
+
+
+
 }
 
 // Legacy function for backward compatibility

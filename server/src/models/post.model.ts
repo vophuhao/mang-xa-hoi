@@ -29,6 +29,10 @@ export interface PostDocument extends mongoose.Document {
   // Virtual fields
   comments?: any[]; // Virtual populate for comments
 
+  muteOriginal ?: boolean; // for reels
+  audioId ?: mongoose.Types.ObjectId;
+  hasOriginalAudio ?: boolean;
+
   // Methods
   incrementComment(): Promise<PostDocument>;
   decrementComment(): Promise<PostDocument>;
@@ -99,6 +103,12 @@ const postSchema = new mongoose.Schema<PostDocument>(
         ref: "User",
       },
     ],
+    audioId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Audio",
+    },
+    muteOriginal: { type: Boolean, default: false },
+    hasOriginalAudio: { type: Boolean, default: false },
 
     // Social metrics
     likeCount: { type: Number, default: 0, min: 0 },

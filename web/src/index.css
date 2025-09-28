@@ -229,3 +229,17 @@ input:-webkit-autofill {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Ẩn scrollbar cross-browser */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE, Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+/* Giữ chỗ cho scrollbar để không bị lệch giữa Chrome và Edge */
+.scrollbar-stable {
+  scrollbar-gutter: stable both-edges;
+}

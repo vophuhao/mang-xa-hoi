@@ -32,7 +32,7 @@ API.interceptors.response.use(
       } catch (error) {
         // handle refresh errors by clearing the query cache & redirecting to login
         queryClient.clear();
-        navigate("/home", {
+        navigate("/login", {
           state: {
             redirectUrl: window.location.pathname,
           },
