@@ -55,14 +55,14 @@ const Layout = () => {
     } else if (isPageMenu(menuId)) {
       // Navigate to page
       if (menuId === "home") {
-        navigate("/home");
+        navigate("/");
       } else if (menuId === "explore") {
-        navigate("/home/explore");
+        navigate("/explore");
       } else if (menuId === "message") {
-        navigate("/home/message");
+        navigate("/message");
         dispatch(setIsCollapsed(true));
       } else if (menuId === "profile") {
-        navigate("/home/profile");
+        navigate("/profile");
       }
       // Close any open panels
       dispatch(togglePanel(null));
