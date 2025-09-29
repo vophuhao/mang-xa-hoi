@@ -2,18 +2,18 @@ import { useRef, useState, useEffect } from "react";
 
 import useAuth from "@/hooks/useAuth";
 
-import { 
-  getConversations, 
-  getConversation, 
+import {
+  getConversations,
+  getConversation,
   sendMessage,
-  markAsRead,
+  markAsRead, // giữ lại
   markAllAsRead,
-  reactToMessage 
+  reactToMessage,
+  uploadMedia
 } from "../lib/api";
 
 export default function MessagePanel() {
   const { user } = useAuth();
-
   const userId = user?.data?._id;
 
   const [selectedChat, setSelectedChat] = useState(null);
@@ -23,6 +23,7 @@ export default function MessagePanel() {
   const [error, setError] = useState(null);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [newMessage, setNewMessage] = useState("");
+  const [selectedImages, setSelectedImages] = useState([]);
 
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -31,6 +32,9 @@ export default function MessagePanel() {
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef();
   const isInitialLoad = useRef(true);
+  const imageInputRef = useRef(null);
+
+  const hasText = newMessage.trim().length > 0;
 
   // Lấy danh sách conversations khi component mount
   useEffect(() => {
@@ -71,12 +75,11 @@ export default function MessagePanel() {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await getConversations(1, 20);
-      
+
       if (response && response.success && response.data) {
         const conversationsData = response.data;
-        
         if (Array.isArray(conversationsData)) {
           setConversations(conversationsData);
         } else {
@@ -123,47 +126,78 @@ export default function MessagePanel() {
     }
   };
 
+  // Xử lý chọn ảnh
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files);
+    const previews = files.map(file => ({
+      file,
+      url: URL.createObjectURL(file)
+    }));
+    setSelectedImages(prev => [...prev, ...previews]);
+  };
+
+  // Xoá ảnh đã chọn
+  const handleRemoveImage = (idx) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  // Gửi tin nhắn (ảnh trước, text sau)
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !selectedChat || sendingMessage) return;
+    if (sendingMessage || (!newMessage.trim() && selectedImages.length === 0) || !selectedChat) return;
 
-    try {
-      setSendingMessage(true);
+    setSendingMessage(true);
 
-      const messageData = {
+    let mediaUrls = [];
+    // Upload ảnh lên Cloudinary
+    if (selectedImages.length > 0) {
+      const formData = new FormData();
+      selectedImages.forEach(img => {
+        formData.append("files", img.file);
+      });
+      const res = await uploadMedia(formData);
+      console.log("Kết quả uploadMedia:", res); // Log toàn bộ response
+      if (res?.urls && Array.isArray(res.urls)) {
+        mediaUrls = res.urls;
+        console.log("Các url ảnh nhận được:", mediaUrls); // Log mảng url
+      } else {
+        console.log("Không nhận được urls từ Cloudinary!");
+      }
+    }
+
+    // Gửi từng ảnh trước
+    for (const url of mediaUrls) {
+      console.log("Gửi tin nhắn với mediaUrl:", url); // Log từng url trước khi gửi
+      await sendMessage({
+        recipientId: selectedChat.partner._id,
+        messageType: "media",
+        mediaUrl: url,
+        mediaType: "image"
+      });
+    }
+
+    // Sau đó gửi text (nếu có)
+    if (newMessage.trim()) {
+      await sendMessage({
         recipientId: selectedChat.partner._id,
         content: newMessage.trim(),
         messageType: "text"
-      };
-
-      const response = await sendMessage(messageData);
-
-      if (response && response.success && response.data) {
-        setMessages(prev => [...prev, response.data]);
-        setNewMessage("");
-
-        setConversations(prev =>
-          prev.map(conv =>
-            conv.partner._id === selectedChat.partner._id
-              ? { ...conv, lastMessage: response.data }
-              : conv
-          )
-        );
-
-        // Cuộn xuống cuối sau khi gửi tin nhắn
-        setTimeout(() => {
-          if (messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-          }
-        }, 0);
-      }
-    } catch (error) {
-      alert("Không thể gửi tin nhắn. Vui lòng thử lại!");
-    } finally {
-      setSendingMessage(false);
+      });
     }
+
+    setSelectedImages([]);
+    setNewMessage("");
+    setSendingMessage(false);
+    fetchMessages(selectedChat.partner._id, 1);
+
+    setTimeout(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      }
+    }, 0);
   };
 
+  // Giữ lại markAsRead cho từng message
   const handleMarkAsRead = async (messageId) => {
     try {
       await markAsRead(messageId);
@@ -518,26 +552,68 @@ export default function MessagePanel() {
             </div>
             
             {/* Message Input */}
-            <form onSubmit={handleSendMessage} className="p-4 border-t bg-white flex space-x-3">
-              <input
-                type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Nhắn tin..."
-                className="flex-1 rounded-full border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                disabled={sendingMessage}
-              />
-              <button 
-                type="submit"
-                disabled={!newMessage.trim() || sendingMessage}
-                className={`px-6 py-2 rounded-full font-medium transition-colors ${
-                  newMessage.trim() && !sendingMessage
-                    ? 'bg-blue-500 hover:bg-blue-600 text-white' 
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                {sendingMessage ? "..." : "Gửi"}
-              </button>
+            <form onSubmit={handleSendMessage} className="p-4 border-t bg-white flex flex-col space-y-2">
+              {/* Ảnh xem trước */}
+              {selectedImages.length > 0 && (
+                <div className="flex space-x-2 mb-2">
+                  {selectedImages.map((img, idx) => (
+                    <div key={idx} className="relative">
+                      <img src={img.url} alt="preview" className="w-16 h-16 object-cover rounded" />
+                      <button
+                        type="button"
+                        className="absolute top-0 right-0 bg-black bg-opacity-50 text-white rounded-full px-1"
+                        onClick={() => handleRemoveImage(idx)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center space-x-2">
+                {/* Emoji */}
+                <button type="button" className="text-2xl px-2">😊</button>
+                {/* Ô nhập tin nhắn */}
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Nhắn tin..."
+                  className="flex-1 rounded-full border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={sendingMessage}
+                />
+                {/* Nút chọn ảnh */}
+                {!hasText && (
+                  <>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      style={{ display: "none" }}
+                      ref={imageInputRef}
+                      onChange={handleImageChange}
+                    />
+                    <button
+                      type="button"
+                      className="text-xl px-2"
+                      title="Chọn ảnh"
+                      onClick={() => imageInputRef.current.click()}
+                    >
+                      🖼️
+                    </button>
+                  </>
+                )}
+                {/* Nút gửi */}
+                {(hasText || selectedImages.length > 0) && (
+                  <button
+                    type="submit"
+                    disabled={sendingMessage}
+                    className="px-6 py-2 rounded-full font-medium bg-blue-500 hover:bg-blue-600 text-white transition-colors"
+                  >
+                    Gửi
+                  </button>
+                )}
+              </div>
             </form>
           </>
         ) : (
