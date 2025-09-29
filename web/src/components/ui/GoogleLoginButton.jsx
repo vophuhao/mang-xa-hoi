@@ -25,7 +25,7 @@ const GoogleLoginButton = () => {
           googleId: userInfo.id,
         });
 
-        navigate("/home");
+        navigate("/");
       } catch (error) {
         console.error("Google login error:", error);
         toast.error("Đăng nhập thất bại");

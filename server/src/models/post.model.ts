@@ -28,6 +28,8 @@ export interface PostDocument extends mongoose.Document {
 
   // Virtual fields
   comments?: any[]; // Virtual populate for comments
+  audioId ?: mongoose.Types.ObjectId;
+
 
   // Methods
   incrementComment(): Promise<PostDocument>;
@@ -99,6 +101,10 @@ const postSchema = new mongoose.Schema<PostDocument>(
         ref: "User",
       },
     ],
+    audioId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Audio",
+    },
 
     // Social metrics
     likeCount: { type: Number, default: 0, min: 0 },

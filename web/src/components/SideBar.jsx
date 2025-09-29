@@ -143,6 +143,10 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
       return;
     }
 
+    if(item.id ==="reels"){
+      navigate("/reels");
+    }
+
     // Remove the early return for active menu items to allow toggling
     // if (activeMenu === item.id) return;
 

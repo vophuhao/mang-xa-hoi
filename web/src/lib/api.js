@@ -56,9 +56,12 @@ export const getTrendingPosts = async () => API.get("/posts/trending");
 export const getPostById = async (id) => API.get(`/posts/${id}`);
 export const updatePost = async (id, data) => API.put(`/posts/${id}`, data);
 export const deletePost = async (id) => API.delete(`/posts/${id}`);
-// Post interactions
-export const likePost = async (postId) => API.post(`/posts/${postId}/like`);
-
+export const likePost = async (id) => API.post(`/posts/${id}/like`);
+export const getReelsFeed = (page,limit) => {
+  return API.get("/posts/reels", {
+    params: { page, limit },
+  });
+};
 // =============== COMMENT API ===============
 // Comment CRUD for posts
 export const addComment = async (postId, data) =>
@@ -143,3 +146,33 @@ export const searchHashtags = async (key, page = 1, limit = 50) => {
     },
   });
 };
+
+// utils/api/audio.js
+export const getAudioList = async (q = "") => {
+  return API.get("/audio/list", {
+    params: { q }, // thêm query param
+  });
+};
+
+
+export const trimVideo = (formData) =>
+  API.post("/audio/trim-video", formData, { responseType: "blob" });
+ 
+
+ export const fetchPreviewUrl = async (deezerId) => {
+   return API.get(`/audio/preview/${deezerId}`);
+};
+
+export const createAudio = async (data) => API.post("/audio/create", data);
+
+export const extracAudio = async (formData) => {
+  return API.post("/audio/extract", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+}
+
+export const checkVideoHasAudio = async (formData) => {
+  return API.post("/audio/check-audio", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+}

@@ -1,13 +1,32 @@
 import { useState, useRef, useEffect } from "react";
-import Picker from "@emoji-mart/react";
+
 import data from "@emoji-mart/data";
+import Picker from "@emoji-mart/react";
 import { X, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
-import useAuth from "@/hooks/useAuth";
-import { Toggle } from "@/components/ui/Toggle";
-import { analyzeMedia, createPost, searchHashtags, searchUsers, uploadMedia } from "@/lib/api";
+import Slider from "rc-slider";
 import Draggable from "react-draggable";
 import { toast } from "react-toastify";
+
 import ConfirmPopup from "@/components/popup/ConfirmPopup";
+import MusicPicker from "@/components/ui/MusicPicker";
+import { Toggle } from "@/components/ui/Toggle";
+import useAuth from "@/hooks/useAuth";
+// eslint-disable-next-line import/order
+import {
+  analyzeMedia, createPost,
+  getAudioList, searchHashtags,
+  searchUsers, uploadMedia, trimVideo,
+  extracAudio,
+  checkVideoHasAudio,
+  createAudio,
+  fetchPreviewUrl
+}
+  from "@/lib/api";
+
+import "rc-slider/assets/index.css";
+
+
+
 export default function CreatePostModal({ isOpen, onClose }) {
   const { user } = useAuth()
   const [step, setStep] = useState(1);
@@ -35,6 +54,161 @@ export default function CreatePostModal({ isOpen, onClose }) {
   const [hashtagSug, setHashtagSug] = useState([])
   const maxLength = 220;
   const [isSelecting, setIsSelecting] = useState(false);
+  const [trimRange, setTrimRange] = useState([0, 0]);
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [isTrimming, setIsTrimming] = useState(false);
+  const [thumbnails, setThumbnails] = useState([]);
+  const videoPreviewRef = useRef();
+  const draggingRef = useRef(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [selectedMusic, setSelectedMusic] = useState(null);
+  const [audioList, setAudioList] = useState([])
+  const [hasOriginalAudio, setHasOriginalAudio] = useState(false);
+  const [muteOriginal, setMuteOriginal] = useState(false);
+  const [musicObj, setMusicObj] = useState(null);
+  const musicPickerAudioRef = useRef(null);
+
+
+  const handlePlayVideo = () => {
+    if (selectedMusic) {
+      const bg = new Audio(selectedMusic.previewUrl);
+      bg.loop = true;
+      bg.play();
+      setMusicObj(bg);
+    }
+  };
+
+  const handlePauseVideo = () => {
+    if (musicObj) musicObj.pause();
+  };
+
+  const handleStopAll = () => {
+    if (musicObj) {
+      musicObj.pause();
+      setMusicObj(null);
+    }
+  };
+
+  useEffect(() => {
+    const fetchAudioList = async () => {
+      const response = await getAudioList();
+      setAudioList(response.data);
+    }
+    fetchAudioList();
+  }, []);
+
+  function startDrag(e, handleIdx) {
+    e.preventDefault();
+    draggingRef.current = handleIdx;
+    setIsDragging(true); // Bắt đầu kéo
+    document.addEventListener("mousemove", onDrag);
+    document.addEventListener("mouseup", stopDrag);
+    document.addEventListener("touchmove", onDrag);
+    document.addEventListener("touchend", stopDrag);
+  }
+
+  function stopDrag() {
+    draggingRef.current = null;
+    setIsDragging(false); // Kết thúc kéo
+    document.removeEventListener("mousemove", onDrag);
+    document.removeEventListener("mouseup", stopDrag);
+    document.removeEventListener("touchmove", onDrag);
+    document.removeEventListener("touchend", stopDrag);
+
+    if (
+      videoPreviewRef.current &&
+      images[currentIndex]?.type.startsWith("video")
+    ) {
+      videoPreviewRef.current.pause();
+      videoPreviewRef.current.currentTime = trimRange[0];
+      setCurrentTime(trimRange[0]);
+    }
+  }
+
+  function onDrag(e) {
+    if (draggingRef.current === null) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const bar = document.querySelector(".video-trim-bar");
+    const rect = bar.getBoundingClientRect();
+    let percent = (clientX - rect.left) / rect.width;
+    percent = Math.max(0, Math.min(1, percent));
+    const value = Math.round(percent * videoDuration);
+
+    setTrimRange(prev => {
+      if (draggingRef.current === 0) {
+        // Kéo trái, không vượt phải
+        return [Math.min(value, prev[1] - 1), prev[1]];
+      } else {
+        // Kéo phải, không vượt trái
+        return [prev[0], Math.max(value, prev[0] + 1)];
+      }
+    });
+  }
+
+  useEffect(() => {
+    if (
+      step === 2 &&
+      images[currentIndex]?.type.startsWith("video") &&
+      videoPreviewRef.current
+    ) {
+      videoPreviewRef.current.currentTime = trimRange[0];
+      setCurrentTime(trimRange[0]);
+    }
+    // eslint-disable-next-line
+  }, [step, currentIndex, images]);
+
+  useEffect(() => {
+    if (
+      images[currentIndex]?.type.startsWith("video") &&
+      images[currentIndex].src &&
+      videoDuration > 0
+    ) {
+      generateThumbnails(images[currentIndex].src, videoDuration);
+    }
+    // eslint-disable-next-line
+  }, [images, currentIndex, videoDuration]);
+
+  const generateThumbnails = (videoSrc, duration) => {
+    const count = 5;
+    const interval = duration / count;
+    const tempThumbnails = [];
+    const video = document.createElement("video");
+    video.src = videoSrc;
+    video.crossOrigin = "anonymous";
+    video.muted = true;
+
+    video.addEventListener("loadeddata", async () => {
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      const thumbW = 160;
+      const thumbH = 90;
+      // Tính tỉ lệ scale để fit vào thumbnail mà không bị méo
+      const scale = Math.min(thumbW / vw, thumbH / vh);
+      const drawW = vw * scale;
+      const drawH = vh * scale;
+      const offsetX = (thumbW - drawW) / 2;
+      const offsetY = (thumbH - drawH) / 2;
+
+      for (let i = 0; i < count; i++) {
+        video.currentTime = Math.min(i * interval, duration - 0.1);
+        await new Promise((resolve) => {
+          video.onseeked = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = thumbW;
+            canvas.height = thumbH;
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = "#000"; // nền đen nếu không đủ
+            ctx.fillRect(0, 0, thumbW, thumbH);
+            ctx.drawImage(video, offsetX, offsetY, drawW, drawH);
+            tempThumbnails.push(canvas.toDataURL("image/jpeg"));
+            resolve();
+          };
+        });
+      }
+      setThumbnails(tempThumbnails);
+    });
+  };
   // Hàm chọn user
   const handleSelectMentions = (user) => {
     if (!textareaRef.current) return;
@@ -266,12 +440,35 @@ export default function CreatePostModal({ isOpen, onClose }) {
     setCurrentIndex(0);
     setCaption("");
     setMentionsMedia([]);
-    setMentionsCap([]),
-      setTags([]);
+    setMentionsCap([]);
+    setTags([]);
     setHideLikes(false);
     setDisableComments(false);
     setHashtagSug([]);
     setMentionsRen([]);
+    setShowConfirm(false);
+    setShowPicker(false);
+    setPopup(null);
+    setSearch("");
+    setSuggestions([]);
+    setIsSelecting(false);
+    setTrimRange([0, 0]);
+    setVideoDuration(0);
+    setIsTrimming(false);
+    setThumbnails([]);
+    setCurrentTime(0);
+    setIsDragging(false);
+    setSelectedMusic(null);
+    setHasOriginalAudio(false);
+    setMuteOriginal(false);
+    setMusicObj((obj) => {
+      if (obj) obj.pause();
+      return null;
+    });
+    if (musicPickerAudioRef.current) {
+      musicPickerAudioRef.current.pause();
+      musicPickerAudioRef.current = null;
+    }
   };
 
   const handleImageUpload = (e) => {
@@ -312,38 +509,94 @@ export default function CreatePostModal({ isOpen, onClose }) {
 
   const handlePost = async () => {
     try {
-      setStep(3);
+      if (musicPickerAudioRef.current) {
+        musicPickerAudioRef.current.pause();
+        musicPickerAudioRef.current = null;
+      }
+      handleStopAll();
+      setStep(4);
       setIsPosting(true);
       setPostSuccess(false);
+      let audioId = selectedMusic?.deezerId || undefined;
+      let audioUrl;
+      if (audioId) {
+        const res = await fetchPreviewUrl(audioId);
+        audioUrl = res.data.previewUrl;
+      }
+      if(selectedMusic?.fileUrl)
+      {
+        audioUrl = selectedMusic.fileUrl;
+      }
+
+      const onlyOneVideo = images.length === 1 && images[0].type && images[0].type.startsWith("video");
+      // Nếu chưa chọn nhạc nền, và có video gốc, và không mute, thì tạo audio mới từ video
+      if (onlyOneVideo && hasOriginalAudio === true && muteOriginal === false && !audioId) {
+        const audioForm = new FormData();
+        audioForm.append("video", images[0].file);
+        const res = await extracAudio(audioForm);
+        const newAudio = await createAudio({
+          fileUrl: res.url,
+        });
+        if (!newAudio.success) {
+          toast.error("Tạo thất bại!");
+          setStep(3);
+          setIsPosting(false);
+          return;
+        }
+        audioId = newAudio.data._id;
+      }
+
       const formData = new FormData();
       images.forEach((img) => formData.append("files", img.file));
+
+      // Truyền đúng các trường hợp audio
+      if (muteOriginal && !audioUrl) {
+        // Tắt tiếng, không nhạc nền
+        formData.append("muteOriginal", "true");
+      } else if (muteOriginal && audioUrl) {
+        // Tắt tiếng, có nhạc nền
+        formData.append("muteOriginal", "true");
+        formData.append("audioUrl", audioUrl);
+      } else if (!muteOriginal && audioUrl) {
+        console.log("audioUrl", audioUrl);
+        // Không tắt tiếng, có nhạc nền (mix)
+        formData.append("muteOriginal", "false");
+        formData.append("audioUrl", audioUrl);
+      }
+      // Không tắt tiếng, không nhạc nền: không cần append gì thêm
+
       const imageUrls = await uploadMedia(formData);
-      // --- Lấy mentions từ caption ---
+
       const mentionsFromCaption = extractMentions(caption);
       const mentionsUserCapLast = mentionsCap.filter(id => mentionsFromCaption.includes(id));
       const mentionsUserLast = Array.from(new Set([...mentionsUserCapLast, ...mentionsMedia]));
-      // --- Lấy hashtags ---
       const tagsFromCaption = Array.from(new Set(extractHashtags(caption)));
+
+      // Chỉ thêm audioId nếu có
       const postData = {
         mediaUrls: imageUrls.urls,
         caption,
-        mentions: mentionsUserLast, // danh sách duy nhất
+        mentions: mentionsUserLast,
         tagList: tagsFromCaption,
         hideLikes,
         disableComments,
       };
+      if (audioId && selectedMusic && selectedMusic._id) {
+        postData.audioId = selectedMusic._id;
+      }
+
       const result = await createPost(postData);
 
       if (result.success) {
         setPostSuccess(true);
       } else {
         toast.error("Vui lòng thử lại");
-        setStep(2);
+        setStep(3);
       }
     } catch (err) {
       console.error(err);
       toast.error("Có lỗi xảy ra");
-      setStep(2);
+      setStep(3);
     } finally {
       setIsPosting(false);
     }
@@ -374,12 +627,70 @@ export default function CreatePostModal({ isOpen, onClose }) {
   };
 
   const handleClickStep = async () => {
-    const formData = new FormData();
-    images.forEach((img) => formData.append("files", img.file));
-    const res = await analyzeMedia(formData)
-    setHashtagSug(res.hashtags)
-    setStep(2)
-  }
+
+    if (step === 1) {
+      const formData = new FormData();
+      images.forEach((img) => formData.append("video", img.file));
+      const res = await checkVideoHasAudio(formData)
+      setHasOriginalAudio(res.hasAudio);
+    }
+
+    if (!images[currentIndex].type.startsWith("video") || images.length > 1) {
+      const formData = new FormData();
+      images.forEach((img) => formData.append("files", img.file));
+      const res = await analyzeMedia(formData)
+      setHashtagSug(res.hashtags)
+      setStep(3);
+    }
+    if (
+      step === 2 &&
+      images[currentIndex]?.type.startsWith("video") &&
+      trimRange[1] - trimRange[0] >= 1
+    ) {
+      setIsTrimming(true);
+      try {
+        // Gửi lên backend để cắt
+        const formData = new FormData();
+        formData.append("video", images[currentIndex].file);
+        formData.append("start", trimRange[0].toString()); // ép kiểu string
+        formData.append("end", trimRange[1].toString());
+        const res = await trimVideo(formData); // res là object của axios
+        const blob = res; // axios trả về blob ở res.data
+
+        const trimmedUrl = URL.createObjectURL(blob);
+        const trimmedFile = new File([blob], images[currentIndex].file.name, { type: blob.type });
+
+        const newImages = images.map((img, idx) =>
+          idx === currentIndex
+            ? { ...img, file: trimmedFile, src: trimmedUrl }
+            : img
+        );
+        setImages(newImages);
+        // dùng newImages luôn thay vì images cũ
+        const analyzeForm = new FormData();
+        newImages.forEach((img) => analyzeForm.append("files", img.file));
+
+        const analyzeRes = await analyzeMedia(analyzeForm);
+        setHashtagSug(analyzeRes.hashtags);
+
+      } catch (err) {
+        console.error(err);
+        setIsTrimming(false);
+        return;
+      }
+      setIsTrimming(false);
+    }
+
+    if (step === 2) {
+      // Tắt nhạc đang phát ở MusicPicker nếu có
+      if (musicPickerAudioRef.current) {
+        musicPickerAudioRef.current.pause();
+        musicPickerAudioRef.current = null;
+      }
+      handleStopAll();
+    }
+    setStep(step + 1);
+  };
   return (
     <div
       className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
@@ -396,7 +707,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
       <div
         className={`bg-white rounded-2xl flex flex-col shadow-xl overflow-hidden transition-all duration-300
     w-[95%] h-[90vh] max-h-[600px]  // 👈 mặc định cho mobile
-    ${step === 1 || step === 3
+    ${step === 1 || step === 4
             ? "sm:w-[550px] sm:h-[650px]"
             : "sm:w-[900px] sm:h-[650px]"}  
   `}
@@ -416,8 +727,9 @@ export default function CreatePostModal({ isOpen, onClose }) {
 
           <h2 className="font-semibold">
             {step === 1 && "Tạo bài viết mới"}
-            {step === 2 && "Chia sẻ bài viết"}
+            {step === 2 && "Tạo bài viết mới"}
             {step === 3 && "Chia sẻ bài viết"}
+            {step === 4 && "Chia sẻ bài viết"}
           </h2>
 
           {/* 👉 nút Tiếp / Chia sẻ */}
@@ -429,7 +741,16 @@ export default function CreatePostModal({ isOpen, onClose }) {
               Tiếp
             </button>
           )}
-          {step === 2 && (
+          {step === 2 && images.length > 0 && (
+            <button
+              onClick={handleClickStep}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-600 font-semibold cursor-pointer"
+              disabled={isTrimming}
+            >
+              Tiếp
+            </button>
+          )}
+          {step === 3 && (
             <button
               onClick={handlePost}
               className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-600 font-semibold cursor-pointer"
@@ -437,6 +758,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
               Chia sẻ
             </button>
           )}
+
         </div>
 
         {/* Content */}
@@ -521,8 +843,8 @@ export default function CreatePostModal({ isOpen, onClose }) {
               )}
             </div>
           )}
-          {/* Bước 2: Caption + mentions */}
-          {step === 2 && (
+          {/* Bước 3: Caption + mentions */}
+          {step === 3 && (
             <div className="flex-1 flex">
               {/* Left: Image */}
               <div className="flex-1 flex items-center justify-center bg-gray-50 relative overflow-y-auto max-h-[650px]">
@@ -532,7 +854,11 @@ export default function CreatePostModal({ isOpen, onClose }) {
                       <video
                         src={images[currentIndex].src}
                         controls
-                        className="w-full h-full object-cover cursor-pointer"
+                        muted={muteOriginal}
+                        onPlay={handlePlayVideo}
+                        onPause={handlePauseVideo}
+                        onEnded={handlePauseVideo}
+                        className="h-full object-cover cursor-pointer"
                         onClick={handleImageClick}
                       />
 
@@ -668,7 +994,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
                       alt="avatar"
                       className="w-7 h-7 rounded-full object-cover border"
                     />
-                    <span className="ml-2 font-medium">{user.data.username}</span>
+                    <span className="ml-2 font-medium">{user.data.userId}</span>
                   </div>
                   <textarea maxLength={220}
                     className="w-full h-35 resize-none p-2 text-sm outline-none border-none focus:outline-none focus:ring-0 focus:border-none"
@@ -807,7 +1133,189 @@ export default function CreatePostModal({ isOpen, onClose }) {
               </div>
             </div>
           )}
-          {step === 3 && (
+          {step === 2 && (
+            <div className="flex-1 flex">
+              {/* Left: Image */}
+              <div className="flex-1 flex items-center justify-center bg-gray-50 relative overflow-y-auto max-h-[650px]">
+                {images.length > 0 && (
+                  <>
+                    {images[currentIndex].type.startsWith("video") ? (
+                      <video
+                        ref={videoPreviewRef}
+                        src={images[currentIndex].src}
+                        controls
+                        className=" h-full object-cover cursor-pointer"
+                        muted={muteOriginal}
+                        onClick={handleImageClick}
+                        onLoadedMetadata={e => {
+                          const duration = Math.floor(e.target.duration);
+                          setVideoDuration(duration);
+                          setTrimRange([0, duration]);
+                          setCurrentTime(0);
+                        }}
+                        onTimeUpdate={e => {
+                          const time = Math.floor(e.target.currentTime);
+                          setCurrentTime(time);
+
+                          // Nếu chạm thanh phải thì dừng video
+                          if (time >= trimRange[1]) {
+                            e.target.pause();
+                            e.target.currentTime = trimRange[1];
+                          }
+                          // Không cho chạy lùi về trước thanh trái
+                          if (time < trimRange[0]) {
+                            e.target.currentTime = trimRange[0];
+                            setCurrentTime(trimRange[0]);
+                          }
+                        }}
+                      />
+                    ) : (
+                      <img
+                        src={images[currentIndex].src}
+                        alt="preview"
+                        className="w-full h-full object-cover cursor-pointer"
+                        onClick={handleImageClick}
+                      />
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* trim video */}
+              <div className="w-[320px] flex flex-col ">
+                <div className="p-4 flex-1 space-y-4">
+                  {/* UI cắt video */}
+                  {/* Thanh thumbnails + slider IG style */}
+                  {images[currentIndex]?.type.startsWith("video") && videoDuration > 0 && (
+                    <div className="mb-4">
+                      <div className="font-semibold mb-2">Thu ngắn video</div>
+                      <div className="relative h-16 mb-2  overflow-hidden bg-gray-200 flex items-center video-trim-bar">
+                        {/* Thumbnails */}
+                        {thumbnails.length === 5
+                          ? thumbnails.map((thumb, i) => (
+                            <div
+                              key={i}
+                              className="flex-1 h-full border-r last:border-none border-white relative"
+                              style={{
+                                backgroundImage: `url(${thumb})`,
+                                backgroundSize: "cover",
+                                backgroundPosition: "center"
+                              }}
+                            />
+                          ))
+                          : [...Array(5)].map((_, i) => (
+                            <div
+                              key={i}
+                              className="flex-1 h-full bg-gray-300 border-r last:border-none border-white"
+                            />
+                          ))}
+                        {/* Overlay vùng không chọn */}
+                        {!isDragging && (
+                          <div
+                            className="absolute top-0 z-40"
+                            style={{
+                              left:
+                                currentTime < trimRange[0]
+                                  ? `${(trimRange[0] / videoDuration) * 100}%`
+                                  : currentTime >= trimRange[1]
+                                    ? `${(trimRange[1] / videoDuration) * 100}%`
+                                    : `${((currentTime / videoDuration) * 100)}%`,
+                              height: "100%",
+                              width: "4px",
+                              background: "#ffffff",
+                              transition: "left 0.08s linear"
+                            }}
+                          />
+                        )}
+                        <div
+                          className="absolute top-0 left-0 h-full pointer-events-none transition-all"
+                          style={{
+                            width: `${(trimRange[0] / videoDuration) * 100}%`,
+                            background: "rgba(0,0,0,0.4)"
+                          }}
+                        />
+                        <div
+                          className="absolute top-0 right-0 h-full pointer-events-none transition-all"
+                          style={{
+                            width: `${((videoDuration - trimRange[1]) / videoDuration) * 100}%`,
+                            background: "rgba(0,0,0,0.4)"
+                          }}
+                        />
+                        {/* Thanh trắng trái */}
+                        <div
+                          className="absolute z-30 cursor-ew-resize"
+                          style={{
+                            left: `max(calc(${(trimRange[0] / videoDuration) * 100}% - 4px), -4px)`, // dịch nhẹ sang phải, không bị âm quá
+                            top: 0,
+                            height: "100%"
+                          }}
+                          onMouseDown={e => startDrag(e, 0)}
+                          onTouchStart={e => startDrag(e, 0)}
+                        >
+                          <div className="w-[8px] h-full bg-white rounded-full shadow border border-blue-400"></div>
+                        </div>
+                        {/* Thanh trắng phải */}
+                        <div
+                          className="absolute z-30 cursor-ew-resize"
+                          style={{
+                            left: `calc(${(trimRange[1] / videoDuration) * 100}% - 4px)`,
+                            top: 0,
+                            height: "100%"
+                          }}
+                          onMouseDown={e => startDrag(e, 1)}
+                          onTouchStart={e => startDrag(e, 1)}
+                        >
+                          <div className="w-[8px] h-full bg-white rounded-full shadow border border-blue-400"></div>
+                        </div>
+
+                      </div>
+                      {/* Số giây dưới mỗi thumbnail */}
+                      <div className="flex justify-between px-1 mt-1">
+                        {[0, 1, 2, 3, 4].map(i => (
+                          <span
+                            key={i}
+                            className="text-xs text-gray-600 font-semibold"
+                            style={{ width: "20%", textAlign: i === 0 ? "left" : i === 4 ? "right" : "center" }}
+                          >
+                            {Math.round((i * videoDuration) / 4)}s
+                          </span>
+                        ))}
+                      </div>
+                      {/* Slider ẩn, chỉ để điều khiển logic */}
+                      <Slider
+                        range
+                        min={0}
+                        max={videoDuration}
+                        value={trimRange}
+                        onChange={setTrimRange}
+                        step={1}
+                        allowCross={false}
+                        trackStyle={[{ background: "transparent", height: 0 }]}
+                        handleStyle={[{ opacity: 0, pointerEvents: "none" }, { opacity: 0, pointerEvents: "none" }]}
+                        railStyle={{ background: "transparent", height: 0 }}
+                      />
+                      <div className="flex justify-between text-xs mt-1 text-gray-600 font-medium">
+                        <span>{trimRange[0]}s</span>
+                        <span>{trimRange[1]}s</span>
+                      </div>
+                      <MusicPicker
+                        audioList={audioList}
+                        hasOriginalAudio={hasOriginalAudio}
+                        selected={selectedMusic}
+                        onSelect={setSelectedMusic}
+                        muteOriginal={muteOriginal} // có đang tắt không
+                        onToggleOriginal={() => setMuteOriginal(prev => !prev)}
+                        audioRef={musicPickerAudioRef}
+                      />
+                    </div>
+
+
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          {step === 4 && (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center relative">
               <div className="flex justify-center items-center">
                 {isPosting && (

@@ -3,6 +3,7 @@ import {
   deletePostHandler,
   getFeedPostsHandler,
   getPostByIdHandler,
+  getReelsFeedHandler,
   getTrendingPostsHandler,
   likePostHandler,
   updatePostHandler,
@@ -16,14 +17,14 @@ const postRoutes = Router();
 postRoutes.use(authenticate);
 
 // Post CRUD
+postRoutes.get("/reels", getReelsFeedHandler);
 postRoutes.post("/", createPostHandler);
 postRoutes.get("/feed", getFeedPostsHandler);
 postRoutes.get("/trending", getTrendingPostsHandler);
+postRoutes.post("/:postId/like", likePostHandler);
 postRoutes.get("/:id", getPostByIdHandler);
 postRoutes.put("/:id", updatePostHandler);
 postRoutes.delete("/:id", deletePostHandler);
 
-// Post interactions
-postRoutes.post("/:postId/like", likePostHandler);
 
 export default postRoutes;

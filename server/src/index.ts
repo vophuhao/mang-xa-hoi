@@ -19,7 +19,8 @@ import sessionRoutes from "@/routes/session.route";
 import storyRoutes from "@/routes/story.route";
 import userRoutes from "@/routes/user.route";
 import mediaRoutes from "./routes/media.route";
-
+import AudioRoutes from "./routes/audio.route";
+import fetch from "node-fetch";
 const app = express();
 
 // add middleware
@@ -31,6 +32,7 @@ app.use(
     credentials: true,
   })
 );
+
 app.use(cookieParser());
 
 // health check
@@ -57,6 +59,8 @@ app.use("/hashtags", authenticate, hashtagRoutes);
 app.use("/analytics", authenticate, analyticsRoutes);
 app.use("/media", authenticate, mediaRoutes);
 app.use("/messages", authenticate, directMessageRoutes);
+app.use("/audio",authenticate, AudioRoutes);
+
 
 // error handler
 app.use(errorHandler);
