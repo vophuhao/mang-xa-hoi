@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 
 import useAuth from "@/hooks/useAuth";
+import useSocket from "@/hooks/useSocket";
 
 import {
   getConversations,
@@ -15,6 +16,7 @@ import {
 export default function MessagePanel() {
   const { user } = useAuth();
   const userId = user?.data?._id;
+  const socket = useSocket();
 
   const [selectedChat, setSelectedChat] = useState(null);
   const [conversations, setConversations] = useState([]);
@@ -70,6 +72,66 @@ export default function MessagePanel() {
     container.addEventListener("scroll", handleScroll);
     return () => container.removeEventListener("scroll", handleScroll);
   }, [hasMore, loadingMore, selectedChat, page]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewMessage = (message) => {
+      const senderId = String(message.sender?._id || message.sender);
+      const recipientId = String(message.recipient?._id || message.recipient);
+      const partnerId = String(selectedChat?.partner?._id);
+
+      if (
+        selectedChat &&
+        (senderId === partnerId || recipientId === partnerId)
+      ) {
+        setMessages((prev) => {
+          // Nếu tin nhắn đã có thì không thêm nữa
+          if (prev.some((msg) => msg._id === message._id)) return prev;
+          return [...prev, message];
+        });
+        setTimeout(() => {
+          if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+          }
+        }, 0);
+      }
+
+      setConversations(prev => prev.map(conv => {
+        const partnerId = String(conv.partner._id);
+        const senderId = String(message.sender?._id || message.sender);
+        const recipientId = String(message.recipient?._id || message.recipient);
+
+        // Nếu hội thoại này là với partner đang chat
+        if (partnerId === senderId || partnerId === recipientId) {
+          return {
+            ...conv,
+            lastMessage: message,
+            unreadCount:
+              selectedChat && partnerId === String(selectedChat.partner._id)
+                ? 0 // Nếu đang mở chat này thì reset unread
+                : (conv.unreadCount || 0) + 1
+          };
+        }
+        return conv;
+      }));
+    };
+
+    socket.on("new_message", handleNewMessage);
+
+    return () => {
+      socket.off("new_message", handleNewMessage);
+    };
+    // eslint-disable-next-line
+  }, [socket, selectedChat]);
+
+  useEffect(() => {
+    if (!socket || !selectedChat || !userId) return;
+    socket.emit("join_conversation", selectedChat.partner._id);
+    return () => {
+      socket.emit("leave_conversation", selectedChat.partner._id);
+    };
+  }, [socket, selectedChat, userId]);
 
   const fetchConversations = async () => {
     try {
@@ -148,6 +210,7 @@ export default function MessagePanel() {
   // Gửi tin nhắn (media trước, text sau)
   const handleSendMessage = async (e) => {
     e.preventDefault();
+    console.log("Gửi tin nhắn");
     if (sendingMessage || (!newMessage.trim() && selectedImages.length === 0) || !selectedChat) return;
 
     setSendingMessage(true);
@@ -162,7 +225,6 @@ export default function MessagePanel() {
         mediaTypes.push(img.mediaType);
       });
       const res = await uploadMedia(formData);
-      // Nếu dùng axios, có thể là res.data.urls
       const urls = res?.urls || res?.data?.urls;
       if (urls && Array.isArray(urls)) {
         mediaUrls = urls;
@@ -173,28 +235,44 @@ export default function MessagePanel() {
     for (let i = 0; i < mediaUrls.length; i++) {
       const url = mediaUrls[i];
       const type = mediaTypes[i] || "image";
-      await sendMessage({
-        recipientId: selectedChat.partner._id,
-        messageType: "media",
-        mediaUrl: url,
-        mediaType: type
-      });
+      if (socket) {
+        socket.emit("send_message", {
+          recipientId: selectedChat.partner._id,
+          messageType: "media",
+          mediaUrl: url,
+          mediaType: type
+        });
+      } else {
+        await sendMessage({
+          recipientId: selectedChat.partner._id,
+          messageType: "media",
+          mediaUrl: url,
+          mediaType: type
+        });
+      }
     }
 
     // Sau đó gửi text (nếu có)
     if (newMessage.trim()) {
-      await sendMessage({
-        recipientId: selectedChat.partner._id,
-        content: newMessage.trim(),
-        messageType: "text"
-      });
+      if (socket) {
+        socket.emit("send_message", {
+          recipientId: selectedChat.partner._id,
+          content: newMessage.trim(),
+          messageType: "text"
+        });
+      } else {
+        await sendMessage({
+          recipientId: selectedChat.partner._id,
+          content: newMessage.trim(),
+          messageType: "text"
+        });
+      }
     }
 
     setSelectedImages([]);
     setNewMessage("");
     setSendingMessage(false);
-    fetchMessages(selectedChat.partner._id, 1);
-
+    // Không cần fetchMessages nữa, vì sẽ nhận realtime qua socket
     setTimeout(() => {
       if (messagesEndRef.current) {
         messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
@@ -623,9 +701,19 @@ export default function MessagePanel() {
                   <button
                     type="submit"
                     disabled={sendingMessage}
-                    className="px-6 py-2 rounded-full font-medium bg-blue-500 hover:bg-blue-600 text-white transition-colors"
+                    className="px-6 py-2 rounded-full font-medium bg-blue-500 hover:bg-blue-600 text-white transition-colors flex items-center justify-center"
                   >
-                    Gửi
+                    {sendingMessage ? (
+                      <span className="flex items-center">
+                        <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                        </svg>
+                        Đang gửi...
+                      </span>
+                    ) : (
+                      "Gửi"
+                    )}
                   </button>
                 )}
               </div>

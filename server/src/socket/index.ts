@@ -3,11 +3,13 @@ import { Server as HttpServer } from "http";
 import { socketAuthMiddleware } from "./middleware/socketAuth";
 import { MessageHandler } from "./handlers/messageHandler";
 import { TypingHandler } from "./handlers/typingHandler";
+import { APP_ORIGIN } from "@/constants/env";
 
 export function initializeSocket(httpServer: HttpServer) {
   const io = new Server(httpServer, {
     cors: {
-      origin: "*", // Có thể thay bằng APP_ORIGIN trong production
+      origin: APP_ORIGIN, // Có thể thay bằng APP_ORIGIN trong production
+      credentials: true,
       methods: ["GET", "POST"]
     }
   });
