@@ -18,7 +18,8 @@ import {
   searchUsers, uploadMedia, trimVideo,
   extracAudio,
   checkVideoHasAudio,
-  createAudio
+  createAudio,
+  fetchPreviewUrl
 }
   from "@/lib/api";
 
@@ -507,73 +508,99 @@ export default function CreatePostModal({ isOpen, onClose }) {
   };
 
   const handlePost = async () => {
-  try {
-    if (musicPickerAudioRef.current) {
-      musicPickerAudioRef.current.pause();
-      musicPickerAudioRef.current = null;
-    }
-    handleStopAll();
-    setStep(4);
-    setIsPosting(true);
-    setPostSuccess(false);
-
-    const formData = new FormData();
-    images.forEach((img) => formData.append("files", img.file));
-    const imageUrls = await uploadMedia(formData);
-
-    const mentionsFromCaption = extractMentions(caption);
-    const mentionsUserCapLast = mentionsCap.filter(id => mentionsFromCaption.includes(id));
-    const mentionsUserLast = Array.from(new Set([...mentionsUserCapLast, ...mentionsMedia]));
-    const tagsFromCaption = Array.from(new Set(extractHashtags(caption)));
-
-    const onlyOneVideo = images.length === 1 && images[0].type && images[0].type.startsWith("video");
-    let audioId = selectedMusic?._id || undefined;
-
-    // Nếu chưa chọn nhạc nền, và có video gốc, và không mute, thì tạo audio mới từ video
-    if (onlyOneVideo && hasOriginalAudio === true && muteOriginal === false && !audioId) {
-      const audioForm = new FormData();
-      audioForm.append("video", images[0].file);
-      const res = await extracAudio(audioForm);
-      const newAudio = await createAudio({
-        fileUrl: res.url,
-      });
-      if (!newAudio.success) {
-        toast.error("Tạo thất bại!");
-        setStep(3);
-        setIsPosting(false);
-        return;
+    try {
+      if (musicPickerAudioRef.current) {
+        musicPickerAudioRef.current.pause();
+        musicPickerAudioRef.current = null;
       }
-      audioId = newAudio.data._id;
-      
-    }
-    const postData = {
-      mediaUrls: imageUrls.urls,
-      caption,
-      mentions: mentionsUserLast,
-      tagList: tagsFromCaption,
-      audioId: audioId,
-      muteOriginal: muteOriginal,
-      hasOriginalAudio: hasOriginalAudio,
-      hideLikes,
-      disableComments,
-    };
+      handleStopAll();
+      setStep(4);
+      setIsPosting(true);
+      setPostSuccess(false);
+      let audioId = selectedMusic?.deezerId || undefined;
+      let audioUrl;
+      if (audioId) {
+        const res = await fetchPreviewUrl(audioId);
+        audioUrl = res.data.previewUrl;
+      }
+      if(selectedMusic?.fileUrl)
+      {
+        audioUrl = selectedMusic.fileUrl;
+      }
 
-    const result = await createPost(postData);
+      const onlyOneVideo = images.length === 1 && images[0].type && images[0].type.startsWith("video");
+      // Nếu chưa chọn nhạc nền, và có video gốc, và không mute, thì tạo audio mới từ video
+      if (onlyOneVideo && hasOriginalAudio === true && muteOriginal === false && !audioId) {
+        const audioForm = new FormData();
+        audioForm.append("video", images[0].file);
+        const res = await extracAudio(audioForm);
+        const newAudio = await createAudio({
+          fileUrl: res.url,
+        });
+        if (!newAudio.success) {
+          toast.error("Tạo thất bại!");
+          setStep(3);
+          setIsPosting(false);
+          return;
+        }
+        audioId = newAudio.data._id;
+      }
 
-    if (result.success) {
-      setPostSuccess(true);
-    } else {
-      toast.error("Vui lòng thử lại");
+      const formData = new FormData();
+      images.forEach((img) => formData.append("files", img.file));
+
+      // Truyền đúng các trường hợp audio
+      if (muteOriginal && !audioUrl) {
+        // Tắt tiếng, không nhạc nền
+        formData.append("muteOriginal", "true");
+      } else if (muteOriginal && audioUrl) {
+        // Tắt tiếng, có nhạc nền
+        formData.append("muteOriginal", "true");
+        formData.append("audioUrl", audioUrl);
+      } else if (!muteOriginal && audioUrl) {
+        console.log("audioUrl", audioUrl);
+        // Không tắt tiếng, có nhạc nền (mix)
+        formData.append("muteOriginal", "false");
+        formData.append("audioUrl", audioUrl);
+      }
+      // Không tắt tiếng, không nhạc nền: không cần append gì thêm
+
+      const imageUrls = await uploadMedia(formData);
+
+      const mentionsFromCaption = extractMentions(caption);
+      const mentionsUserCapLast = mentionsCap.filter(id => mentionsFromCaption.includes(id));
+      const mentionsUserLast = Array.from(new Set([...mentionsUserCapLast, ...mentionsMedia]));
+      const tagsFromCaption = Array.from(new Set(extractHashtags(caption)));
+
+      // Chỉ thêm audioId nếu có
+      const postData = {
+        mediaUrls: imageUrls.urls,
+        caption,
+        mentions: mentionsUserLast,
+        tagList: tagsFromCaption,
+        hideLikes,
+        disableComments,
+      };
+      if (audioId && selectedMusic && selectedMusic._id) {
+        postData.audioId = selectedMusic._id;
+      }
+
+      const result = await createPost(postData);
+
+      if (result.success) {
+        setPostSuccess(true);
+      } else {
+        toast.error("Vui lòng thử lại");
+        setStep(3);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Có lỗi xảy ra");
       setStep(3);
+    } finally {
+      setIsPosting(false);
     }
-  } catch (err) {
-    console.error(err);
-    toast.error("Có lỗi xảy ra");
-    setStep(2);
-  } finally {
-    setIsPosting(false);
-  }
-};
+  };
 
   const handleOverlayClick = (e) => {
     if (e.target === e.currentTarget) {

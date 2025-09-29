@@ -15,9 +15,7 @@ export type CreateNewPost = {
   mediaUrls: string[];
   tags?: string[];
   location?: string;
-  muteOriginal?: boolean;
   audioId?: mongoose.Types.ObjectId;
-  hasOriginalAudio?: boolean;
   hideLikes: boolean;
   disableComments: boolean;
   mentions?: string[];
@@ -92,10 +90,12 @@ export class PostService {
     const location = data.location ? { name: data.location } : undefined;
 
 
-    const { id } = getAudioByIdSchema.parse({ id: data.audioId });
+    let audioObjectId: mongoose.Types.ObjectId | undefined = undefined;
     if (data.audioId) {
-      
+      // Chỉ validate nếu có audioId
+      const { id } = getAudioByIdSchema.parse({ id: data.audioId });
       increaseAudioUsedCount(id);
+      audioObjectId = new mongoose.Types.ObjectId(id);
     }
 
     const post = await PostModel.create({
@@ -107,9 +107,7 @@ export class PostService {
       tags: hashtagIds,
       mentions: mentionIds,
       likeCount: 0,
-      muteOriginal: data.muteOriginal,
-      hasOriginalAudio: data.hasOriginalAudio,
-      audioId: id,
+      audioId: audioObjectId,
       commentCount: 0,
       shareCount: 0,
       viewCount: 0,
@@ -229,48 +227,48 @@ export class PostService {
   /**
    * Like/unlike a post
    */
-static async togglePostLike(postId: string, userId: string) {
-  const post = await PostModel.findById(postId);
-  if (!post) throw ErrorFactory.resourceNotFound("Post");
+  static async togglePostLike(postId: string, userId: string) {
+    const post = await PostModel.findById(postId);
+    if (!post) throw ErrorFactory.resourceNotFound("Post");
 
-  const existingLike = await LikeModel.findOne({ user: userId, post: postId });
+    const existingLike = await LikeModel.findOne({ user: userId, post: postId });
 
-  let isLiked: boolean;
-  let likeCount: number;
+    let isLiked: boolean;
+    let likeCount: number;
 
-  if (existingLike) {
-    await LikeModel.findByIdAndDelete(existingLike._id);
-    // atomic update
-    const updatedPost = await PostModel.findByIdAndUpdate(
-      postId,
-      { $inc: { likeCount: -1 } },
-      { new: true }
-    );
-    likeCount = updatedPost!.likeCount;
-    isLiked = false;
-  } else {
-    await LikeModel.create({ user: userId, post: postId, type: "post" });
-    const updatedPost = await PostModel.findByIdAndUpdate(
-      postId,
-      { $inc: { likeCount: 1 } },
-      { new: true }
-    );
-    likeCount = updatedPost!.likeCount;
-    isLiked = true;
+    if (existingLike) {
+      await LikeModel.findByIdAndDelete(existingLike._id);
+      // atomic update
+      const updatedPost = await PostModel.findByIdAndUpdate(
+        postId,
+        { $inc: { likeCount: -1 } },
+        { new: true }
+      );
+      likeCount = updatedPost!.likeCount;
+      isLiked = false;
+    } else {
+      await LikeModel.create({ user: userId, post: postId, type: "post" });
+      const updatedPost = await PostModel.findByIdAndUpdate(
+        postId,
+        { $inc: { likeCount: 1 } },
+        { new: true }
+      );
+      likeCount = updatedPost!.likeCount;
+      isLiked = true;
 
-    if (post.user && post.user.toString() !== userId) {
-      await NotificationModel.create({
-        recipient: post.user,
-        sender: userId,
-        type: "like",
-        post: postId,
-        message: "liked your post",
-      });
+      if (post.user && post.user.toString() !== userId) {
+        await NotificationModel.create({
+          recipient: post.user,
+          sender: userId,
+          type: "like",
+          post: postId,
+          message: "liked your post",
+        });
+      }
     }
-  }
 
-  return { isLiked, likeCount };
-}
+    return { isLiked, likeCount };
+  }
 
 
   /**
@@ -378,99 +376,107 @@ static async togglePostLike(postId: string, userId: string) {
    * Get trending posts
    */
   static async getReelsFeed(page: number, limit: number) {
-  const skip = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
-  const reels = await PostModel.aggregate([
-    { $match: { type: "reel", isHidden: false } },
-    { $addFields: { score: { 
-        $add: [
-          { $multiply: ["$likeCount", 3] },
-          { $multiply: ["$commentCount", 5] },
-          { $multiply: ["$shareCount", 4] },
-          { $multiply: ["$viewCount", 0] },
-          { $cond: [{ $gte: ["$createdAt", new Date(Date.now() - 1000*60*60*24)] }, 1000, 0] }
-        ]
-      } 
-    } },
-    // Thông tin user
-    { $lookup: {
-        from: "users",
-        localField: "user",
-        foreignField: "_id",
-        as: "userInfo"
-      }
-    },
-    { $unwind: "$userInfo" },
-    
-    // Thông tin comment
-    { $lookup: {
-        from: "comments",
-        localField: "_id",
-        foreignField: "post",
-        as: "commentsInfo"
-      }
-    },
-    { $lookup: {
-        from: "users",
-        localField: "commentsInfo.user",
-        foreignField: "_id",
-        as: "commentUsers"
-      }
-    },
+    const reels = await PostModel.aggregate([
+      { $match: { type: "reel", isHidden: false } },
+      {
+        $addFields: {
+          score: {
+            $add: [
+              { $multiply: ["$likeCount", 3] },
+              { $multiply: ["$commentCount", 5] },
+              { $multiply: ["$shareCount", 4] },
+              { $multiply: ["$viewCount", 0] },
+              { $cond: [{ $gte: ["$createdAt", new Date(Date.now() - 1000 * 60 * 60 * 24)] }, 1000, 0] }
+            ]
+          }
+        }
+      },
+      // Thông tin user
+      {
+        $lookup: {
+          from: "users",
+          localField: "user",
+          foreignField: "_id",
+          as: "userInfo"
+        }
+      },
+      { $unwind: "$userInfo" },
 
-    // Thông tin likes
-    { $lookup: {
-        from: "likes",
-        localField: "_id",
-        foreignField: "post",
-        as: "likeUsers"
-      }
-    },
+      // Thông tin comment
+      {
+        $lookup: {
+          from: "comments",
+          localField: "_id",
+          foreignField: "post",
+          as: "commentsInfo"
+        }
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "commentsInfo.user",
+          foreignField: "_id",
+          as: "commentUsers"
+        }
+      },
 
-    { $project: {
-        caption: 1,
-        mediaUrls: 1,
-        likeCount: 1,
-        commentCount: 1,
-        shareCount: 1,
-        viewCount: 1,
-        createdAt: 1,
-        updatedAt: 1,
-        "user._id": "$userInfo._id",
-        "user.username": "$userInfo.userId",
-        "user.avatar": "$userInfo.avatarUrl",
-        comments: {
-          $map: {
-            input: "$commentsInfo",
-            as: "c",
-            in: {
-              _id: "$$c._id",
-              content: "$$c.content",
-              user: {
-                $arrayElemAt: [
-                  {
-                    $filter: {
-                      input: "$commentUsers",
-                      cond: { $eq: ["$$this._id", "$$c.user"] }
-                    }
-                  },
-                  0
-                ]
+      // Thông tin likes
+      {
+        $lookup: {
+          from: "likes",
+          localField: "_id",
+          foreignField: "post",
+          as: "likeUsers"
+        }
+      },
+
+      {
+        $project: {
+          caption: 1,
+          mediaUrls: 1,
+          likeCount: 1,
+          commentCount: 1,
+          shareCount: 1,
+          viewCount: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          "user._id": "$userInfo._id",
+          "user.username": "$userInfo.userId",
+          "user.avatar": "$userInfo.avatarUrl",
+          comments: {
+            $map: {
+              input: "$commentsInfo",
+              as: "c",
+              in: {
+                _id: "$$c._id",
+                content: "$$c.content",
+                user: {
+                  $arrayElemAt: [
+                    {
+                      $filter: {
+                        input: "$commentUsers",
+                        cond: { $eq: ["$$this._id", "$$c.user"] }
+                      }
+                    },
+                    0
+                  ]
+                }
               }
             }
-          }
-        },
-        likedUsers: "$likeUsers.user"
-      }
-    },
+          },
+          likedUsers: "$likeUsers.user"
+        }
+      },
 
-    { $sort: { score: -1, createdAt: -1 } },
-    { $skip: skip },
-    { $limit: limit }
-  ]);
+      { $sort: { score: -1, createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit }
+    ]);
 
-  return reels;
-}
+    return reels;
+  }
 
 
 

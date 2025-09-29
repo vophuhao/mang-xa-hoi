@@ -28,8 +28,6 @@ export const createPostHandler = catchErrors(async (req: AuthenticatedRequest, r
     disableComments: req.body.disableComments,
     mentions: req.body.mentions,
     audioId: req.body.audioId,
-    hasOriginalAudio: req.body.hasOriginalAudio,
-    muteOriginal: req.body.muteOriginal,
     tags: validatedData.tags || [],
     ...(validatedData.location && { location: validatedData.location }),
   });

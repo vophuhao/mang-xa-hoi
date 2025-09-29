@@ -179,6 +179,7 @@ export const checkVideoHasAudioHandler = catchErrors(async (req: AuthenticatedRe
 
 export const createAudio = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
   const url = req.body.fileUrl;
+  console.log(req.userId);
   const audio = await Audio.create({
     fileUrl: url,
     user: req.userId,

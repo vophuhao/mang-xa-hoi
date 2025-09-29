@@ -57,7 +57,7 @@ app.use("/stories", authenticate, storyRoutes);
 app.use("/hashtags", authenticate, hashtagRoutes);
 app.use("/analytics", authenticate, analyticsRoutes);
 app.use("/media", authenticate, mediaRoutes);
-app.use("/audio", authenticate, AudioRoutes);
+app.use("/audio",authenticate, AudioRoutes);
 
 
 // error handler
