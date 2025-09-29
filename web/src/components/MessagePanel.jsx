@@ -481,30 +481,20 @@ export default function MessagePanel() {
                         )}
                         
                         <div 
-                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl cursor-pointer ${
-                            isOwn 
-                              ? 'bg-blue-500 text-white rounded-br-md'
-                              : 'bg-white text-gray-900 border rounded-bl-md'
-                          }`}
-                          onClick={() => !isOwn && !message.isRead && handleMarkAsRead(message._id)}
-                          onDoubleClick={() => handleReaction(message._id, "❤️")}
+                          className={`max-w-xs lg:max-w-md px-0 py-0 rounded-2xl`}
                         >
-                          {message.messageType === "text" && (
-                            <p className="text-sm">{message.content}</p>
-                          )}
-                          
-                          {message.messageType === "media" && message.mediaUrl && (
-                            <div>
+                          {message.messageType === "media" && message.mediaUrl ? (
+                            <div className="max-w-xs lg:max-w-md px-0 py-0 rounded-2xl">
                               {message.mediaType === "image" ? (
-                                <img 
-                                  src={message.mediaUrl} 
-                                  alt="Shared image" 
+                                <img
+                                  src={message.mediaUrl}
+                                  alt="Shared image"
                                   className="rounded-lg max-w-full h-auto"
                                 />
                               ) : message.mediaType === "video" ? (
-                                <video 
-                                  src={message.mediaUrl} 
-                                  controls 
+                                <video
+                                  src={message.mediaUrl}
+                                  controls
                                   className="rounded-lg max-w-full h-auto"
                                 />
                               ) : (
@@ -514,30 +504,44 @@ export default function MessagePanel() {
                                 <p className="text-sm mt-2">{message.content}</p>
                               )}
                             </div>
-                          )}
-                          
-                          {message.messageType === "location" && message.location && (
-                            <div>
-                              <p className="text-sm">📍 {message.location.name}</p>
-                              <p className="text-xs opacity-75">
-                                {message.location.coordinates[1]}, {message.location.coordinates[0]}
-                              </p>
-                            </div>
-                          )}
-                          
-                          <div className={`text-xs mt-1 opacity-75 ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
-                            {formatTime(message.createdAt)}
-                            {isOwn && message.isRead && " • Đã xem"}
-                          </div>
+                          ) : (
+                            <div
+                              className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl cursor-pointer ${
+                                isOwn
+                                  ? 'bg-blue-500 text-white rounded-br-md'
+                                  : 'bg-white text-gray-900 border rounded-bl-md'
+                              }`}
+                              onClick={() => !isOwn && !message.isRead && handleMarkAsRead(message._id)}
+                              onDoubleClick={() => handleReaction(message._id, "❤️")}
+                            >
+                              {message.messageType === "text" && (
+                                <p className="text-sm">{message.content}</p>
+                              )}
+                              
+                              {message.messageType === "location" && message.location && (
+                                <div>
+                                  <p className="text-sm">📍 {message.location.name}</p>
+                                  <p className="text-xs opacity-75">
+                                    {message.location.coordinates[1]}, {message.location.coordinates[0]}
+                                  </p>
+                                </div>
+                              )}
+                              
+                              <div className={`text-xs mt-1 opacity-75 ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
+                                {formatTime(message.createdAt)}
+                                {isOwn && message.isRead && " • Đã xem"}
+                              </div>
 
-                          {/* Reactions */}
-                          {message.reactions && message.reactions.length > 0 && (
-                            <div className="flex space-x-1 mt-1">
-                              {message.reactions.map((reaction, idx) => (
-                                <span key={idx} className="text-xs">
-                                  {reaction.emoji}
-                                </span>
-                              ))}
+                              {/* Reactions */}
+                              {message.reactions && message.reactions.length > 0 && (
+                                <div className="flex space-x-1 mt-1">
+                                  {message.reactions.map((reaction, idx) => (
+                                    <span key={idx} className="text-xs">
+                                      {reaction.emoji}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
