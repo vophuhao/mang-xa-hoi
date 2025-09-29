@@ -6,7 +6,7 @@ import {
   getConversations,
   getConversation,
   sendMessage,
-  markAsRead, // giữ lại
+  markAsRead,
   markAllAsRead,
   reactToMessage,
   uploadMedia
@@ -126,22 +126,26 @@ export default function MessagePanel() {
     }
   };
 
-  // Xử lý chọn ảnh
+  // Chọn ảnh/video từ thiết bị
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
-    const previews = files.map(file => ({
-      file,
-      url: URL.createObjectURL(file)
-    }));
+    const previews = files.map(file => {
+      const isVideo = file.type.startsWith("video/");
+      return {
+        file,
+        url: URL.createObjectURL(file),
+        mediaType: isVideo ? "video" : "image"
+      };
+    });
     setSelectedImages(prev => [...prev, ...previews]);
   };
 
-  // Xoá ảnh đã chọn
+  // Xoá ảnh/video đã chọn
   const handleRemoveImage = (idx) => {
     setSelectedImages(prev => prev.filter((_, i) => i !== idx));
   };
 
-  // Gửi tin nhắn (ảnh trước, text sau)
+  // Gửi tin nhắn (media trước, text sau)
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (sendingMessage || (!newMessage.trim() && selectedImages.length === 0) || !selectedChat) return;
@@ -149,30 +153,31 @@ export default function MessagePanel() {
     setSendingMessage(true);
 
     let mediaUrls = [];
-    // Upload ảnh lên Cloudinary
+    let mediaTypes = [];
+    // Upload media lên Cloudinary
     if (selectedImages.length > 0) {
       const formData = new FormData();
       selectedImages.forEach(img => {
         formData.append("files", img.file);
+        mediaTypes.push(img.mediaType);
       });
       const res = await uploadMedia(formData);
-      console.log("Kết quả uploadMedia:", res); // Log toàn bộ response
-      if (res?.urls && Array.isArray(res.urls)) {
-        mediaUrls = res.urls;
-        console.log("Các url ảnh nhận được:", mediaUrls); // Log mảng url
-      } else {
-        console.log("Không nhận được urls từ Cloudinary!");
+      // Nếu dùng axios, có thể là res.data.urls
+      const urls = res?.urls || res?.data?.urls;
+      if (urls && Array.isArray(urls)) {
+        mediaUrls = urls;
       }
     }
 
-    // Gửi từng ảnh trước
-    for (const url of mediaUrls) {
-      console.log("Gửi tin nhắn với mediaUrl:", url); // Log từng url trước khi gửi
+    // Gửi từng media trước
+    for (let i = 0; i < mediaUrls.length; i++) {
+      const url = mediaUrls[i];
+      const type = mediaTypes[i] || "image";
       await sendMessage({
         recipientId: selectedChat.partner._id,
         messageType: "media",
         mediaUrl: url,
-        mediaType: "image"
+        mediaType: type
       });
     }
 
@@ -259,7 +264,7 @@ export default function MessagePanel() {
       case "text":
         return message.content || "Tin nhắn văn bản";
       case "media":
-        return message.mediaType === "image" ? "📷 Ảnh" : "🎥 Video";
+        return message.mediaType === "image" ? "📷 Ảnh" : message.mediaType === "video" ? "🎥 Video" : "Shared media";
       case "location":
         return "📍 Vị trí";
       case "post_share":
@@ -493,15 +498,17 @@ export default function MessagePanel() {
                               {message.mediaType === "image" ? (
                                 <img 
                                   src={message.mediaUrl} 
-                                  alt="Shared media" 
+                                  alt="Shared image" 
                                   className="rounded-lg max-w-full h-auto"
                                 />
-                              ) : (
+                              ) : message.mediaType === "video" ? (
                                 <video 
                                   src={message.mediaUrl} 
                                   controls 
                                   className="rounded-lg max-w-full h-auto"
                                 />
+                              ) : (
+                                <span>Không hỗ trợ media này</span>
                               )}
                               {message.content && (
                                 <p className="text-sm mt-2">{message.content}</p>
@@ -553,12 +560,16 @@ export default function MessagePanel() {
             
             {/* Message Input */}
             <form onSubmit={handleSendMessage} className="p-4 border-t bg-white flex flex-col space-y-2">
-              {/* Ảnh xem trước */}
+              {/* Ảnh/video xem trước */}
               {selectedImages.length > 0 && (
                 <div className="flex space-x-2 mb-2">
                   {selectedImages.map((img, idx) => (
                     <div key={idx} className="relative">
-                      <img src={img.url} alt="preview" className="w-16 h-16 object-cover rounded" />
+                      {img.mediaType === "image" ? (
+                        <img src={img.url} alt="preview" className="w-16 h-16 object-cover rounded" />
+                      ) : (
+                        <video src={img.url} controls className="w-16 h-16 object-cover rounded" />
+                      )}
                       <button
                         type="button"
                         className="absolute top-0 right-0 bg-black bg-opacity-50 text-white rounded-full px-1"
@@ -582,12 +593,12 @@ export default function MessagePanel() {
                   className="flex-1 rounded-full border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   disabled={sendingMessage}
                 />
-                {/* Nút chọn ảnh */}
+                {/* Nút chọn ảnh/video */}
                 {!hasText && (
                   <>
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/*,video/*"
                       multiple
                       style={{ display: "none" }}
                       ref={imageInputRef}
@@ -596,7 +607,7 @@ export default function MessagePanel() {
                     <button
                       type="button"
                       className="text-xl px-2"
-                      title="Chọn ảnh"
+                      title="Chọn ảnh/video"
                       onClick={() => imageInputRef.current.click()}
                     >
                       🖼️
