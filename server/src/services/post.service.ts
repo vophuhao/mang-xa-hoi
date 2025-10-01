@@ -431,6 +431,35 @@ export class PostService {
           as: "likeUsers"
         }
       },
+      {
+        $lookup: {
+          from: "audios",
+          localField: "audioId",
+          foreignField: "_id",
+          as: "audioInfo"
+        }
+      },
+      {
+        $unwind: {
+          path: "$audioInfo",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      // Lấy thông tin user của audio
+      {
+        $lookup: {
+          from: "users",
+          localField: "audioInfo.user",
+          foreignField: "_id",
+          as: "audioUser"
+        }
+      },
+      {
+        $unwind: {
+          path: "$audioUser",
+          preserveNullAndEmptyArrays: true
+        }
+      },
 
       {
         $project: {
@@ -442,8 +471,18 @@ export class PostService {
           viewCount: 1,
           createdAt: 1,
           updatedAt: 1,
+          audioId: 1, // lấy id audio gốc
+          "audioInfo._id": 1,
+          "audioInfo.title": 1,
+          "audioInfo.artist": 1,
+          "audioInfo.deezerId": 1,
+          "audioInfo.fileUrl": 1,
+          "audioInfo.cover": 1,
+          "audioUser._id": 1,
+          "audioUser.userId": 1,
+          "audioUser.avatarUrl": 1,
           "user._id": "$userInfo._id",
-          "user.username": "$userInfo.userId",
+          "user.userId": "$userInfo.userId",
           "user.avatar": "$userInfo.avatarUrl",
           comments: {
             $map: {

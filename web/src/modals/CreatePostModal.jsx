@@ -27,6 +27,8 @@ import "rc-slider/assets/index.css";
 
 
 
+
+
 export default function CreatePostModal({ isOpen, onClose }) {
   const { user } = useAuth()
   const [step, setStep] = useState(1);
@@ -523,11 +525,10 @@ export default function CreatePostModal({ isOpen, onClose }) {
         const res = await fetchPreviewUrl(audioId);
         audioUrl = res.data.previewUrl;
       }
-      if(selectedMusic?.fileUrl)
-      {
+      if (selectedMusic?.fileUrl) {
         audioUrl = selectedMusic.fileUrl;
       }
-
+      let audioOriginal ;
       const onlyOneVideo = images.length === 1 && images[0].type && images[0].type.startsWith("video");
       // Nếu chưa chọn nhạc nền, và có video gốc, và không mute, thì tạo audio mới từ video
       if (onlyOneVideo && hasOriginalAudio === true && muteOriginal === false && !audioId) {
@@ -543,7 +544,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
           setIsPosting(false);
           return;
         }
-        audioId = newAudio.data._id;
+        audioOriginal = newAudio.data._id;
       }
 
       const formData = new FormData();
@@ -583,6 +584,9 @@ export default function CreatePostModal({ isOpen, onClose }) {
       };
       if (audioId && selectedMusic && selectedMusic._id) {
         postData.audioId = selectedMusic._id;
+      }
+      else if (audioOriginal) {
+        postData.audioId = audioOriginal;
       }
 
       const result = await createPost(postData);
@@ -628,19 +632,20 @@ export default function CreatePostModal({ isOpen, onClose }) {
 
   const handleClickStep = async () => {
 
-    if (step === 1) {
+    if (step === 1 && images[currentIndex]?.type.startsWith("video") && images.length === 1) {
       const formData = new FormData();
       images.forEach((img) => formData.append("video", img.file));
       const res = await checkVideoHasAudio(formData)
       setHasOriginalAudio(res.hasAudio);
     }
 
-    if (!images[currentIndex].type.startsWith("video") || images.length > 1) {
+    if (step === 1 &&  (!images[currentIndex].type.startsWith("video") || images.length > 1)) {
       const formData = new FormData();
       images.forEach((img) => formData.append("files", img.file));
       const res = await analyzeMedia(formData)
       setHashtagSug(res.hashtags)
       setStep(3);
+      return;
     }
     if (
       step === 2 &&

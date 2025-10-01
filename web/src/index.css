@@ -243,3 +243,13 @@ input:-webkit-autofill {
 .scrollbar-stable {
   scrollbar-gutter: stable both-edges;
 }
+@keyframes marquee {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+.animate-marquee {
+  display: inline-block;
+  min-width: 100%;
+  animation: marquee 10s linear infinite;
+}

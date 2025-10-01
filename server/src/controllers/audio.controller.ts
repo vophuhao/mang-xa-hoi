@@ -182,6 +182,7 @@ export const createAudio = catchErrors(async (req: AuthenticatedRequest, res: Re
   console.log(req.userId);
   const audio = await Audio.create({
     fileUrl: url,
+    used :1 ,
     user: req.userId,
     title: "Âm thanh gốc"
   });
