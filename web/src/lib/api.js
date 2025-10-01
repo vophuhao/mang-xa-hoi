@@ -42,6 +42,9 @@ export const unfollowUser = async (userId) =>
 export const searchUsers = async (query, page = 1, limit = 20) => {
   return API.get(`/users/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`);
 };
+// Get user profile by userId
+export const getUserByUserId = async (userId) =>
+  API.get(`/users/userid/${userId}`);
 
 
 // =============== SESSION API ===============
@@ -96,4 +99,10 @@ export const searchHashtags = async (key, page = 1, limit = 50) => {
       limit,
     },
   });
+};
+
+export const searchAll = async (query, page = 1, limit = 10) => {
+  // Thêm từ khóa await để nhận đúng response
+  const response = await API.get(`/api/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`);
+  return response; // Đảm bảo trả về response, không phải response.data
 };

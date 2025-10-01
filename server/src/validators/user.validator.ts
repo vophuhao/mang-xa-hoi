@@ -30,6 +30,11 @@ export const getUserByIdSchema = z.object({
   id: mongoIdSchema,
 });
 
+// Get user by UserID
+export const getUserByUserIdSchema = z.object({
+  userId: z.string().min(1),
+});
+
 // Follow/Unfollow user
 export const followUserSchema = z.object({
   userId: mongoIdSchema,

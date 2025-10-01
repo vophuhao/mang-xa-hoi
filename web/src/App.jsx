@@ -16,6 +16,7 @@ import store from "@/store";
 
 import Explore from "./components/Explore";
 import Feed from "./components/Feed";
+import ProfilePanel from "./components/ProfilePanel";
 import Layout from "./pages/Layout";
 
 function App() {
@@ -50,6 +51,7 @@ function App() {
         <Route path="/home" element={<Layout />}>
           <Route index element={<Feed />} />
           <Route path="explore" element={<Explore />} />
+          <Route path="users/userid/:userId" element={<ProfilePanel />} />
         </Route>
       </Routes>
 

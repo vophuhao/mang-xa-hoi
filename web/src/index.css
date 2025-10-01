@@ -229,3 +229,148 @@ input:-webkit-autofill {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* SearchPanel styles - Instagram style, hỗ trợ sáng/tối */
+.search-panel {
+  background: var(--search-bg);
+  color: var(--search-text);
+  width: 100%;
+  max-width: 400px;
+  margin: 32px auto;
+  padding: 0;
+  border-radius: 16px;
+}
+
+.search-input {
+  width: 90%;
+  margin: 24px auto 0 auto;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--search-border);
+  font-size: 17px;
+  background: var(--search-input-bg);
+  color: var(--search-text);
+  display: block;
+}
+
+.search-divider {
+  width: 90%;
+  margin: 16px auto;
+  border-bottom: 1px solid var(--search-border);
+}
+
+.search-result {
+  margin-top: 0;
+  padding-bottom: 16px;
+}
+
+.search-user-row {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--search-border);
+  cursor: pointer;
+  background: var(--search-result-bg, transparent);
+  transition: background 0.2s;
+}
+.search-user-row:last-child {
+  border-bottom: none;
+}
+.search-user-row:hover {
+  background: var(--search-hover);
+}
+
+.search-user-avatar {
+  border-radius: 50%;
+  margin-right: 12px;
+  object-fit: cover;
+  width: 44px;
+  height: 44px;
+  background: #eee;
+}
+
+.search-user-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.search-user-username {
+  font-weight: 600;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--search-text);
+}
+
+.search-user-verified {
+  color: #0095f6;
+  font-size: 16px;
+  margin-left: 4px;
+}
+
+.search-user-meta {
+  color: var(--search-meta-text, #888);
+  font-size: 14px;
+  margin-top: 2px;
+}
+
+/* Sáng/tối tự động */
+:root {
+  --search-bg: #fff;
+  --search-input-bg: #f7f7fa;
+  --search-text: #222;
+  --search-border: #eee;
+  --search-hover: #f0f0f0;
+  --search-result-bg: #fff;
+  --search-meta-text: #888;
+}
+.dark {
+  --search-bg: #222a36;
+  --search-input-bg: #23283b;
+  --search-text: #fff;
+  --search-border: #333;
+  --search-hover: #2a3442;
+  --search-result-bg: #222a36;
+  --search-meta-text: #bbb;
+}
+
+.search-input-wrapper {
+  position: relative;
+  width: 90%;
+  margin: 24px auto 0 auto;
+}
+
+.search-clear-btn {
+  position: absolute;
+  top: 50%;
+  right: 22px;
+  transform: translateY(-50%);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+  padding: 0;
+}
+
+.search-clear-btn:hover {
+  background: #e0e0e0;
+}
+.search-clear-btn span {
+  font-size: 15px;
+  color: #888;
+  line-height: 1;
+}
+.dark .search-clear-btn {
+  background: #333;
+}
+.dark .search-clear-btn:hover {
+  background: #444;
+}

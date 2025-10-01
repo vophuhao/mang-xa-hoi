@@ -90,6 +90,45 @@ export class UserService {
   }
 
   /**
+   * Get user profile by userId
+   */
+  static async getUserByUserId(userId: string, currentUserId: string): Promise<UserProfile> {
+    const user = await UserModel.findOne({userId}).select("-password");
+
+    if (!user) {
+      throw ErrorFactory.resourceNotFound("User", `User with id "${userId}" not found`);
+    }
+
+    // Get user stats and relationships in parallel
+    const [isFollowing, followsBack, followersCount, followingCount, postsCount] =
+      await Promise.all([
+        FollowModel.exists({ follower: currentUserId, following: user._id }),
+        FollowModel.exists({ follower: user._id, following: currentUserId }),
+        FollowModel.countDocuments({ following: user._id }),
+        FollowModel.countDocuments({ follower: user._id }),
+        PostModel.countDocuments({ user: user._id, isHidden: false }),
+      ]);
+
+    const userProfile = {
+      _id: (user._id as any).toString(),
+      username: user.username,
+      fullName: user.fullName,
+      email: user.email,
+      avatarUrl: user.avatarUrl,
+      bio: user.bio,
+      isVerified: user.isVerified,
+      followersCount,
+      followingCount,
+      postsCount,
+      isFollowing: !!isFollowing,
+      followsBack: !!followsBack,
+      isOwnProfile: (user._id as any).toString() === currentUserId.toString(),
+    };
+
+    return userProfile as UserProfile;
+  }
+
+  /**
    * Follow a user
    */
   static async followUser(userToFollowId: string, currentUserId: string) {

@@ -42,7 +42,7 @@ const SidePanel = ({ activeMenu, onClose, isMobile }) => {
   // Desktop: Side panel
   return (
     <div
-      className={`w-80 rounded-lg border-r border-gray-200/60 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800`}
+      className={`w-[400px] rounded-lg border-r border-gray-200/60 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800`}
     >
       <div className="h-full overflow-y-auto">
         {activeMenu === "search" && <SearchPanel />}

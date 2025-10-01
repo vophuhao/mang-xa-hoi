@@ -1,73 +1,51 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { Grid3x3, Bookmark, Settings, Tag, Heart, MessageCircle } from "lucide-react";
+import { useParams } from "react-router-dom";
 
 import useAuth from "../hooks/useAuth";
+import { getUserByUserId } from "../lib/api"; // Tạo hàm này trong api.js
 
 export default function ProfilePanel() {
-  const { user, isLoading } = useAuth();
+  const { user: currentUser, isLoading: isAuthLoading } = useAuth();
+  const { userId } = useParams();
+  const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isStoryHovered, setIsStoryHovered] = useState(false);
   
+  useEffect(() => {
+    async function fetchUser() {
+      setIsLoading(true);
+      try {
+        const res = await getUserByUserId(userId);
+        setUser(res.data);
+      } catch {
+        setUser(null);
+      }
+      setIsLoading(false);
+    }
+    fetchUser();
+  }, [userId]);
+
   // Kết hợp dữ liệu người dùng từ API với dữ liệu mẫu
   const profileData = {
-    username: user?._id || "User",
+    username: user?.username || "User",
     fullName: user?.name || "User A",
     email: user?.email || "example@email.com",
-    bio: user?.bio || "📸 Nhiếp ảnh gia | 🌍 Du lịch khắp thế giới\nLiên hệ: " + (user?.email || "example@email.com"),
-    postsCount: 24,
-    followersCount: 1250,
-    followingCount: 568,
+    bio: user?.bio || "",
+    postsCount: user?.postsCount ?? 0,
+    followersCount: user?.followersCount ?? 0,
+    followingCount: user?.followingCount ?? 0,
     profileImage: user?.avatarUrl || "https://images.unsplash.com/photo-1633332755192-727a05c4013d",
-    verified: user?.verified || false,
+    verified: user?.isVerified || false,
     provider: user?.provider || "local",
-    createdAt: user?.createdAt?.$date ? new Date(user.createdAt.$date) : new Date(),
-    stories: [
-      { id: 1, title: "Du lịch", thumbnail: "https://images.unsplash.com/photo-1527631746610-bca00a040d60" },
-      { id: 2, title: "Ẩm thực", thumbnail: "https://images.unsplash.com/photo-1504674900247-0877df9cc836" },
-      { id: 3, title: "Thời trang", thumbnail: "https://images.unsplash.com/photo-1445205170230-053b83016050" },
-    ],
-    posts: [
-      { 
-        id: 1, 
-        imageUrl: "https://images.unsplash.com/photo-1552733407-5d5c46c3bb3b",
-        likes: 256,
-        comments: 42
-      },
-      { 
-        id: 2, 
-        imageUrl: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4",
-        likes: 198,
-        comments: 36
-      },
-      { 
-        id: 3, 
-        imageUrl: "https://images.unsplash.com/photo-1682687982501-1e58ab814714",
-        likes: 432,
-        comments: 65
-      },
-      { 
-        id: 4, 
-        imageUrl: "https://images.unsplash.com/photo-1682687218147-9806132dc697",
-        likes: 321,
-        comments: 28
-      },
-      { 
-        id: 5, 
-        imageUrl: "https://images.unsplash.com/photo-1682687982360-3fbcceb77630",
-        likes: 287,
-        comments: 39
-      },
-      { 
-        id: 6, 
-        imageUrl: "https://images.unsplash.com/photo-1682687982093-4ca1a2bd9ae8",
-        likes: 176,
-        comments: 24
-      },
-    ],
-    savedPosts: [],
-    taggedPosts: []
+    createdAt: user?.createdAt ? new Date(user.createdAt) : new Date(),
+    stories: user?.stories ?? [],
+    posts: user?.posts ?? [],
+    savedPosts: user?.savedPosts ?? [],
+    taggedPosts: user?.taggedPosts ?? [],
   };
 
   // Các tab trong profile
@@ -78,7 +56,7 @@ export default function ProfilePanel() {
   ];
 
   // Hiển thị loading khi đang tải dữ liệu
-  if (isLoading) {
+  if (isAuthLoading || isLoading) {
     return (
       <div className="h-full flex items-center justify-center bg-white">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-default"></div>

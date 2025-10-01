@@ -19,6 +19,8 @@ import storyRoutes from "@/routes/story.route";
 import userRoutes from "@/routes/user.route";
 import mediaRoutes from "./routes/media.route";
 
+import searchRoutes from './routes/search.route';
+
 const app = express();
 
 // add middleware
@@ -55,6 +57,9 @@ app.use("/stories", authenticate, storyRoutes);
 app.use("/hashtags", authenticate, hashtagRoutes);
 app.use("/analytics", authenticate, analyticsRoutes);
 app.use("/media",authenticate,mediaRoutes)
+
+app.use("/api/search", authenticate, searchRoutes);
+
 // error handler
 app.use(errorHandler);
 
