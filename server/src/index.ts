@@ -2,6 +2,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import "dotenv/config";
 import express from "express";
+import http from "http";
 
 import connectToDatabase from "@/config/db";
 import { APP_ORIGIN, NODE_ENV, PORT } from "@/constants/env";
@@ -10,6 +11,7 @@ import errorHandler from "@/middleware/errorHandler";
 import analyticsRoutes from "@/routes/analytics.route";
 import authRoutes from "@/routes/auth.route";
 import commentRoutes from "@/routes/comment.route";
+import directMessageRoutes from "@/routes/directMessage.route";
 import hashtagRoutes from "@/routes/hashtag.route";
 import notificationRoutes from "@/routes/notification.route";
 import postRoutes from "@/routes/post.route";
@@ -19,6 +21,7 @@ import storyRoutes from "@/routes/story.route";
 import userRoutes from "@/routes/user.route";
 import mediaRoutes from "./routes/media.route";
 import AudioRoutes from "./routes/audio.route";
+import { initializeSocket } from "./socket"; // import hàm khởi tạo socket
 import fetch from "node-fetch";
 const app = express();
 
@@ -57,13 +60,17 @@ app.use("/stories", authenticate, storyRoutes);
 app.use("/hashtags", authenticate, hashtagRoutes);
 app.use("/analytics", authenticate, analyticsRoutes);
 app.use("/media", authenticate, mediaRoutes);
+app.use("/messages", authenticate, directMessageRoutes);
 app.use("/audio",authenticate, AudioRoutes);
 
 
 // error handler
 app.use(errorHandler);
 
-app.listen(PORT, async () => {
+const server = http.createServer(app);
+initializeSocket(server); // Khởi tạo socket với server
+
+server.listen(PORT, async () => {
   console.log(`Server listening on port ${PORT} in ${NODE_ENV} environment`);
   await connectToDatabase();
 });

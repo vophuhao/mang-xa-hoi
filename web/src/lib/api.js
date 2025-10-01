@@ -78,6 +78,51 @@ export const likeComment = async (commentId) =>
 // Reply system
 export const getCommentReplies = async (commentId) =>
   API.get(`/comments/${commentId}/replies`);
+
+// =============== MESSAGE API ===============
+// Message CRUD
+export const sendMessage = async (data) => API.post("/messages", data);
+export const getConversations = async (page = 1, limit = 20) =>
+  API.get(`/messages/conversations?page=${page}&limit=${limit}`);
+export const getConversation = async (partnerId, page = 1, limit = 10) =>
+  API.get(`/messages/conversation/${partnerId}?page=${page}&limit=${limit}`);
+export const getMessageById = async (messageId) =>
+  API.get(`/messages/${messageId}`);
+export const deleteMessage = async (messageId) =>
+  API.delete(`/messages/${messageId}`);
+
+// Message interactions
+export const markAsRead = async (messageId) =>
+  API.put(`/messages/${messageId}/read`);
+export const markAllAsRead = async (partnerId) =>
+  API.put(`/messages/conversation/${partnerId}/read-all`);
+export const reactToMessage = async (messageId, emoji) =>
+  API.post(`/messages/${messageId}/react`, { emoji });
+export const removeReaction = async (messageId) =>
+  API.delete(`/messages/${messageId}/react`);
+
+// Message search & filters
+export const searchMessages = async (partnerId, query, page = 1, limit = 20) =>
+  API.get(`/messages/search?partnerId=${partnerId}&query=${encodeURIComponent(query)}&page=${page}&limit=${limit}`);
+export const getMediaMessages = async (partnerId, mediaType = null, page = 1, limit = 20) => {
+  const params = new URLSearchParams({ partnerId, page, limit });
+  if (mediaType) params.append('mediaType', mediaType);
+  return API.get(`/messages/media?${params}`);
+};
+
+// Message utilities
+export const reportMessage = async (messageId, reason, description = null) =>
+  API.post(`/messages/${messageId}/report`, { reason, description });
+export const forwardMessage = async (messageId, recipientIds) =>
+  API.post(`/messages/${messageId}/forward`, { recipientIds });
+
+// User discovery for messaging
+export const getSuggestedMessagingUsers = async (page = 1, limit = 10) =>
+  API.get(`/messages/suggested?page=${page}&limit=${limit}`);
+export const searchUsersToMessage = async (query, page = 1, limit = 10) =>
+  API.get(`/messages/search-users?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`);
+
+// =============== MEDIA API ===============
 //save Media
 export const uploadMedia = async (formData) => {
   return API.post("/media/save", formData, {
@@ -91,6 +136,7 @@ export const analyzeMedia = async (formData) => {
   });
 };
 
+// =============== HASHTAG API ===============
 export const searchHashtags = async (key, page = 1, limit = 50) => {
   return API.get("/hashtags/search", {
     params: {
