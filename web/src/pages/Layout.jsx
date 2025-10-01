@@ -49,23 +49,29 @@ const Layout = () => {
   }, [dispatch]);
 
   const handleMenuClick = (menuId) => {
-    // ✅ Handle both panel and page menus
     if (isPanelMenu(menuId)) {
       dispatch(togglePanel(menuId));
     } else if (isPageMenu(menuId)) {
-      // Navigate to page
       if (menuId === "home") {
         navigate("/");
+        if (!isMobile) dispatch(setIsCollapsed(false)); // PC mở lại
       } else if (menuId === "explore") {
         navigate("/explore");
+        if (!isMobile) dispatch(setIsCollapsed(false));
       } else if (menuId === "message") {
         navigate("/message");
-        dispatch(setIsCollapsed(true));
+        dispatch(setIsCollapsed(true)); // luôn thu nhỏ
       } else if (menuId === "profile") {
         navigate("/profile");
+        if (!isMobile) dispatch(setIsCollapsed(false));
       }
-      // Close any open panels
-      dispatch(togglePanel(null));
+      else if (menuId === "reels") {
+        navigate("/reels");
+        if (!isMobile) dispatch(setIsCollapsed(false));
+      }
+
+
+      dispatch(togglePanel(null)); // đóng các panel
     }
   };
 
@@ -100,7 +106,7 @@ const Layout = () => {
           className="scrollbar-hide flex-1 overflow-y-auto"
           onClick={handleOutsideClick}
         >
-          <div className={`mx-auto ${isMobile ? "px-4" : "max-w-2xl px-6"}`}>
+          <div className={`mx-auto ${isMobile ? "px-4" : ""}`}>
             <Outlet />
           </div>
         </div>
