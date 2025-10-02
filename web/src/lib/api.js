@@ -101,6 +101,9 @@ export const searchHashtags = async (key, page = 1, limit = 50) => {
   });
 };
 
+export const getPostsByHashtag = async (name, page = 1, limit = 30) =>
+  API.get(`/hashtags/${name}/posts`, { params: { page, limit } });
+
 export const searchAll = async (query, page = 1, limit = 10) => {
   // Thêm từ khóa await để nhận đúng response
   const response = await API.get(`/api/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`);

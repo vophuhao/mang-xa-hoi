@@ -401,3 +401,108 @@ input:-webkit-autofill {
 .search-recent-row {
   position: relative;
 }
+
+.search-hashtag-list {
+  margin-top: 12px;
+}
+
+.search-hashtag-row .search-recent-remove {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #333;
+  cursor: pointer;
+}
+.search-hashtag-row {
+  position: relative;
+}
+
+.search-hashtag-row {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+  transition: background 0.2s;
+}
+.search-hashtag-row:hover {
+  background: #f7f7fa;
+}
+.search-hashtag-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #f4f4f4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 600;
+  color: #888;
+  margin-right: 12px;
+}
+.search-hashtag-info {
+  display: flex;
+  flex-direction: column;
+}
+.search-hashtag-name {
+  font-weight: 600;
+  font-size: 16px;
+  color: #222;
+}
+.search-hashtag-count {
+  color: #888;
+  font-size: 14px;
+  margin-top: 2px;
+}
+
+/* Hashtag post grid */
+.hashtag-posts-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* 3 cột trên 1 hàng */
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.hashtag-post-item {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1/1;
+  overflow: hidden;
+  background: #eee;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hashtag-post-img,
+.hashtag-post-item video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 4px;
+}
+.hashtag-post-overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.35);
+  color: #fff;
+  font-weight: 600;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+  gap: 24px;
+}
+.hashtag-post-item:hover .hashtag-post-overlay {
+  opacity: 1;
+}

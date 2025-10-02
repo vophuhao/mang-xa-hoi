@@ -2,41 +2,70 @@ import { useState, useEffect } from "react";
 
 import { useNavigate } from "react-router-dom";
 
-import { searchAll } from "../lib/api";
+import { searchHashtags, searchUsers } from "../lib/api";
 
 export default function SearchPanel() {
   const [query, setQuery] = useState("");
   const [result, setResult] = useState({ users: [], hashtags: [] });
   const [loading, setLoading] = useState(false);
-  const [recentUsers, setRecentUsers] = useState([]);
+  const [recentItems, setRecentItems] = useState([]);
+  const [showRecent, setShowRecent] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const recent = JSON.parse(localStorage.getItem("recentUsers") || "[]");
-    setRecentUsers(recent);
+    const users = JSON.parse(localStorage.getItem("recentUsers") || "[]");
+    const hashtags = JSON.parse(localStorage.getItem("recentHashtags") || "[]");
+    // Gộp lại, user trước, hashtag sau
+    setRecentItems([
+      ...users.map(u => ({ ...u, type: "user" })),
+      ...hashtags.map(ht => ({ ...ht, type: "hashtag" })),
+    ]);
   }, []);
 
   const handleChange = async (e) => {
     const q = e.target.value;
     setQuery(q);
-    if (!q.trim()) {
-      setResult({ users: [], hashtags: [] });
+
+    // Ẩn Recent khi nhập keyword
+    setShowRecent(false);
+
+    // Nếu bắt đầu bằng # và có tên hashtag sau đó thì mới gọi API
+    if (q.startsWith("#")) {
+      const hashtag = q.slice(1).trim();
+      if (hashtag.length === 0) {
+        setResult({ users: [], hashtags: [] });
+        return;
+      }
+      setLoading(true);
+      try {
+        const res = await searchHashtags(hashtag);
+        setResult({
+          users: [],
+          hashtags: res?.data ?? [],
+        });
+      } catch {
+        setResult({ users: [], hashtags: [] });
+      }
+      setLoading(false);
       return;
     }
-    setLoading(true);
-    try {
-      const res = await searchAll(q);
-      setResult({
-        users: res?.users ?? [],
-        hashtags: res?.hashtags ?? [],
-      });
-    } catch (err) {
-      setResult({ users: [], hashtags: [] });
-      if (err.response?.status === 401) {
-        alert("Bạn cần đăng nhập để sử dụng chức năng tìm kiếm!");
+
+    // Nếu không có # thì chỉ tìm user
+    if (q.trim()) {
+      setLoading(true);
+      try {
+        const res = await searchUsers(q);
+        setResult({
+          users: res?.data ?? [],
+          hashtags: [],
+        });
+      } catch {
+        setResult({ users: [], hashtags: [] });
       }
+      setLoading(false);
+    } else {
+      setResult({ users: [], hashtags: [] });
     }
-    setLoading(false);
   };
 
   const handleUserClick = (user) => {
@@ -54,6 +83,21 @@ export default function SearchPanel() {
     navigate(`/home/users/userid/${user.userId}`);
   };
 
+  const handleHashtagClick = (hashtag) => {
+    // Lấy danh sách recent hashtag từ localStorage
+    const recent = JSON.parse(localStorage.getItem("recentHashtags") || "[]");
+    // Xóa hashtag trùng nếu đã có
+    const filtered = recent.filter(ht => ht.name !== hashtag.name);
+    // Thêm hashtag mới lên đầu
+    filtered.unshift(hashtag);
+    // Giới hạn số lượng recent (ví dụ 10)
+    const limited = filtered.slice(0, 10);
+    // Lưu lại vào localStorage
+    localStorage.setItem("recentHashtags", JSON.stringify(limited));
+    // Chuyển hướng sang trang hashtag
+    navigate(`/home/hashtags/${hashtag.name}`);
+  };
+
   return (
     <div className="search-panel">
       <div className="search-input-wrapper">
@@ -62,6 +106,7 @@ export default function SearchPanel() {
           placeholder="Search"
           value={query}
           onChange={handleChange}
+          onFocus={() => setShowRecent(true)}
           className="search-input"
         />
         {query && (
@@ -81,74 +126,112 @@ export default function SearchPanel() {
       </div>
       <div className="search-divider"></div>
       <div className="search-result">
-        {(result.users ?? []).map((u) => (
-          <div key={u._id} className="search-user-row"
-            onClick={() => handleUserClick(u)}
-            style={{ cursor: 'pointer' }}
-          >
-            <img
-              src={u.avatarUrl}
-              alt={u.username}
-              width={44}
-              height={44}
-              className="search-user-avatar"
-            />
-            <div className="search-user-info">
-              <div className="search-user-username">
-                {u.username}
-                {u.isVerified && (
-                  <span className="search-user-verified">✔️</span>
-                )}
+        {/* Kết quả hashtag */}
+        {query.startsWith("#") && result.hashtags?.length > 0 && (
+          <div className="search-hashtag-list">
+            {result.hashtags.map(ht => (
+              <div
+                key={ht._id}
+                className="search-hashtag-row"
+                onClick={() => handleHashtagClick(ht)}
+              >
+                <div className="search-hashtag-icon">#</div>
+                <div className="search-hashtag-info">
+                  <span className="search-hashtag-name">#{ht.name}</span>
+                  <span className="search-hashtag-count">{ht.postCount.toLocaleString()} posts</span>
+                </div>
               </div>
-              <div className="search-user-meta">
-                {u.fullName || u.userId}
-                {u.followersCount !== undefined && (
-                  <> • {u.followersCount} followers</>
-                )}
-              </div>
-            </div>
+            ))}
           </div>
-        ))}
+        )}
+
+        {/* Kết quả user */}
+        {!query.startsWith("#") && result.users?.length > 0 && (
+          <div className="search-user-result">
+            {result.users.map(u => (
+              <div
+                key={u.userId}
+                className="search-user-row"
+                onClick={() => handleUserClick(u)}
+                style={{ cursor: "pointer" }}
+              >
+                <img src={u.avatarUrl} alt={u.username} className="search-user-avatar" />
+                <div className="search-user-info">
+                  <div className="search-user-username">{u.username}</div>
+                  <div className="search-user-meta">{u.fullName || u.userId}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-      {recentUsers.length > 0 && (
+      {showRecent && !query && recentItems.length > 0 && (
         <div className="search-recent">
           <div className="search-recent-header">
             <span className="search-recent-title">Recent</span>
             <button
               onClick={() => {
                 localStorage.removeItem("recentUsers");
-                setRecentUsers([]);
+                localStorage.removeItem("recentHashtags");
+                setRecentItems([]);
               }}
               className="search-recent-clear"
             >
               Clear all
             </button>
           </div>
-          {recentUsers.map(u => (
-            <div
-              key={u.userId}
-              className="search-user-row search-recent-row"
-              onClick={() => navigate(`/home/users/userid/${u.userId}`)}
-              style={{ cursor: "pointer" }}
-            >
-              <img src={u.avatarUrl} alt={u.username} className="search-user-avatar" />
-              <div className="search-user-info">
-                <div className="search-user-username">{u.username}</div>
-                <div className="search-user-meta">{u.fullName || u.userId}</div>
-              </div>
-              <button
-                onClick={e => {
-                  e.stopPropagation(); // Không chuyển trang khi xóa
-                  const filtered = recentUsers.filter(x => x.userId !== u.userId);
-                  localStorage.setItem("recentUsers", JSON.stringify(filtered));
-                  setRecentUsers(filtered);
-                }}
-                className="search-recent-remove"
-                aria-label="Remove recent user"
+          {recentItems.map(item => (
+            item.type === "user" ? (
+              <div
+                key={item.userId}
+                className="search-user-row search-recent-row"
+                onClick={() => navigate(`/home/users/userid/${item.userId}`)}
+                style={{ cursor: "pointer" }}
               >
-                ×
-              </button>
-            </div>
+                <img src={item.avatarUrl} alt={item.username} className="search-user-avatar" />
+                <div className="search-user-info">
+                  <div className="search-user-username">{item.username}</div>
+                  <div className="search-user-meta">{item.fullName || item.userId}</div>
+                </div>
+                <button
+                  onClick={e => {
+                    e.stopPropagation();
+                    const filtered = recentItems.filter(x => x.type !== "user" || x.userId !== item.userId);
+                    localStorage.setItem("recentUsers", JSON.stringify(filtered.filter(x => x.type === "user")));
+                    setRecentItems(filtered);
+                  }}
+                  className="search-recent-remove"
+                  aria-label="Remove recent user"
+                >
+                  ×
+                </button>
+              </div>
+            ) : (
+              <div
+                key={item._id}
+                className="search-hashtag-row search-recent-row"
+                onClick={() => navigate(`/home/hashtags/${item.name}`)}
+                style={{ cursor: "pointer" }}
+              >
+                <div className="search-hashtag-icon">#</div>
+                <div className="search-hashtag-info">
+                  <span className="search-hashtag-name">#{item.name}</span>
+                  <span className="search-hashtag-count">{item.postCount?.toLocaleString() ?? 0} posts</span>
+                </div>
+                <button
+                  onClick={e => {
+                    e.stopPropagation();
+                    const filtered = recentItems.filter(x => x.type !== "hashtag" || x._id !== item._id);
+                    localStorage.setItem("recentHashtags", JSON.stringify(filtered.filter(x => x.type === "hashtag")));
+                    setRecentItems(filtered);
+                  }}
+                  className="search-recent-remove"
+                  aria-label="Remove recent hashtag"
+                >
+                  ×
+                </button>
+              </div>
+            )
           ))}
         </div>
       )}

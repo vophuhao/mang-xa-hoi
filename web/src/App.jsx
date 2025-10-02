@@ -16,6 +16,7 @@ import store from "@/store";
 
 import Explore from "./components/Explore";
 import Feed from "./components/Feed";
+import HashtagPanel from "./components/HashtagPanel";
 import ProfilePanel from "./components/ProfilePanel";
 import Layout from "./pages/Layout";
 
@@ -52,6 +53,7 @@ function App() {
           <Route index element={<Feed />} />
           <Route path="explore" element={<Explore />} />
           <Route path="users/userid/:userId" element={<ProfilePanel />} />
+          <Route path="hashtags/:name" element={<HashtagPanel />} />
         </Route>
       </Routes>
 
