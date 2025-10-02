@@ -339,7 +339,7 @@ input:-webkit-autofill {
 
 .search-input-wrapper {
   position: relative;
-  width: 90%;
+  width: 100%;
   margin: 24px auto 0 auto;
 }
 
@@ -373,4 +373,31 @@ input:-webkit-autofill {
 }
 .dark .search-clear-btn:hover {
   background: #444;
+}
+
+.search-recent-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 16px 0;
+  padding: 0 12px;
+}
+
+.search-recent-title {
+  font-weight: 600;
+  font-size: 16px;
+  margin-left: 8px;
+}
+
+.search-recent-clear {
+  color: #0095f6;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  margin-right: 8px;
+}
+
+.search-recent-row {
+  position: relative;
 }

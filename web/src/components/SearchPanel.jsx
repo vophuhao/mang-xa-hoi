@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+import { useNavigate } from "react-router-dom";
 
 import { searchAll } from "../lib/api";
 
@@ -6,6 +8,13 @@ export default function SearchPanel() {
   const [query, setQuery] = useState("");
   const [result, setResult] = useState({ users: [], hashtags: [] });
   const [loading, setLoading] = useState(false);
+  const [recentUsers, setRecentUsers] = useState([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const recent = JSON.parse(localStorage.getItem("recentUsers") || "[]");
+    setRecentUsers(recent);
+  }, []);
 
   const handleChange = async (e) => {
     const q = e.target.value;
@@ -28,6 +37,21 @@ export default function SearchPanel() {
       }
     }
     setLoading(false);
+  };
+
+  const handleUserClick = (user) => {
+    // Lấy danh sách recent từ localStorage
+    const recent = JSON.parse(localStorage.getItem("recentUsers") || "[]");
+    // Xóa user trùng nếu đã có
+    const filtered = recent.filter(u => u.userId !== user.userId);
+    // Thêm user mới lên đầu
+    filtered.unshift(user);
+    // Giới hạn số lượng recent (ví dụ 10)
+    const limited = filtered.slice(0, 10);
+    // Lưu lại vào localStorage
+    localStorage.setItem("recentUsers", JSON.stringify(limited));
+    // Chuyển hướng sang profile
+    navigate(`/home/users/userid/${user.userId}`);
   };
 
   return (
@@ -59,7 +83,7 @@ export default function SearchPanel() {
       <div className="search-result">
         {(result.users ?? []).map((u) => (
           <div key={u._id} className="search-user-row"
-            onClick={() => window.location.href = `/home/users/userid/${u.userId}`}
+            onClick={() => handleUserClick(u)}
             style={{ cursor: 'pointer' }}
           >
             <img
@@ -86,6 +110,48 @@ export default function SearchPanel() {
           </div>
         ))}
       </div>
+      {recentUsers.length > 0 && (
+        <div className="search-recent">
+          <div className="search-recent-header">
+            <span className="search-recent-title">Recent</span>
+            <button
+              onClick={() => {
+                localStorage.removeItem("recentUsers");
+                setRecentUsers([]);
+              }}
+              className="search-recent-clear"
+            >
+              Clear all
+            </button>
+          </div>
+          {recentUsers.map(u => (
+            <div
+              key={u.userId}
+              className="search-user-row search-recent-row"
+              onClick={() => navigate(`/home/users/userid/${u.userId}`)}
+              style={{ cursor: "pointer" }}
+            >
+              <img src={u.avatarUrl} alt={u.username} className="search-user-avatar" />
+              <div className="search-user-info">
+                <div className="search-user-username">{u.username}</div>
+                <div className="search-user-meta">{u.fullName || u.userId}</div>
+              </div>
+              <button
+                onClick={e => {
+                  e.stopPropagation(); // Không chuyển trang khi xóa
+                  const filtered = recentUsers.filter(x => x.userId !== u.userId);
+                  localStorage.setItem("recentUsers", JSON.stringify(filtered));
+                  setRecentUsers(filtered);
+                }}
+                className="search-recent-remove"
+                aria-label="Remove recent user"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
