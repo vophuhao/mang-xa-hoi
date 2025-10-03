@@ -59,9 +59,12 @@ export const getTrendingPosts = async () => API.get("/posts/trending");
 export const getPostById = async (id) => API.get(`/posts/${id}`);
 export const updatePost = async (id, data) => API.put(`/posts/${id}`, data);
 export const deletePost = async (id) => API.delete(`/posts/${id}`);
-// Post interactions
-export const likePost = async (postId) => API.post(`/posts/${postId}/like`);
-
+export const likePost = async (id) => API.post(`/posts/${id}/like`);
+export const getReelsFeed = (page,limit) => {
+  return API.get("/posts/reels", {
+    params: { page, limit },
+  });
+};
 // =============== COMMENT API ===============
 // Comment CRUD for posts
 export const addComment = async (postId, data) =>
@@ -78,6 +81,51 @@ export const likeComment = async (commentId) =>
 // Reply system
 export const getCommentReplies = async (commentId) =>
   API.get(`/comments/${commentId}/replies`);
+
+// =============== MESSAGE API ===============
+// Message CRUD
+export const sendMessage = async (data) => API.post("/messages", data);
+export const getConversations = async (page = 1, limit = 20) =>
+  API.get(`/messages/conversations?page=${page}&limit=${limit}`);
+export const getConversation = async (partnerId, page = 1, limit = 10) =>
+  API.get(`/messages/conversation/${partnerId}?page=${page}&limit=${limit}`);
+export const getMessageById = async (messageId) =>
+  API.get(`/messages/${messageId}`);
+export const deleteMessage = async (messageId) =>
+  API.delete(`/messages/${messageId}`);
+
+// Message interactions
+export const markAsRead = async (messageId) =>
+  API.put(`/messages/${messageId}/read`);
+export const markAllAsRead = async (partnerId) =>
+  API.put(`/messages/conversation/${partnerId}/read-all`);
+export const reactToMessage = async (messageId, emoji) =>
+  API.post(`/messages/${messageId}/react`, { emoji });
+export const removeReaction = async (messageId) =>
+  API.delete(`/messages/${messageId}/react`);
+
+// Message search & filters
+export const searchMessages = async (partnerId, query, page = 1, limit = 20) =>
+  API.get(`/messages/search?partnerId=${partnerId}&query=${encodeURIComponent(query)}&page=${page}&limit=${limit}`);
+export const getMediaMessages = async (partnerId, mediaType = null, page = 1, limit = 20) => {
+  const params = new URLSearchParams({ partnerId, page, limit });
+  if (mediaType) params.append('mediaType', mediaType);
+  return API.get(`/messages/media?${params}`);
+};
+
+// Message utilities
+export const reportMessage = async (messageId, reason, description = null) =>
+  API.post(`/messages/${messageId}/report`, { reason, description });
+export const forwardMessage = async (messageId, recipientIds) =>
+  API.post(`/messages/${messageId}/forward`, { recipientIds });
+
+// User discovery for messaging
+export const getSuggestedMessagingUsers = async (page = 1, limit = 10) =>
+  API.get(`/messages/suggested?page=${page}&limit=${limit}`);
+export const searchUsersToMessage = async (query, page = 1, limit = 10) =>
+  API.get(`/messages/search-users?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`);
+
+// =============== MEDIA API ===============
 //save Media
 export const uploadMedia = async (formData) => {
   return API.post("/media/save", formData, {
@@ -91,6 +139,7 @@ export const analyzeMedia = async (formData) => {
   });
 };
 
+// =============== HASHTAG API ===============
 export const searchHashtags = async (key, page = 1, limit = 50) => {
   return API.get("/hashtags/search", {
     params: {
@@ -100,6 +149,36 @@ export const searchHashtags = async (key, page = 1, limit = 50) => {
     },
   });
 };
+
+// utils/api/audio.js
+export const getAudioList = async (q = "") => {
+  return API.get("/audio/list", {
+    params: { q }, // thêm query param
+  });
+};
+
+
+export const trimVideo = (formData) =>
+  API.post("/audio/trim-video", formData, { responseType: "blob" });
+ 
+
+ export const fetchPreviewUrl = async (deezerId) => {
+   return API.get(`/audio/preview/${deezerId}`);
+};
+
+export const createAudio = async (data) => API.post("/audio/create", data);
+
+export const extracAudio = async (formData) => {
+  return API.post("/audio/extract", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+}
+
+export const checkVideoHasAudio = async (formData) => {
+  return API.post("/audio/check-audio", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+}
 
 export const getPostsByHashtag = async (name, page = 1, limit = 30) =>
   API.get(`/hashtags/${name}/posts`, { params: { page, limit } });

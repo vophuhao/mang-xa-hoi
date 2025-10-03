@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 import { useDispatch, useSelector } from "react-redux";
-import { Outlet } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 
 import MobileFooter from "@/components/MobileFooter";
 import MobileHeader from "@/components/MobileHeader";
@@ -11,11 +11,14 @@ import {
   closePanels,
   isPanelMenu,
   setScreenSize,
+  setIsCollapsed,
   togglePanel,
+  isPageMenu,
 } from "@/store/slices/layoutSlice";
 
 const Layout = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { activeMenu, isCollapsed, isMobile } = useSelector(
     (state) => state.layout
   );
@@ -46,7 +49,30 @@ const Layout = () => {
   }, [dispatch]);
 
   const handleMenuClick = (menuId) => {
-    dispatch(togglePanel(menuId));
+    if (isPanelMenu(menuId)) {
+      dispatch(togglePanel(menuId));
+    } else if (isPageMenu(menuId)) {
+      if (menuId === "home") {
+        navigate("/");
+        if (!isMobile) dispatch(setIsCollapsed(false)); // PC mở lại
+      } else if (menuId === "explore") {
+        navigate("/explore");
+        if (!isMobile) dispatch(setIsCollapsed(false));
+      } else if (menuId === "message") {
+        navigate("/message");
+        dispatch(setIsCollapsed(true)); // luôn thu nhỏ
+      } else if (menuId === "profile") {
+        navigate("/profile");
+        if (!isMobile) dispatch(setIsCollapsed(false));
+      }
+      else if (menuId === "reels") {
+        navigate("/reels");
+        if (!isMobile) dispatch(setIsCollapsed(false));
+      }
+
+
+      dispatch(togglePanel(null)); // đóng các panel
+    }
   };
 
   const handleOutsideClick = () => {
@@ -80,7 +106,7 @@ const Layout = () => {
           className="scrollbar-hide flex-1 overflow-y-auto"
           onClick={handleOutsideClick}
         >
-          <div className={`mx-auto ${isMobile ? "px-4" : "max-w-2xl px-6"}`}>
+          <div className={`mx-auto ${isMobile ? "px-4" : ""}`}>
             <Outlet />
           </div>
         </div>

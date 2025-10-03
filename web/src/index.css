@@ -230,6 +230,31 @@ input:-webkit-autofill {
   display: none;
 }
 
+
+/* Ẩn scrollbar cross-browser */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE, Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+/* Giữ chỗ cho scrollbar để không bị lệch giữa Chrome và Edge */
+.scrollbar-stable {
+  scrollbar-gutter: stable both-edges;
+}
+@keyframes marquee {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+.animate-marquee {
+  display: inline-block;
+  min-width: 100%;
+  animation: marquee 10s linear infinite;
+}
+
 /* SearchPanel styles - Instagram style, hỗ trợ sáng/tối */
 .search-panel {
   background: var(--search-bg);

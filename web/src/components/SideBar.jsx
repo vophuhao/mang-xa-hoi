@@ -143,6 +143,7 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
       return;
     }
 
+
     // Remove the early return for active menu items to allow toggling
     // if (activeMenu === item.id) return;
 
