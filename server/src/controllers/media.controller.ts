@@ -1,13 +1,13 @@
-import { Request, Response } from "express";
-import { BAD_REQUEST } from "../constants/http";
-import catchErrors from "../utils/catchErrors";
-import cloudinary from "../config/cloudinary";
+import { CLARIFAI_API_KEY } from "@/constants/env";
 import type { AuthenticatedRequest } from "@/types";
 import axios from "axios";
-import { CLARIFAI_API_KEY } from "@/constants/env";
+import { Request, Response } from "express";
 import ffmpeg from "fluent-ffmpeg";
 import fs from "fs";
 import path from "path";
+import cloudinary from "../config/cloudinary";
+import { BAD_REQUEST } from "../constants/http";
+import catchErrors from "../utils/catchErrors";
 
 // Mở rộng type cho Request khi dùng Multer
 
@@ -31,7 +31,7 @@ function sanitizeFilename(filename: string) {
 
 // Hàm kiểm tra video có audio track không
 async function hasAudioTrack(videoPath: string): Promise<boolean> {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     ffmpeg.ffprobe(videoPath, (err, metadata) => {
       if (err) return resolve(false);
       const hasAudio = metadata.streams.some((s: any) => s.codec_type === "audio");
@@ -61,9 +61,7 @@ export async function getHashtagsFromImageBuffer(file: Express.Multer.File): Pro
     }
   );
   const concepts = response.data.outputs[0]?.data?.concepts || [];
-  return concepts
-    .slice(0, 20)
-    .map((c: any) => c.name.toLowerCase().replace(/\s+/g, ""));
+  return concepts.slice(0, 20).map((c: any) => c.name.toLowerCase().replace(/\s+/g, ""));
 }
 
 // API Handler
@@ -134,15 +132,10 @@ async function replaceAudioInVideo(videoPath: string, audioPath: string, outputP
   return new Promise<void>((resolve, reject) => {
     ffmpeg(videoPath)
       .input(audioPath)
-      .outputOptions([
-        "-map", "0:v:0",
-        "-map", "1:a:0",
-        "-c:v", "copy",
-        "-shortest"
-      ])
+      .outputOptions(["-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-shortest"])
       .save(outputPath)
       .on("end", () => resolve())
-      .on("error", (err) => reject(err));
+      .on("error", err => reject(err));
   });
 }
 
@@ -152,36 +145,29 @@ async function mixAudioToVideo(videoPath: string, audioPath: string, outputPath:
     ffmpeg()
       .input(videoPath)
       .input(audioPath)
-      .complexFilter([
-        "[0:a][1:a]amix=inputs=2:duration=first[aout]"
-      ])
-      .outputOptions([
-        "-map", "0:v:0",
-        "-map", "[aout]",
-        "-c:v", "copy",
-        "-shortest"
-      ])
+      .complexFilter(["[0:a][1:a]amix=inputs=2:duration=first[aout]"])
+      .outputOptions(["-map", "0:v:0", "-map", "[aout]", "-c:v", "copy", "-shortest"])
       .save(path.normalize(outputPath)) // chuẩn hóa path
       .on("end", () => resolve())
-      .on("error", (err) => {
+      .on("error", err => {
         console.error("FFmpeg mixAudioToVideo error:", err);
         reject(err);
       });
   });
 }
 
-
 // Hàm xoá toàn bộ audio track khỏi video
 async function removeAudioFromVideo(videoPath: string, outputPath: string) {
   return new Promise<void>((resolve, reject) => {
     ffmpeg(videoPath)
       .outputOptions([
-        "-c", "copy",
-        "-an" // remove all audio
+        "-c",
+        "copy",
+        "-an", // remove all audio
       ])
       .save(outputPath)
       .on("end", () => resolve())
-      .on("error", (err) => reject(err));
+      .on("error", err => reject(err));
   });
 }
 

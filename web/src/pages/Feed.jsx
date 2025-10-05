@@ -58,7 +58,7 @@ const Feed = () => {
       <div className="scrollbar-hide flex-1 overflow-y-auto">
         {/* Stories Section */}
         <div className="mx-auto max-w-[530px]">
-          <Stories stories={[]} />
+          <Stories />
         </div>
 
         <div className="mx-auto max-w-[420px] pt-4">

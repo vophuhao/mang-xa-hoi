@@ -7,6 +7,8 @@ import { BrowserRouter } from "react-router-dom";
 
 import App from "@/App.jsx";
 import queryClient from "@/config/queryClient.js";
+import "@/index.css";
+import "@/styles/story.css";
 
 import store from "./store";
 
@@ -16,9 +18,10 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       <Provider store={store}>
         <BrowserRouter>
           <App />
-          <ReactQueryDevtools position="bottom-right" initialIsOpen={false} />
         </BrowserRouter>
       </Provider>
+
+      <ReactQueryDevtools position="bottom-right" initialIsOpen={false} />
     </QueryClientProvider>
   </GoogleOAuthProvider>
 );

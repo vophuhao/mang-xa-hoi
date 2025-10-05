@@ -194,7 +194,7 @@ const PostMedia = ({
           </div>
 
           {/* Mute/Unmute Button - Positioned relative to video container */}
-          <div className="absolute top-0 left-0 z-50 p-2">
+          <div className="absolute top-0 left-0 z-30 p-2">
             <button
               onClick={handleMuteToggle}
               className="button-hover cursor-pointer rounded-full bg-black/70 p-2 text-white shadow-lg backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:bg-black/85"

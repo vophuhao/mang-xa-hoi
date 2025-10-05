@@ -1,22 +1,27 @@
 import { useRef, useState } from "react";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
-const Stories = ({ stories = [] }) => {
+import CreateStoryModal from "@/components/story/CreateStoryModal";
+import StoryViewer from "@/components/story/StoryViewer";
+import { useStories } from "@/hooks/useStory";
+import { useCurrentUser } from "@/hooks/useUser";
+
+const Stories = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showStoryViewer, setShowStoryViewer] = useState(false);
+  const [selectedStoryData, setSelectedStoryData] = useState(null);
   const scrollContainerRef = useRef(null);
   const STORIES_PER_SCROLL = 5;
   const STORY_WIDTH = 80; // 64px story + 16px gap
 
-  // Create data to work with (stories or placeholders)
-  const allStories =
-    stories.length > 0
-      ? stories
-      : Array.from({ length: 20 }, (_, i) => ({
-          user: { _id: `placeholder-${i}`, username: `user${i + 1}`, avatarUrl: null },
-        }));
+  // Hooks
+  const { data: currentUser } = useCurrentUser();
+  const { data: storiesData, isLoading } = useStories();
 
-  const totalStories = allStories.length;
+  const allStories = storiesData || [];
+  const totalStories = allStories.length + 1; // +1 for "Your Story" button
 
   const handlePrevious = () => {
     if (currentIndex > 0) {
@@ -52,10 +57,35 @@ const Stories = ({ stories = [] }) => {
   // Show navigation if there are more stories than can fit in 5 visible slots + 2 partial
   const showNavigation = totalStories >= 7;
 
-  const handleStoryClick = (story) => {
-    // TODO: Open story viewer
-    console.log("Story clicked:", story);
+  const handleStoryClick = (userStories, storyIndex = 0) => {
+    const userIndex = allStories.findIndex((us) => us.user._id === userStories.user._id);
+    setSelectedStoryData({
+      userStories: allStories,
+      initialUserIndex: userIndex,
+      initialStoryIndex: storyIndex,
+    });
+    setShowStoryViewer(true);
   };
+
+  const handleCreateStory = () => {
+    setShowCreateModal(true);
+  };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="mb-6 bg-transparent">
+        <div className="flex gap-4 pt-4 pr-[32px] pl-[32px]">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="flex w-[64px] flex-shrink-0 flex-col items-center">
+              <div className="mb-1 h-16 w-16 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
+              <div className="h-3 w-12 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mb-6 bg-transparent">
@@ -65,33 +95,68 @@ const Stories = ({ stories = [] }) => {
           ref={scrollContainerRef}
           className="scrollbar-hide flex gap-4 overflow-x-hidden pt-4 pr-[32px] pl-[32px]"
         >
-          {/* Stories */}
-          {allStories.map((story, index) => (
-            <div
-              key={story.user._id || `story-${index}`}
-              className="flex w-[64px] flex-shrink-0 flex-col items-center"
+          {/* Your Story Button */}
+          <div className="flex w-[64px] flex-shrink-0 flex-col items-center">
+            <button
+              onClick={handleCreateStory}
+              className="mb-1 flex h-16 w-16 items-center justify-center rounded-full border-2 border-dashed border-gray-300 bg-gray-50 transition-all hover:scale-105 hover:border-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:hover:border-blue-400"
             >
-              <button
-                onClick={() => handleStoryClick(story)}
-                className="mb-1 h-16 w-16 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 p-[2px] transition-transform hover:scale-105"
+              <Plus size={24} className="text-gray-400 dark:text-gray-500" />
+            </button>
+            <span className="max-w-16 truncate text-[11px] text-gray-700 dark:text-gray-300">
+              Tin của bạn
+            </span>
+          </div>
+
+          {/* Stories */}
+          {allStories.map((userStories) => {
+            const hasUnviewed = userStories.hasUnviewed;
+            const borderColor = hasUnviewed
+              ? "from-purple-400 to-pink-400"
+              : "from-gray-300 to-gray-400";
+
+            return (
+              <div
+                key={userStories.user._id}
+                className="flex w-[64px] flex-shrink-0 flex-col items-center"
               >
-                <div className="h-full w-full rounded-full bg-white p-[2px] dark:bg-gray-800">
-                  {story.user.avatarUrl ? (
-                    <img
-                      src={story.user.avatarUrl}
-                      alt={story.user.username}
-                      className="h-full w-full rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="h-full w-full rounded-full bg-gray-200 dark:bg-gray-700" />
-                  )}
-                </div>
-              </button>
-              <span className="max-w-16 truncate text-xs text-gray-700 dark:text-gray-300">
-                {story.user.username}
-              </span>
+                <button
+                  onClick={() => handleStoryClick(userStories)}
+                  className={`mb-1 h-16 w-16 rounded-full bg-gradient-to-r ${borderColor} p-[2px] transition-transform hover:scale-105`}
+                >
+                  <div className="h-full w-full rounded-full bg-white p-[2px] dark:bg-gray-800">
+                    {userStories.user.avatarUrl ? (
+                      <img
+                        src={userStories.user.avatarUrl}
+                        alt={userStories.user.username}
+                        className="h-full w-full rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700">
+                        <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                          {userStories.user.username?.[0]?.toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </button>
+                <span className="max-w-16 truncate text-xs text-gray-700 dark:text-gray-300">
+                  {userStories.user.username}
+                </span>
+              </div>
+            );
+          })}
+
+          {/* Empty state when no stories */}
+          {/* {allStories.length === 0 && (
+            <div className="flex flex-1 items-center justify-center py-8">
+              <div className="text-center">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Chưa có story nào. Hãy tạo story đầu tiên của bạn!
+                </p>
+              </div>
             </div>
-          ))}
+          )} */}
         </div>
 
         {/* Navigation Buttons - only show if there are stories that get cut off */}
@@ -119,6 +184,21 @@ const Stories = ({ stories = [] }) => {
           </>
         )}
       </div>
+
+      {/* Create Story Modal */}
+      <CreateStoryModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} />
+
+      {/* Story Viewer */}
+      {showStoryViewer && selectedStoryData && (
+        <StoryViewer
+          isOpen={showStoryViewer}
+          onClose={() => setShowStoryViewer(false)}
+          userStories={selectedStoryData.userStories}
+          initialUserIndex={selectedStoryData.initialUserIndex}
+          initialStoryIndex={selectedStoryData.initialStoryIndex}
+          currentUserId={currentUser?.data?._id}
+        />
+      )}
     </div>
   );
 };

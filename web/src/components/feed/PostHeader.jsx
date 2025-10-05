@@ -30,7 +30,7 @@ const PostHeader = ({
         {/* User Avatar - Clickable */}
         <button
           onClick={handleUserClick}
-          className="mr-3 transition-opacity hover:opacity-80"
+          className="mr-3 transition-opacity"
           disabled={!onUserClick}
           type="button"
         >

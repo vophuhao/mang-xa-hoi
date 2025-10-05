@@ -9,6 +9,7 @@ import ProfileHeader from "@/components/profile/ProfileHeader";
 import ProfileStoryHighlights from "@/components/profile/ProfileStoryHighlights";
 import ProfileTabs from "@/components/profile/ProfileTabs";
 import { useFollowActions } from "@/hooks/useFollow";
+import { useHighlights, useStoriesByUsername, useUserStories } from "@/hooks/useStory";
 import { useCurrentUser, useUserPosts, useUserProfile } from "@/hooks/useUser";
 
 const Profile = () => {
@@ -33,6 +34,11 @@ const Profile = () => {
     isLoading: postsLoading,
   } = useUserPosts(username);
   const { followUser, unfollowUser } = useFollowActions();
+
+  // Story hooks
+  const { data: highlights, isLoading: highlightsLoading } = useHighlights(username);
+  const { data: userStoriesData } = useStoriesByUsername(username);
+  const { data: myStoriesData } = useUserStories(); // For own profile highlights creation
 
   // Flatten posts from pages
   const posts = postsData?.pages?.flatMap((page) => page.data) || [];
@@ -200,22 +206,6 @@ const Profile = () => {
 
   const user = profileData?.data;
 
-  // Mock highlights data - replace with real data when API is ready
-  const highlights = [
-    {
-      id: 1,
-      title: "Travel",
-      thumbnail:
-        "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=150&h=150&fit=crop&crop=face",
-    },
-    {
-      id: 2,
-      title: "Food",
-      thumbnail:
-        "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=150&h=150&fit=crop&crop=center",
-    },
-  ];
-
   const handleAddHighlight = () => {
     // TODO: Implement add highlight functionality
     console.log("Add new highlight");
@@ -240,10 +230,12 @@ const Profile = () => {
 
       {/* Story Highlights */}
       <ProfileStoryHighlights
-        highlights={highlights}
+        highlights={highlights || []}
+        userStories={isOwnProfile ? myStoriesData : userStoriesData}
         isOwnProfile={isOwnProfile}
         onAddHighlight={handleAddHighlight}
         onViewHighlight={handleViewHighlight}
+        currentUserId={currentUser?.data?._id}
       />
 
       {/* Profile Tabs */}
