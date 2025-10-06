@@ -14,8 +14,11 @@ import ResetPassword from "@/pages/ResetPassword";
 import VerifyEmail from "@/pages/VerifyEmail";
 import store from "@/store";
 
+import Audio from "./components/Audio";
 import Explore from "./components/Explore";
 import Feed from "./components/Feed";
+import HashtagPanel from "./components/HashtagPanel";
+import ProfilePanel from "./components/ProfilePanel"; 
 import Reel from "./components/Reel";
 import Layout from "./pages/Layout";
 import Messages from "./pages/Messages";
@@ -52,9 +55,13 @@ function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<Feed />} />
           <Route path="explore" element={<Explore />} />
+          <Route path="users/userid/:userId" element={<ProfilePanel />} />
+          <Route path="hashtags/:name" element={<HashtagPanel />} />          
           <Route path="message" element={<Messages />} />
-          <Route path="reels" element={<Reel />} />
+          <Route path="reels" element={<Reel />} />  
+           <Route path="audio/:id" element={<Audio/>} />       
         </Route>
+
       </Routes>
 
 

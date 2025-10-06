@@ -149,17 +149,17 @@ class HashtagService {
 
       // Get posts that contain this hashtag
       const posts = await PostModel.find({
-        hashtags: { $in: [hashtag._id] },
+        tags: { $in: [hashtag._id] },
         isHidden: false,
       })
         .populate("user", "username fullName avatarUrl isVerified")
-        .populate("hashtags", "name")
+        .populate("tags", "name")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
 
       const total = await PostModel.countDocuments({
-        hashtags: { $in: [hashtag._id] },
+        tags: { $in: [hashtag._id] },
         isHidden: false,
       });
 

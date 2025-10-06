@@ -1,8 +1,11 @@
-import { GoogleLogin } from '@react-oauth/google'; 
 import { useState } from "react";
+
+import { GoogleLogin } from '@react-oauth/google'; 
 import { useMutation } from "@tanstack/react-query";
-import { register } from "../lib/api";
 import { toast } from 'react-toastify';
+
+import { register } from "../lib/api";
+
 const RegisterForm = ({ onSwitch }) => {
    const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

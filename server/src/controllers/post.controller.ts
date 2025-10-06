@@ -72,7 +72,6 @@ export const getPostByIdHandler = catchErrors(async (req: AuthenticatedRequest, 
  */
 export const likePostHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
   const { postId } = likePostSchema.parse(req.params);
-  console.log
   const result = await PostService.togglePostLike(postId, (req.userId as any).toString());
   return ResponseUtil.success(res, result);
 });

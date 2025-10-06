@@ -9,6 +9,7 @@ import {
   searchUsersHandler,
   unfollowUserHandler,
   updateProfileHandler,
+  getUserByIdHandler,
 } from "@/controllers/user.controller";
 import authenticate from "@/middleware/authenticate";
 import { Router } from "express";
@@ -45,6 +46,7 @@ userRoutes.get("/:username/following", getFollowingHandler);
 // Follow/unfollow users
 userRoutes.post("/:userId/follow", followUserHandler);
 userRoutes.delete("/:userId/follow", unfollowUserHandler);
+userRoutes.get("/userid/:userId", getUserByIdHandler);
 
 
 

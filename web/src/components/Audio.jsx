@@ -1,0 +1,171 @@
+import React, { useEffect, use, useState, useRef } from "react";
+
+import { Heart, MessageCircle, Eye, Play, Pause } from "lucide-react";
+import { useParams } from "react-router-dom";
+
+import { checkSavedAudio, fetchPreviewUrl, getAudio, getReelByAudioId, saveAudio } from "@/lib/api";
+
+
+export default function Audio() {
+    const { id } = useParams();
+    const [reels, setReels] = React.useState([]);
+    const [audio, setAudio] = React.useState(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [audioUrl, setAudioUrl] = useState(null);
+    const audioRef = useRef(null);
+    const [isSaved, setIsSaved] = useState(false);
+
+
+    useEffect(() => {
+        const fetchAudioSave = async () => {
+            try {
+                const res = await checkSavedAudio(id);
+                setIsSaved(res.saved);
+            } catch (error) {
+                console.error("Lỗi khi tải audio:", error);
+            }
+        };
+
+        if (id) fetchAudioSave();
+    }, [id]);
+
+
+    useEffect(() => {
+        const fetchAudio = async () => {
+            try {
+                const res = await getAudio(id);
+                setAudio(res.data);
+                setAudioUrl(res.data.fileUrl);
+            } catch (error) {
+                console.error("Lỗi khi tải audio:", error);
+            }
+        };
+
+        if (id) fetchAudio();
+    }, [id]);
+
+    useEffect(() => {
+        const fetchReels = async () => {
+            try {
+                const res = await getReelByAudioId(id);
+                setReels(res);
+            } catch (error) {
+                console.error("Lỗi khi tải reels:", error);
+            }
+        };
+
+        if (id) fetchReels();
+    }, [id]);
+
+
+    const handleToggleSave = async () => {
+        const res = await saveAudio(id);
+        setIsSaved(res.saved);
+    };
+
+
+    const handlePlay = async () => {
+
+        try {
+            if (!audioUrl && audio.deezerId) {
+
+                const res = await fetchPreviewUrl(audio.deezerId);
+                setAudioUrl(res.data.previewUrl);
+                audioRef.current.src = res.data.previewUrl;
+            }
+
+            // Nếu đang phát → dừng
+            if (isPlaying) {
+                audioRef.current.pause();
+                setIsPlaying(false);
+            } else {
+                // Nếu chưa phát → phát
+                await audioRef.current.play();
+                setIsPlaying(true);
+            }
+        } catch (error) {
+            console.error("Không thể phát âm thanh:", error);
+        }
+    };
+
+    // Khi nhạc kết thúc → reset lại icon
+    const handleEnded = () => setIsPlaying(false);
+
+    console.log("Reels state:", reels); // Kiểm tra state reels
+    return (
+        <div className="max-w-5xl mx-auto p-6 font-sans">
+            {/* Header */}
+            <h1 className="text-2xl font-bold mb-4">Âm thanh</h1>
+
+            {/* User info */}
+            <div className="flex items-center gap-4 mb-6">
+                <img
+                    src={audio?.cover || audio?.user?.avatarUrl}
+                    alt="avatar"
+                    className="w-39 h-39 rounded-xl object-cover mr-4"
+                />
+                <div>
+                    <h2 className="text-lg font-semibold">{audio?.title}</h2>
+                    <p className="text-sm text-gray-500">{audio?.used} thước phim</p>
+
+                    <button
+                        onClick={handleToggleSave}
+                        className={`mt-2 px-4 py-1 rounded-lg   text-black bg-gray-200 hover:bg-gray-300 w-[400px]
+                            }`}
+                    >
+                        {isSaved ? "Đã lưu" : "Lưu âm thanh"}
+                    </button>
+
+                    <div className="flex items-center gap-4 mt-5">
+                        {/* Nút Play / Pause */}
+
+                        <audio
+                            ref={audioRef}
+                            src={audioUrl || ""}
+                            controls
+                            onEnded={handleEnded}
+                            preload="none"
+                            style={{ width: "400px" }}
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* Video list */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {reels.map((video) => (
+                    <a
+                        key={video.id}
+                        href={`/reel/${video.id}`}
+                        className="relative group"
+                    >
+                        <video
+                            src={video.thumbnail}
+                            alt={video.caption}
+                            className="object-cover w-full h-100 "
+                        />
+
+                        {/* Hiển thị số view ở góc dưới bên trái (luôn thấy) */}
+                        <div className="absolute bottom-3 left-4 flex items-center text-white text-sm font-medium drop-shadow">
+                            <Eye className="w-4 h-4 mr-1" />
+                            <span>{video.views} </span>
+                        </div>
+
+                        {/* Hiển thị like & comment khi hover */}
+                        <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-4 text-white text-sm font-medium rounded-lg">
+                            <div className="flex items-center gap-1">
+                                <Heart className="h-4 w-4" />
+                                {video.likes}
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <MessageCircle className="h-4 w-4" />
+                                {video.comments}
+                            </div>
+                        </div>
+                    </a>
+                ))}
+            </div>
+
+        </div>
+    );
+}

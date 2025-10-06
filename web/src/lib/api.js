@@ -42,6 +42,9 @@ export const unfollowUser = async (userId) =>
 export const searchUsers = async (query, page = 1, limit = 20) => {
   return API.get(`/users/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`);
 };
+// Get user profile by userId
+export const getUserByUserId = async (userId) =>
+  API.get(`/users/userid/${userId}`);
 
 
 // =============== SESSION API ===============
@@ -176,3 +179,25 @@ export const checkVideoHasAudio = async (formData) => {
     headers: { "Content-Type": "multipart/form-data" },
   });
 }
+
+export const getReelByAudioId = async (audioId) =>
+  API.get(`/audio/${audioId}/reels`); 
+
+export const getAudio = async (id) => 
+  API.get(`/audio/${id}`);
+
+export const getPostsByHashtag = async (name, page = 1, limit = 30) =>
+  API.get(`/hashtags/${name}/posts`, { params: { page, limit } });
+
+export const searchAll = async (query, page = 1, limit = 10) => {
+  // Thêm từ khóa await để nhận đúng response
+  const response = await API.get(`/api/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`);
+  return response; // Đảm bảo trả về response, không phải response.data
+};
+
+export const saveAudio = async (audioId) => 
+  API.post(`/audio/save/${audioId}`);
+
+export const checkSavedAudio = async (audioId) => 
+  API.get(`/audio/check-saved/${audioId}`);
+

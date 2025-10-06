@@ -21,8 +21,10 @@ import storyRoutes from "@/routes/story.route";
 import userRoutes from "@/routes/user.route";
 import mediaRoutes from "./routes/media.route";
 import AudioRoutes from "./routes/audio.route";
-import { initializeSocket } from "./socket"; // import hàm khởi tạo socket
+import { initializeSocket } from "./socket"; // import h�m kh?i t?o socket
 import fetch from "node-fetch";
+import searchRoutes from './routes/search.route';
+
 const app = express();
 
 // add middleware
@@ -64,11 +66,14 @@ app.use("/messages", authenticate, directMessageRoutes);
 app.use("/audio",authenticate, AudioRoutes);
 
 
+
+app.use("/api/search", authenticate, searchRoutes);
+
 // error handler
 app.use(errorHandler);
 
 const server = http.createServer(app);
-initializeSocket(server); // Khởi tạo socket với server
+initializeSocket(server); // Kh?i t?o socket v?i server
 
 server.listen(PORT, async () => {
   console.log(`Server listening on port ${PORT} in ${NODE_ENV} environment`);

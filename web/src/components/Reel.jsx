@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, MessageCircle, Send, Bookmark, Volume2, VolumeX, Play } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 import useAuth from "@/hooks/useAuth";
 import { getReelsFeed, likePost } from "@/lib/api";
@@ -18,6 +19,13 @@ export default function ReelWeb() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const loadMoreRef = useRef(null);
+  const navigate = useNavigate();
+
+  const handleAudioClick = (audioInfo) => () => {
+    if (!audioInfo) return;
+    navigate(`/audio/${audioInfo._id}`);
+  };
+
   // Fetch reels
   useEffect(() => {
     if (!user?.data?._id) return;
@@ -25,20 +33,20 @@ export default function ReelWeb() {
   }, [user?.data?._id]);
 
   useEffect(() => {
-  if (!loadMoreRef.current) return;
-  const observer = new IntersectionObserver(entries => {
-    if (entries[0].isIntersecting && !loading) {
-      setPage(prev => {
-        const next = prev + 1;
-        fetchReels(next);
-        return next;
-      });
-    }
-  }, { threshold: 1.0 });
+    if (!loadMoreRef.current) return;
+    const observer = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && !loading) {
+        setPage(prev => {
+          const next = prev + 1;
+          fetchReels(next);
+          return next;
+        });
+      }
+    }, { threshold: 1.0 });
 
-  observer.observe(loadMoreRef.current);
-  return () => observer.disconnect();
-}, [loading]);
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [loading]);
 
   const fetchReels = async (pageNum) => {
     try {
@@ -227,7 +235,13 @@ export default function ReelWeb() {
               </div>
 
               {/* Action buttons */}
-              <ActionButtons reel={reel} handleLike={handleLike} likedMap={likedMap} />
+              <ActionButtons
+                reel={reel}
+                handleLike={handleLike}
+                likedMap={likedMap}
+                handleAudioClick={handleAudioClick} // 👈 Truyền thêm prop này
+              />
+
             </div>
           ))}
           <div ref={loadMoreRef} className="h-10"></div>
@@ -263,9 +277,10 @@ function InfoOverlay({ reel }) {
   );
 }
 
-function ActionButtons({ reel, handleLike, likedMap }) {
+function ActionButtons({ reel, handleLike, likedMap, handleAudioClick }) {
   return (
     <div className="flex flex-col mt-105 ml-5 items-center justify-center space-y-6">
+      {/* Like button */}
       <div className="flex flex-col items-center space-y-1">
         <button onClick={handleLike(reel._id)}>
           <Heart
@@ -275,6 +290,8 @@ function ActionButtons({ reel, handleLike, likedMap }) {
         </button>
         {!reel.likesHidden && <span className="text-xs text-black">{reel.likeCount}</span>}
       </div>
+
+      {/* Comment button */}
       <div className="flex flex-col items-center space-y-1">
         <button disabled={reel.commentsDisabled}>
           <MessageCircle
@@ -284,18 +301,27 @@ function ActionButtons({ reel, handleLike, likedMap }) {
         </button>
         <span className="text-xs text-black">{reel.commentCount}</span>
       </div>
+
       <button>
         <Send size={25} className="text-black" />
       </button>
+
       <button className="mt-2">
         <Bookmark size={25} className="text-black" />
       </button>
-      <div className="mt-10">
-        <img src={reel.audioUser?.avatarUrl || reel.audioInfo?.coverUrl} alt="avatar" className="w-8 h-8 rounded-sm object-cover" />
+
+      {/* 👇 Thêm click chuyển trang âm thanh */}
+      <div className="mt-10 cursor-pointer" onClick={handleAudioClick(reel.audioInfo)}>
+        <img
+          src={reel.audioUser?.avatarUrl || reel.audioInfo?.coverUrl}
+          alt="avatar"
+          className="w-8 h-8 rounded-sm object-cover hover:opacity-80 transition"
+        />
       </div>
     </div>
   );
 }
+
 
 function Caption({ caption }) {
   const [expanded, setExpanded] = useState(false);

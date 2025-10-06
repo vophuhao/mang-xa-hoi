@@ -1,3 +1,4 @@
+import { getAudioByIdSchema } from './../validators/audio.validator';
 import Audio from '@/models/audio.model';
 // controllers/musicController.ts
 import { Request, Response } from "express";
@@ -13,6 +14,7 @@ import cloudinary from "../config/cloudinary";
 import Post from "../models/post.model";
 import { BAD_REQUEST } from '@/constants/http';
 import { AuthenticatedRequest } from '@/types';
+import saveAudioModel from '@/models/saveAudio.model';
 ffmpeg.setFfmpegPath(path.resolve(__dirname, "../../bin/ffmpeg.exe"));
 ffmpeg.setFfprobePath(path.resolve(__dirname, "../../bin/ffprobe.exe"));
 
@@ -196,7 +198,81 @@ export async function increaseAudioUsedCount(audioId: string) {
 
 
 
-export async function getAllReelPostsByAudio(audioId: string) {
-  return Post.find({ audio: audioId, type: "reel" });
-}
+export const getAllReelPostsByAudio = catchErrors(async (req, res) => {
+  try {
+    const { id } = req.params; // id của audio
 
+    const reels = await Post.find({
+      audioId: id,
+      type: "reel",
+    })
+      .populate({
+        path: "user",
+        select: "username avatarUrl",
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const formatted = reels.map((r) => ({
+      id: r._id,
+      caption: r.caption,
+      thumbnail: r.mediaUrls[0], // thumbnail reel
+      views: r.viewCount,
+      likes: r.likeCount,
+      comments: r.commentCount,
+    }));
+
+    res.status(200).json(formatted);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
+
+export const getAudioById = catchErrors(async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const audio = await Audio.findById(id).populate("user", "username avatarUrl userId _id");
+
+  return ResponseUtil.success(res, audio);
+});
+
+export const SaveAudio = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.userId ; // từ middleware verifyToken
+    const audioId = req.params.id;
+
+    const existing = await saveAudioModel.findOne({ user: userId, audio: audioId });
+
+    if (existing) {
+      // Nếu đã lưu rồi => xóa (unsave)
+      await saveAudioModel.deleteOne({ _id: existing._id });
+      return res.json({ saved: false, message: "Đã bỏ lưu âm thanh." });
+    } else {
+      // Nếu chưa lưu => thêm mới
+      await saveAudioModel.create({ user: userId, audio: audioId });
+      return res.json({ saved: true, message: "Đã lưu âm thanh thành công." });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Lỗi server." });
+  }
+});
+
+export const checkSavedAudio = catchErrors( async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+    const audioId = req.params.id;
+
+    const existing = await saveAudioModel.findOne({ user: userId, audio: audioId });
+
+    return res.json({
+      saved: !!existing, // true nếu đã lưu, false nếu chưa
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Lỗi server khi kiểm tra trạng thái lưu." });
+  }
+});

@@ -9,6 +9,7 @@ import {
   getUserByUsernameSchema,
   searchUsersSchema,
   updateProfileSchema,
+  getUserByUserIdSchema,
 } from "@/validators/user.validator";
 
 /**
@@ -42,6 +43,21 @@ export const getUserByUsernameHandler = catchErrors(
     const { username } = getUserByUsernameSchema.parse(req.params);
     const userProfile = await UserService.getUserByUsername(
       username,
+      (req.userId as any).toString()
+    );
+    return ResponseUtil.success(res, userProfile);
+  }
+);
+
+/**
+ * Get user profile by userId
+ * @route GET /user/id/:userId
+ */
+export const getUserByIdHandler = catchErrors(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const { userId } = getUserByUserIdSchema.parse(req.params);
+    const userProfile = await UserService.getUserByUserId(
+      userId,
       (req.userId as any).toString()
     );
     return ResponseUtil.success(res, userProfile);
