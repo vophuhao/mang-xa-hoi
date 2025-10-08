@@ -201,3 +201,6 @@ export const saveAudio = async (audioId) =>
 export const checkSavedAudio = async (audioId) => 
   API.get(`/audio/check-saved/${audioId}`);
 
+export const increasePostView = async (postId) =>
+  API.post(`/posts/views/${postId}`);
+

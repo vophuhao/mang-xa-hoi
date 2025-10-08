@@ -517,7 +517,13 @@ export class PostService {
     return reels;
   }
 
+  static async incrementViewCount(postId: string) {
+    const post = await PostModel.findById(postId);
+    if (!post) throw new Error("Post not found");
 
+    await post.incrementView(); // 👈 dùng method có sẵn trong model
+    return post.viewCount; // trả lại số lượt xem sau khi tăng
+  }
 
 }
 

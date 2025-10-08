@@ -131,3 +131,16 @@ export const getReelsFeedHandler = catchErrors(async (req: AuthenticatedRequest,
 
   return ResponseUtil.success(res, reels);
 });
+
+// controllers/post.controller.ts
+export const increasePostViewHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+
+  if (!id) {
+    throw new Error("Post ID is missing");
+  }
+
+  const views = await PostService.incrementViewCount(id);
+
+  return ResponseUtil.success(res, { viewCount: views }, "View count increased");
+});

@@ -5,7 +5,7 @@ import { Heart, MessageCircle, Send, Bookmark, Volume2, VolumeX, Play } from "lu
 import { useNavigate } from "react-router-dom";
 
 import useAuth from "@/hooks/useAuth";
-import { getReelsFeed, likePost } from "@/lib/api";
+import { getReelsFeed, increasePostView, likePost } from "@/lib/api";
 
 export default function ReelWeb() {
   const [reels, setReels] = useState([]);
@@ -19,12 +19,58 @@ export default function ReelWeb() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const loadMoreRef = useRef(null);
+  const viewedSet = useRef(new Set());
+
   const navigate = useNavigate();
 
   const handleAudioClick = (audioInfo) => () => {
     if (!audioInfo) return;
     navigate(`/audio/${audioInfo._id}`);
   };
+
+
+  useEffect(() => {
+    const viewTimers = {}; // 👈 Xóa phần ": Record<string, NodeJS.Timeout>"
+
+    videoRefs.current.forEach((video) => {
+      if (!video) return;
+      const reelId = video.dataset.reelId;
+
+      const onPlay = () => {
+        if (viewedSet.current.has(reelId)) return;
+
+        // Đặt timer 10s để tính view
+        viewTimers[reelId] = setTimeout(async () => {
+          try {
+            await increasePostView(reelId);
+            viewedSet.current.add(reelId);
+            console.log(`✅ View increased for ${reelId}`);
+          } catch (err) {
+            console.error("❌ Lỗi khi tăng view:", err);
+          }
+        }, 10000);
+      };
+
+      const onPause = () => {
+        if (viewTimers[reelId]) {
+          clearTimeout(viewTimers[reelId]);
+          delete viewTimers[reelId];
+        }
+      };
+
+      video.addEventListener("play", onPlay);
+      video.addEventListener("pause", onPause);
+      video.addEventListener("ended", onPause);
+
+      return () => {
+        video.removeEventListener("play", onPlay);
+        video.removeEventListener("pause", onPause);
+        video.removeEventListener("ended", onPause);
+        if (viewTimers[reelId]) clearTimeout(viewTimers[reelId]);
+      };
+    });
+  }, [reels]);
+
 
   // Fetch reels
   useEffect(() => {
@@ -33,25 +79,58 @@ export default function ReelWeb() {
   }, [user?.data?._id]);
 
   useEffect(() => {
-    if (!loadMoreRef.current) return;
-    const observer = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && !loading) {
-        setPage(prev => {
-          const next = prev + 1;
-          fetchReels(next);
-          return next;
-        });
-      }
-    }, { threshold: 1.0 });
+    if (!containerRef.current) return;
+    const options = { root: containerRef.current, threshold: 0.6 };
 
-    observer.observe(loadMoreRef.current);
-    return () => observer.disconnect();
-  }, [loading]);
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        const video = entry.target;
+        const reelId = video.dataset.reelId;
+        const index = Number(video.dataset.index);
+        if (!reelId) return;
+
+        // ✅ Auto load thêm khi gần cuối danh sách
+        if (entry.isIntersecting && index >= reels.length - 3 && !loading) {
+          setPage(prev => {
+            const next = prev + 1;
+            fetchReels(next);
+            return next;
+          });
+        }
+
+        // Auto play/pause như cũ
+        if (!userClickedMap.current[reelId]) {
+          if (entry.isIntersecting) {
+            video.play();
+            setIsPlayingMap(prev => ({ ...prev, [reelId]: true }));
+            // pause video khác
+            videoRefs.current.forEach(v => {
+              if (v && v !== video) {
+                v.pause();
+                v.currentTime = 0;
+                setIsPlayingMap(prev => ({ ...prev, [v.dataset.reelId]: false }));
+              }
+            });
+          } else {
+            video.pause();
+            video.currentTime = 0;
+            setIsPlayingMap(prev => ({ ...prev, [reelId]: false }));
+          }
+        }
+      });
+    }, options);
+
+    const videos = containerRef.current.querySelectorAll("video");
+    videos.forEach(video => observer.observe(video));
+
+    return () => videos.forEach(video => observer.unobserve(video));
+  }, [reels, loading]);
+
 
   const fetchReels = async (pageNum) => {
     try {
       setLoading(true);
-      const res = await getReelsFeed(pageNum, 3); // luôn lấy 3 video
+      const res = await getReelsFeed(pageNum, 20); // luôn lấy 3 video
       if (res.success) {
         setReels(prev => [...prev, ...res.data]); // nối thêm video vào danh sách cũ
         const newLiked = {};
@@ -195,14 +274,14 @@ export default function ReelWeb() {
               >
                 <video
                   ref={el => (videoRefs.current[index] = el)}
+                  data-index={index}
                   data-reel-id={reel._id}
                   className="w-full h-full object-contain bg-black"
                   src={reel.mediaUrls[0]}
                   loop
                   muted={isMutedAll}
-                  onClick={() => togglePlay(reel._id, index)} // 👈 Thêm click
+                  onClick={() => togglePlay(reel._id, index)}
                 />
-
 
                 {/* Nút Play/Pause nằm giữa */}
                 <AnimatePresence>
