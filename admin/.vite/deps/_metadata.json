@@ -1,0 +1,58 @@
+{
+  "hash": "4df4b869",
+  "configHash": "51f0f135",
+  "lockfileHash": "e22250aa",
+  "browserHash": "20e18c6d",
+  "optimized": {
+    "@react-oauth/google": {
+      "src": "../../node_modules/@react-oauth/google/dist/index.esm.js",
+      "file": "@react-oauth_google.js",
+      "fileHash": "c278defa",
+      "needsInterop": false
+    },
+    "@tanstack/react-query": {
+      "src": "../../node_modules/@tanstack/react-query/build/modern/index.js",
+      "file": "@tanstack_react-query.js",
+      "fileHash": "003cded4",
+      "needsInterop": false
+    },
+    "@tanstack/react-query-devtools": {
+      "src": "../../node_modules/@tanstack/react-query-devtools/build/modern/index.js",
+      "file": "@tanstack_react-query-devtools.js",
+      "fileHash": "9f4ab86d",
+      "needsInterop": false
+    },
+    "react-dom/client": {
+      "src": "../../node_modules/react-dom/client.js",
+      "file": "react-dom_client.js",
+      "fileHash": "aae0335d",
+      "needsInterop": true
+    },
+    "react-router-dom": {
+      "src": "../../node_modules/react-router-dom/dist/index.js",
+      "file": "react-router-dom.js",
+      "fileHash": "6e5fa916",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "chunk-S2OUNGRF": {
+      "file": "chunk-S2OUNGRF.js"
+    },
+    "chunk-4WMDUL6T": {
+      "file": "chunk-4WMDUL6T.js"
+    },
+    "chunk-HF3F4EXK": {
+      "file": "chunk-HF3F4EXK.js"
+    },
+    "WIIHGP5G-TMRQJA6C": {
+      "file": "WIIHGP5G-TMRQJA6C.js"
+    },
+    "chunk-23WS2YNJ": {
+      "file": "chunk-23WS2YNJ.js"
+    },
+    "chunk-QWN5BXRD": {
+      "file": "chunk-QWN5BXRD.js"
+    }
+  }
+}

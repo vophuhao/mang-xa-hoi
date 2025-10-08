@@ -302,7 +302,7 @@ export default function ReelWeb() {
 
 
                 {/* Info overlay */}
-                <InfoOverlay reel={reel} />
+                <InfoOverlay reel={reel} handleAudioClick={handleAudioClick} />
 
                 {/* Nút Mute/Unmute */}
                 <button
@@ -331,14 +331,14 @@ export default function ReelWeb() {
   );
 }
 
-function InfoOverlay({ reel }) {
+function InfoOverlay({ reel,handleAudioClick }) {
   return (
     <div className={`absolute left-4 flex flex-col space-y-2 ${reel.caption ? "bottom-4" : "bottom-10"}`}>
       <div className="flex items-center space-x-2">
         <img src={reel.user?.avatar} alt="avatar" className="w-8 h-8 rounded-full" />
         <div>
           <span className="font-semibold text-[13px] text-white">{reel.user?.username || "user"}</span>
-          <div className="flex items-center space-x-1 text-[13px] text-gray-200 w-[180px] overflow-hidden">
+          <div onClick={handleAudioClick(reel.audioInfo)} className="flex items-center space-x-1 text-[13px] text-gray-200 w-[180px] overflow-hidden">
             <span className="mr-1">🎵</span>
             <div className="relative w-full overflow-hidden">
               <div className="animate-marquee whitespace-nowrap text-[13px]">
@@ -402,17 +402,62 @@ function ActionButtons({ reel, handleLike, likedMap, handleAudioClick }) {
 }
 
 
+
+
 function Caption({ caption }) {
   const [expanded, setExpanded] = useState(false);
+  const navigate = useNavigate();
+
   if (!caption) return null;
+
+  // Cắt ngắn caption nếu chưa expand
+  const displayText = expanded ? caption : caption.slice(0, 80);
+
+  // ✅ Hàm xử lý tách hashtag & mention
+  const parseCaption = (text) => {
+    const parts = text.split(/(#[a-zA-Z0-9_À-ỹ]+|@[a-zA-Z0-9_.]+)/g);
+    return parts.map((part, index) => {
+      if (part.startsWith("#")) {
+        const tag = part.slice(1);
+        return (
+          <span
+            key={index}
+            onClick={() => navigate(`/hashtag/${encodeURIComponent(tag)}`)}
+            className="text-white cursor-pointer "
+          >
+            {part}
+          </span>
+        );
+      }
+      if (part.startsWith("@")) {
+        const username = part.slice(1);
+        return (
+          <span
+            key={index}
+            onClick={() => navigate(`/user/${encodeURIComponent(username)}`)}
+            className="text-pink-400 cursor-pointer hover:underline"
+          >
+            {part}
+          </span>
+        );
+      }
+      return <span key={index}>{part}</span>;
+    });
+  };
+
+
   return (
     <p className="text-sm max-w-[250px] text-white">
-      {expanded ? caption : caption.slice(0, 80)}{" "}
+      {parseCaption(displayText)}{" "}
       {caption.length > 80 && (
-        <button onClick={() => setExpanded(!expanded)} className="text-gray-300 text-xs ml-1">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="text-gray-300 text-xs ml-1"
+        >
           {expanded ? "Ẩn bớt" : "Xem thêm"}
         </button>
       )}
     </p>
   );
 }
+

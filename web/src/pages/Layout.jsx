@@ -14,6 +14,7 @@ import {
   setIsCollapsed,
   togglePanel,
   isPageMenu,
+  setActiveMenu
 } from "@/store/slices/layoutSlice";
 
 const Layout = () => {
@@ -48,36 +49,42 @@ const Layout = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, [dispatch]);
 
-  const handleMenuClick = (menuId) => {
-    if (isPanelMenu(menuId)) {
-      dispatch(togglePanel(menuId));
-    } else if (isPageMenu(menuId)) {
-      if (menuId === "home") {
-        navigate("/");
-        if (!isMobile) dispatch(setIsCollapsed(false)); // PC mở lại
-      } else if (menuId === "explore") {
-        navigate("/explore");
-        if (!isMobile) dispatch(setIsCollapsed(false));
-      } else if (menuId === "message") {
-        navigate("/message");
-        dispatch(setIsCollapsed(true)); // luôn thu nhỏ
-      } else if (menuId === "profile") {
-        navigate("/profile");
-        if (!isMobile) dispatch(setIsCollapsed(false));
-      }
-      else if (menuId === "reels") {
-        navigate("/reels");
-        if (!isMobile) dispatch(setIsCollapsed(false));
-      }
+// ...existing code...
+const handleMenuClick = (menuId) => {
+  if (isPanelMenu(menuId)) {
+    dispatch(togglePanel(menuId));
+  } else if (isPageMenu(menuId)) {
+    // Set active menu cho page trước
+    dispatch(setActiveMenu(menuId));
 
-
-      dispatch(togglePanel(null)); // đóng các panel
+    // Điều hướng
+    if (menuId === "home") {
+      navigate("/");
+      if (!isMobile) dispatch(setIsCollapsed(false));
+    } else if (menuId === "explore") {
+      navigate("/explore");
+      if (!isMobile) dispatch(setIsCollapsed(false));
+    } else if (menuId === "message") {
+      navigate("/message");
+      dispatch(setIsCollapsed(true)); // luôn thu nhỏ
+    } else if (menuId === "profile") {
+      navigate("/profile");
+      if (!isMobile) dispatch(setIsCollapsed(false));
+    } else if (menuId === "reels") {
+      navigate("/reels");
+      if (!isMobile) dispatch(setIsCollapsed(false));
     }
-  };
+
+    // Đóng panel nếu đang mở (không làm thay đổi activeMenu của page)
+    dispatch(closePanels());
+  }
+};
+// ...existing code...
 
   const handleOutsideClick = () => {
     dispatch(closePanels());
   };
+  console.log("Rendering Layout with activeMenu:", activeMenu)
 
   return (
     <div className="flex h-screen flex-col bg-gray-50 md:flex-row dark:bg-gray-900">

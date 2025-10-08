@@ -5,7 +5,7 @@ import express from "express";
 import http from "http";
 
 import connectToDatabase from "@/config/db";
-import { APP_ORIGIN, NODE_ENV, PORT } from "@/constants/env";
+import { ADMIN_ORIGIN, APP_ORIGIN, NODE_ENV, PORT } from "@/constants/env";
 import authenticate from "@/middleware/authenticate";
 import errorHandler from "@/middleware/errorHandler";
 import analyticsRoutes from "@/routes/analytics.route";
@@ -21,18 +21,18 @@ import storyRoutes from "@/routes/story.route";
 import userRoutes from "@/routes/user.route";
 import mediaRoutes from "./routes/media.route";
 import AudioRoutes from "./routes/audio.route";
-import { initializeSocket } from "./socket"; // import hàm kh?i t?o socket
+import { initializeSocket } from "./socket"; // import hï¿½m kh?i t?o socket
 import fetch from "node-fetch";
 import searchRoutes from './routes/search.route';
 
 const app = express();
-
+const allowedOrigins = [APP_ORIGIN, ADMIN_ORIGIN];
 // add middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(
   cors({
-    origin: APP_ORIGIN,
+    origin: allowedOrigins,
     credentials: true,
   })
 );

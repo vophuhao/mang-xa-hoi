@@ -1,6 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-
 // Define which menus are panels (can be easily extended)
 const PANEL_MENUS = ["search", "notifications"];
 
@@ -64,49 +63,50 @@ const layoutSlice = createSlice({
         state.isCollapsed = state.isTablet;
         localStorage.setItem("sidebarCollapsed", state.isCollapsed.toString());
       }
+
       localStorage.setItem("activeMenu", menuId);
     },
 
     togglePanel: (state, action) => {
       const menuId = action.payload;
 
-      // Bảo vệ: nếu payload null/undefined thì chỉ đóng panel nếu đang mở, còn không thì bỏ qua
-      if (menuId == null) {
-        if (isPanelMenu(state.activeMenu)) {
-          state.activeMenu = state.previousMenu;
-          if (!state.isMobile) {
-            state.isCollapsed = state.isTablet;
-            localStorage.setItem("sidebarCollapsed", state.isCollapsed.toString());
-          }
-          localStorage.setItem("activeMenu", state.previousMenu);
-        }
-        return;
-      }
-
       // If same panel is active, close it and return to previous menu
       if (state.activeMenu === menuId && isPanelMenu(menuId)) {
         state.activeMenu = state.previousMenu;
+
+        // Reset sidebar collapse state
         if (!state.isMobile) {
           state.isCollapsed = state.isTablet;
-          localStorage.setItem("sidebarCollapsed", state.isCollapsed.toString());
+          localStorage.setItem(
+            "sidebarCollapsed",
+            state.isCollapsed.toString()
+          );
         }
+
         localStorage.setItem("activeMenu", state.previousMenu);
       } else {
+        // Save current menu as previous if it's not a panel
         if (!isPanelMenu(state.activeMenu)) {
           state.previousMenu = state.activeMenu;
           localStorage.setItem("previousMenu", state.activeMenu);
         }
+
         state.activeMenu = menuId;
 
+        // Handle sidebar collapse based on menu type
         if (!state.isMobile) {
           if (isPanelMenu(menuId)) {
             state.isCollapsed = true;
             localStorage.setItem("sidebarCollapsed", "true");
           } else if (isPageMenu(menuId)) {
             state.isCollapsed = state.isTablet;
-            localStorage.setItem("sidebarCollapsed", state.isCollapsed.toString());
+            localStorage.setItem(
+              "sidebarCollapsed",
+              state.isCollapsed.toString()
+            );
           }
         }
+
         localStorage.setItem("activeMenu", menuId);
       }
     },
