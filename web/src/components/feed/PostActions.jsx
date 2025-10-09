@@ -24,6 +24,18 @@ const PostActions = ({ post, onCommentClick, onShareClick, hideActions = [] }) =
     setLikeCount(post?.likeCount || 0);
   }, [post?.isLiked, post?.isSaved, post?.likeCount]);
 
+  // Add effect to sync local state when mutations complete
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      // Refresh queries after mutations to ensure sync
+      if (showSaveModal === false) {
+        queryClient.invalidateQueries({ queryKey: ["posts"] });
+      }
+    }, 100);
+
+    return () => clearTimeout(timeout);
+  }, [showSaveModal, queryClient]);
+
   const handleLike = () => {
     if (isLiking) return;
 
@@ -45,6 +57,8 @@ const PostActions = ({ post, onCommentClick, onShareClick, hideActions = [] }) =
         // Invalidate saved posts queries to refresh UI
         queryClient.invalidateQueries({ queryKey: ["savedPosts"] });
         queryClient.invalidateQueries({ queryKey: ["collections"] });
+        // Invalidate posts queries to update isSaved status
+        queryClient.invalidateQueries({ queryKey: ["posts"] });
 
         toast.success("Đã bỏ lưu bài viết");
       } catch (error) {
@@ -57,6 +71,20 @@ const PostActions = ({ post, onCommentClick, onShareClick, hideActions = [] }) =
       // Show collection selection modal
       setShowSaveModal(true);
     }
+  };
+
+  const handleSaveSuccess = () => {
+    setShowSaveModal(false);
+    setIsSaved(true);
+    // Invalidate queries to refresh UI
+    queryClient.invalidateQueries({ queryKey: ["savedPosts"] });
+    queryClient.invalidateQueries({ queryKey: ["collections"] });
+    queryClient.invalidateQueries({ queryKey: ["posts"] });
+  };
+
+  const handleSaveClose = () => {
+    setShowSaveModal(false);
+    // Don't automatically set isSaved to true - let the actual API state determine this
   };
 
   return (
@@ -119,10 +147,8 @@ const PostActions = ({ post, onCommentClick, onShareClick, hideActions = [] }) =
       <SaveToCollectionModal
         isOpen={showSaveModal}
         postId={post?._id}
-        onClose={() => {
-          setShowSaveModal(false);
-          setIsSaved(true); // Mark as saved after adding to collection
-        }}
+        onClose={handleSaveClose}
+        onSuccess={handleSaveSuccess}
       />
     </>
   );

@@ -2,9 +2,9 @@ import { useState } from "react";
 
 import { Lock, Unlock, X } from "lucide-react";
 
-import { useCreateCollection } from "@/hooks/useCollection";
+import { useAddPostToCollection, useCreateCollection } from "@/hooks/useCollection";
 
-const CreateCollectionModal = ({ isOpen, onClose }) => {
+const CreateCollectionModal = ({ isOpen, onClose, postId, onSuccess }) => {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -12,6 +12,7 @@ const CreateCollectionModal = ({ isOpen, onClose }) => {
   });
 
   const createCollectionMutation = useCreateCollection();
+  const addPostToCollectionMutation = useAddPostToCollection();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -21,15 +22,29 @@ const CreateCollectionModal = ({ isOpen, onClose }) => {
     }
 
     try {
-      await createCollectionMutation.mutateAsync({
+      const result = await createCollectionMutation.mutateAsync({
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
         isPrivate: formData.isPrivate,
       });
 
-      // Reset form and close modal on success
+      // If postId is provided, add the post to the new collection
+      if (postId && result?.data?._id) {
+        await addPostToCollectionMutation.mutateAsync({
+          collectionId: result.data._id,
+          postId,
+        });
+      }
+
+      // Reset form
       setFormData({ name: "", description: "", isPrivate: false });
-      onClose();
+
+      // Call success callback if provided, otherwise just close
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        onClose();
+      }
     } catch (error) {
       // Error is handled by the hook
     }
@@ -151,16 +166,26 @@ const CreateCollectionModal = ({ isOpen, onClose }) => {
               type="button"
               onClick={onClose}
               className="flex-1 rounded-lg bg-gray-100 px-4 py-2 font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-              disabled={createCollectionMutation.isPending}
+              disabled={createCollectionMutation.isPending || addPostToCollectionMutation.isPending}
             >
               Huỷ
             </button>
             <button
               type="submit"
               className="flex-1 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={createCollectionMutation.isPending || !formData.name.trim()}
+              disabled={
+                createCollectionMutation.isPending ||
+                addPostToCollectionMutation.isPending ||
+                !formData.name.trim()
+              }
             >
-              {createCollectionMutation.isPending ? "Đang tạo..." : "Tạo"}
+              {createCollectionMutation.isPending || addPostToCollectionMutation.isPending
+                ? postId
+                  ? "Đang tạo và lưu..."
+                  : "Đang tạo..."
+                : postId
+                  ? "Tạo và lưu"
+                  : "Tạo"}
             </button>
           </div>
         </form>

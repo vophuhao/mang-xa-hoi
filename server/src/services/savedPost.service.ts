@@ -1,3 +1,4 @@
+import CollectionModel from "@/models/collection.model";
 import PostModel from "@/models/post.model";
 import SavedPostModel from "@/models/savedPost.model";
 import ErrorFactory from "@/utils/ErrorFactory";
@@ -86,11 +87,26 @@ class SavedPostService {
     }
 
     try {
-      // Remove the saved post (if exists)
-      await SavedPostModel.deleteOne({
+      // Find saved post to check if it's in a collection
+      const savedPost = await SavedPostModel.findOne({
         user: userId,
         post: postId,
       });
+
+      if (savedPost) {
+        // If post is in a collection, update the collection's postCount
+        if (savedPost.collection) {
+          await CollectionModel.findByIdAndUpdate(savedPost.collection, {
+            $inc: { postCount: -1 },
+          });
+        }
+
+        // Remove the saved post
+        await SavedPostModel.deleteOne({
+          user: userId,
+          post: postId,
+        });
+      }
 
       // Even if no document was deleted (post wasn't saved), consider it successful
       // This prevents errors when user clicks unsave multiple times
@@ -257,7 +273,30 @@ class SavedPostService {
     }
 
     try {
-      await SavedPostModel.deleteMany({ post: postId });
+      // Find all saved posts for this post to update collection counts
+      const savedPosts = await SavedPostModel.find({
+        post: postId,
+        collection: { $exists: true },
+      }).select("collection");
+
+      // Group by collection to get counts
+      const collectionCounts = savedPosts.reduce(
+        (acc, savedPost) => {
+          const collectionId = savedPost.collection.toString();
+          acc[collectionId] = (acc[collectionId] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>
+      );
+
+      // Update collection counts
+      const updatePromises = Object.entries(collectionCounts).map(([collectionId, count]) =>
+        CollectionModel.findByIdAndUpdate(collectionId, {
+          $inc: { postCount: -count },
+        })
+      );
+
+      await Promise.all([...updatePromises, SavedPostModel.deleteMany({ post: postId })]);
     } catch (error: any) {
       // Log error but don't throw - this is a cleanup operation
       console.error("Failed to remove saved posts for deleted post:", error);

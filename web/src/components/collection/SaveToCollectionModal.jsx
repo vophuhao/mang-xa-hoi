@@ -6,7 +6,7 @@ import { useAddPostToCollection, useCollections } from "@/hooks/useCollection";
 
 import CreateCollectionModal from "./CreateCollectionModal";
 
-const SaveToCollectionModal = ({ isOpen, postId, onClose }) => {
+const SaveToCollectionModal = ({ isOpen, postId, onClose, onSuccess }) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState(null);
 
@@ -18,14 +18,23 @@ const SaveToCollectionModal = ({ isOpen, postId, onClose }) => {
   const handleSaveToCollection = async (collectionId) => {
     if (!postId || !collectionId) return;
 
+    setSelectedCollectionId(collectionId);
+
     try {
       await addPostToCollectionMutation.mutateAsync({
         collectionId,
         postId,
       });
-      onClose();
+
+      // Call success callback if provided
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        onClose();
+      }
     } catch (error) {
       // Error handled by hook
+      setSelectedCollectionId(null);
     }
   };
 
@@ -149,7 +158,12 @@ const SaveToCollectionModal = ({ isOpen, postId, onClose }) => {
       </div>
 
       {/* Create Collection Modal */}
-      <CreateCollectionModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} />
+      <CreateCollectionModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        postId={postId}
+        onSuccess={onSuccess}
+      />
     </>
   );
 };
