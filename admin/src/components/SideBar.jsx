@@ -29,7 +29,7 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
 
   const navItems = [
     { id: "home", label: "Trang chủ", icon: <Home size={24} /> },
-  
+    { id: "report", label: "Báo cáo", icon: <AlertCircle size={24} /> },
   ];
 
   const { mutate: handleLogout } = useMutation({
@@ -93,13 +93,6 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
       icon: getThemeIcon(),
       action: handleThemeToggle,
       closeOnClick: false, // Không đóng dropdown khi thay đổi theme
-    },
-    {
-      id: "report",
-      label: "Báo cáo sự cố",
-      icon: <AlertCircle size={20} />,
-      action: () => console.log("Report clicked"),
-      closeOnClick: true,
     },
     {
       type: "divider", // Separator

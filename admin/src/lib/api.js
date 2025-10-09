@@ -150,57 +150,14 @@ export const searchHashtags = async (key, page = 1, limit = 50) => {
   });
 };
 
-// utils/api/audio.js
-export const getAudioList = async (q = "") => {
-  return API.get("/audio/list", {
-    params: { q }, // thêm query param
-  });
-};
 
-
-export const trimVideo = (formData) =>
-  API.post("/audio/trim-video", formData, { responseType: "blob" });
- 
-
- export const fetchPreviewUrl = async (deezerId) => {
-   return API.get(`/audio/preview/${deezerId}`);
-};
-
-export const createAudio = async (data) => API.post("/audio/create", data);
-
-export const extracAudio = async (formData) => {
-  return API.post("/audio/extract", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+export const getReports = async (params) => {
+  return API.get("/report/list", { params});
 }
 
-export const checkVideoHasAudio = async (formData) => {
-  return API.post("/audio/check-audio", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+export const resolveReport = async (postId , key) => {
+  return API.patch(`/report/resolve/${postId}`, { key });
 }
 
-export const getReelByAudioId = async (audioId) =>
-  API.get(`/audio/${audioId}/reels`); 
 
-export const getAudio = async (id) => 
-  API.get(`/audio/${id}`);
-
-export const getPostsByHashtag = async (name, page = 1, limit = 30) =>
-  API.get(`/hashtags/${name}/posts`, { params: { page, limit } });
-
-export const searchAll = async (query, page = 1, limit = 10) => {
-  // Thêm từ khóa await để nhận đúng response
-  const response = await API.get(`/api/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`);
-  return response; // Đảm bảo trả về response, không phải response.data
-};
-
-export const saveAudio = async (audioId) => 
-  API.post(`/audio/save/${audioId}`);
-
-export const checkSavedAudio = async (audioId) => 
-  API.get(`/audio/check-saved/${audioId}`);
-
-export const increasePostView = async (postId) =>
-  API.post(`/posts/views/${postId}`);
 

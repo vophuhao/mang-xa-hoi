@@ -24,6 +24,7 @@ import AudioRoutes from "./routes/audio.route";
 import { initializeSocket } from "./socket"; // import h�m kh?i t?o socket
 import fetch from "node-fetch";
 import searchRoutes from './routes/search.route';
+import ReportRoutes from "./routes/report.route";
 
 const app = express();
 const allowedOrigins = [APP_ORIGIN, ADMIN_ORIGIN];
@@ -64,7 +65,7 @@ app.use("/analytics", authenticate, analyticsRoutes);
 app.use("/media", authenticate, mediaRoutes);
 app.use("/messages", authenticate, directMessageRoutes);
 app.use("/audio",authenticate, AudioRoutes);
-
+app.use("/report",authenticate, ReportRoutes);
 
 
 app.use("/api/search", authenticate, searchRoutes);

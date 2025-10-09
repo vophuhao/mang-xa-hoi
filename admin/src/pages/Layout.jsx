@@ -44,17 +44,19 @@ const Layout = () => {
 
   // 🔹 Xử lý click menu chính
   const handleMenuClick = (menuId) => {
-    if (isPanelMenu(menuId)) {
-      dispatch(togglePanel(menuId));
-    } else if (isPageMenu(menuId)) {
+   
+  if (isPageMenu(menuId)) {
+    console.log("Clicked page menu:", menuId);
       switch (menuId) {
         case "home":
           navigate("/");
           break;
+        case "report":
+          navigate("/report");
+          break;
         default:
           break;
       }
-      dispatch(setIsCollapsed(false));
       dispatch(togglePanel(null)); // đóng panel khi đổi trang
     }
   };

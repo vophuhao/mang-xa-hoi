@@ -10,6 +10,7 @@ import { setNavigate } from "@/lib/navigation";
 import Login from "@/pages/Login";
 import store from "@/store";
 
+import ReportPage from "./components/Report";
 import Layout from "./pages/Layout";
 
 
@@ -36,10 +37,10 @@ function App() {
     
         {/* Các route chính sau khi login */}
         <Route path="/" element={<Layout />}>  
-               
+               <Route path="report" element={<ReportPage/>} />
         </Route>
 
-      </Routes>
+      </Routes> 
 
 
       <ToastContainer position="top-right" autoClose={2000} />

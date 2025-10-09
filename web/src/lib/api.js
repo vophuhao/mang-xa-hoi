@@ -204,3 +204,9 @@ export const checkSavedAudio = async (audioId) =>
 export const increasePostView = async (postId) =>
   API.post(`/posts/views/${postId}`);
 
+
+//report
+// ✅ Hàm gọi API chuẩn theo backend
+export const report = async (data) => {
+  return API.post(`/report/create`, data);
+};

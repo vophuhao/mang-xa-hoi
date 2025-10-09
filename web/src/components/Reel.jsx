@@ -1,11 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MessageCircle, Send, Bookmark, Volume2, VolumeX, Play } from "lucide-react";
+import { Heart, MessageCircle, Send, Bookmark, Volume2, VolumeX, Play, MoreHorizontal } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import useAuth from "@/hooks/useAuth";
 import { getReelsFeed, increasePostView, likePost } from "@/lib/api";
+import ReportModal from "@/modals/ReportModal";
+
+import MoreOptionsMenu from "./MoreOptionsMenu";
 
 export default function ReelWeb() {
   const [reels, setReels] = useState([]);
@@ -20,6 +23,10 @@ export default function ReelWeb() {
   const [loading, setLoading] = useState(false);
   const loadMoreRef = useRef(null);
   const viewedSet = useRef(new Set());
+  const [openMenu, setOpenMenu] = useState(null); // null hoặc {x, y}
+  const [reelId, setReelId] = useState(null);
+
+
 
   const navigate = useNavigate();
 
@@ -318,6 +325,8 @@ export default function ReelWeb() {
                 reel={reel}
                 handleLike={handleLike}
                 likedMap={likedMap}
+                setOpenMenu={setOpenMenu}
+                setReelId={setReelId}
                 handleAudioClick={handleAudioClick} // 👈 Truyền thêm prop này
               />
 
@@ -327,11 +336,20 @@ export default function ReelWeb() {
 
         </div>
       </div>
+      {openMenu && (
+        <MoreOptionsMenu
+          onClose={() => setOpenMenu(null)}
+          reelId={reelId} // 👈 truyền reelId
+          position={openMenu} // 👈 truyền vị trí
+        />
+      )}
+
     </div>
+
   );
 }
 
-function InfoOverlay({ reel,handleAudioClick }) {
+function InfoOverlay({ reel, handleAudioClick }) {
   return (
     <div className={`absolute left-4 flex flex-col space-y-2 ${reel.caption ? "bottom-4" : "bottom-10"}`}>
       <div className="flex items-center space-x-2">
@@ -353,12 +371,13 @@ function InfoOverlay({ reel,handleAudioClick }) {
       </div>
       {reel.caption && <Caption caption={reel.caption} />}
     </div>
+
   );
 }
 
-function ActionButtons({ reel, handleLike, likedMap, handleAudioClick }) {
+function ActionButtons({ reel, handleLike, likedMap, handleAudioClick, setOpenMenu ,setReelId}) {
   return (
-    <div className="flex flex-col mt-105 ml-5 items-center justify-center space-y-6">
+    <div className="flex flex-col mt-100 ml-5 items-center justify-center space-y-6">
       {/* Like button */}
       <div className="flex flex-col items-center space-y-1">
         <button onClick={handleLike(reel._id)}>
@@ -389,8 +408,21 @@ function ActionButtons({ reel, handleLike, likedMap, handleAudioClick }) {
         <Bookmark size={25} className="text-black" />
       </button>
 
+      <button
+        className="mt-2 relative z-20"
+        onClick={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect(); // lấy toạ độ icon
+          setOpenMenu({ x: rect.left, y: rect.bottom }); // lưu vị trí
+          setReelId(reel._id); // lưu reelId
+        }}
+      >
+        <MoreHorizontal size={25} className="text-black" />
+      </button>
+
+
+
       {/* 👇 Thêm click chuyển trang âm thanh */}
-      <div className="mt-10 cursor-pointer" onClick={handleAudioClick(reel.audioInfo)}>
+      <div className="mt-4 cursor-pointer" onClick={handleAudioClick(reel.audioInfo)}>
         <img
           src={reel.audioUser?.avatarUrl || reel.audioInfo?.coverUrl}
           alt="avatar"
