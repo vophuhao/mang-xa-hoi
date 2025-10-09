@@ -6,10 +6,10 @@ import catchErrors from "@/utils/catchErrors";
 import { ResponseUtil } from "@/utils/response";
 import {
   followUserSchema,
+  getUserByUserIdSchema,
   getUserByUsernameSchema,
   searchUsersSchema,
   updateProfileSchema,
-  getUserByUserIdSchema,
 } from "@/validators/user.validator";
 
 /**
@@ -53,16 +53,11 @@ export const getUserByUsernameHandler = catchErrors(
  * Get user profile by userId
  * @route GET /user/id/:userId
  */
-export const getUserByIdHandler = catchErrors(
-  async (req: AuthenticatedRequest, res: Response) => {
-    const { userId } = getUserByUserIdSchema.parse(req.params);
-    const userProfile = await UserService.getUserByUserId(
-      userId,
-      (req.userId as any).toString()
-    );
-    return ResponseUtil.success(res, userProfile);
-  }
-);
+export const getUserByIdHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const { userId } = getUserByUserIdSchema.parse(req.params);
+  const userProfile = await UserService.getUserByUserId(userId, (req.userId as any).toString());
+  return ResponseUtil.success(res, userProfile);
+});
 
 /**
  * Follow a user

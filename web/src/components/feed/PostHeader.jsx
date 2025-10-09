@@ -10,7 +10,8 @@ const PostHeader = ({
 }) => {
   const handleUserClick = () => {
     if (onUserClick && user) {
-      onUserClick(user.username || user._id);
+      console.log(user);
+      onUserClick(user.userId);
     }
   };
 

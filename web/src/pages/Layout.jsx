@@ -22,7 +22,7 @@ const routeMap = {
   home: "/",
   explore: "/explore",
   reels: "/reels",
-  message: "/direct/inbox",
+  message: "/message",
   profile: "/profile",
 };
 
@@ -30,7 +30,7 @@ const pathToMenu = {
   "/": "home",
   "/explore": "explore",
   "/reels": "reels",
-  "/direct/inbox": "message",
+  "/message": "message",
   "/profile": "profile",
 };
 
@@ -45,8 +45,8 @@ const Layout = () => {
   // Sync activeMenu with current route on mount/route change
   useEffect(() => {
     const currentPath = location.pathname;
-    if (currentPath.startsWith("/") && currentUser?.username) {
-      if (currentPath === `/${currentUser.username}`) {
+    if (currentPath.startsWith("/") && currentUser?.userId) {
+      if (currentPath === `/${currentUser.userId}`) {
         // Only set to profile if not currently showing a panel menu
         if (!isPanelMenu(activeMenu)) {
           dispatch(setActiveMenu("profile"));
@@ -95,8 +95,8 @@ const Layout = () => {
 
       // Navigate to the corresponding route
       let route = routeMap[menuId];
-      if (menuId === "profile" && currentUser?.username) {
-        route = `/${currentUser.username}`;
+      if (menuId === "profile" && currentUser?.userId) {
+        route = `/${currentUser.userId}`;
       }
 
       if (route) {

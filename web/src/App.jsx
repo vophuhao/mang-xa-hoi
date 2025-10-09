@@ -14,6 +14,7 @@ import VerifyEmail from "@/pages/VerifyEmail";
 
 import Audio from "./components/Audio";
 import HashtagPanel from "./components/HashtagPanel";
+import ReelWeb from "./components/Reel";
 import CollectionDetail from "./pages/CollectionDetail";
 import DirectInbox from "./pages/DirectInbox";
 import Explore from "./pages/Explore";
@@ -22,7 +23,7 @@ import Layout from "./pages/Layout";
 import Messages from "./pages/Messages";
 import PostDetail from "./pages/PostDetail";
 import Profile from "./pages/Profile";
-import Reels from "./pages/Reels";
+import ProtectedRoute from "./routes/ProtectedRoute";
 
 function App() {
   // set the navigate function on our API client for use in the axios error interceptor
@@ -38,21 +39,22 @@ function App() {
   return (
     <>
       <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Feed />} />
-          <Route path="explore" element={<Explore />} />
-          <Route path="reels" element={<Reels />} />
-          <Route path="direct/inbox" element={<DirectInbox />} />
-          <Route path="collections/:id" element={<CollectionDetail />} />
-          <Route path=":username" element={<Profile />} />
-          <Route path=":username/p/:postId" element={<PostDetail />} />
-          <Route path=":username/saved" element={<Profile />} />
-          <Route path=":username/saved/collections/:id" element={<CollectionDetail />} />
-          <Route path=":username/tagged" element={<Profile />} />
-          <Route path="audio/:id" element={<Audio />} />
-          <Route path="hashtags/:name" element={<HashtagPanel />} />
-          <Route path="message" element={<Messages />} />
-          {/* route Profile này để tạm thôi nha mấy ní, khoan hả đụng */}
+        <Route path="/" element={<ProtectedRoute />}>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Feed />} />
+            <Route path="explore" element={<Explore />} />
+            <Route path="reels" element={<ReelWeb />} />
+            <Route path="direct/inbox" element={<DirectInbox />} />
+            <Route path="collections/:id" element={<CollectionDetail />} />
+            <Route path=":username" element={<Profile />} />
+            <Route path=":username/p/:postId" element={<PostDetail />} />
+            <Route path=":username/saved" element={<Profile />} />
+            <Route path=":username/saved/collections/:id" element={<CollectionDetail />} />
+            <Route path=":username/tagged" element={<Profile />} />
+            <Route path="audio/:id" element={<Audio />} />
+            <Route path="hashtags/:name" element={<HashtagPanel />} />
+            <Route path="message" element={<Messages />} />
+          </Route>
         </Route>
 
         <Route path="/login" element={<Login />} />
@@ -60,9 +62,9 @@ function App() {
         <Route path="/email/verify/:code" element={<VerifyEmail />} />
         <Route path="/password/forgot" element={<ForgotPassword />} />
         <Route path="/password/reset" element={<ResetPassword />} />
-
-        <ToastContainer position="top-right" autoClose={2000} />
       </Routes>
+
+      <ToastContainer position="top-right" autoClose={2000} />
     </>
   );
 }

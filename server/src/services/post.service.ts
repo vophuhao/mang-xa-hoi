@@ -36,9 +36,6 @@ export interface GetPostParams {
  * Post service containing all post-related business logic
  */
 export class PostService {
-  static getTrendingPosts(arg0: number, arg1: number) {
-    throw new Error("Method not implemented.");
-  }
   /**
    * Create a new post
    */
@@ -48,19 +45,14 @@ export class PostService {
       throw ErrorFactory.validationFailed("Post must have at least one media item");
     }
 
-    // Determine media type
-    let mediaType: "image" | "video" | "carousel" = "image";
+    // You can add logic here to detect video based on file extension or metadata
 
-    if (data.mediaUrls.length > 1) {
-      mediaType = "carousel";
-    } else if (data.mediaUrls.length === 1) {
-      // Check if single media is video
-      const url = data.mediaUrls[0];
-      if (url) {
-        const isVideo = /\.(mp4|webm|ogg|mov|avi|mkv)(\?.*)?$/i.test(url) || url.includes("video");
-        if (isVideo) {
-          mediaType = "video";
-        }
+    // Determine post type (post | reel)
+    let type: "post" | "reel" = "post";
+    if (data.mediaUrls.length === 1) {
+      const url = data.mediaUrls[0]!;
+      if (url.match(/\.(mp4|mov|webm|avi)$/i)) {
+        type = "reel";
       }
     }
 
@@ -185,7 +177,7 @@ export class PostService {
         user: { $in: userIds },
         isHidden: false,
       })
-        .populate("user", "username fullName avatarUrl isVerified")
+        .populate("user", "username fullName avatarUrl isVerified userId")
         .populate("comments")
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -427,6 +419,165 @@ export class PostService {
     }
 
     return posts;
+  }
+
+  /**
+   * Get trending posts
+   */
+  static async getReelsFeed(page: number, limit: number) {
+    const skip = (page - 1) * limit;
+
+    const reels = await PostModel.aggregate([
+      { $match: { type: "reel", isHidden: false } },
+      {
+        $addFields: {
+          score: {
+            $add: [
+              { $multiply: ["$likeCount", 3] },
+              { $multiply: ["$commentCount", 5] },
+              { $multiply: ["$shareCount", 4] },
+              { $multiply: ["$viewCount", 0] },
+              {
+                $cond: [
+                  { $gte: ["$createdAt", new Date(Date.now() - 1000 * 60 * 60 * 24)] },
+                  1000,
+                  0,
+                ],
+              },
+            ],
+          },
+        },
+      },
+      // Thông tin user
+      {
+        $lookup: {
+          from: "users",
+          localField: "user",
+          foreignField: "_id",
+          as: "userInfo",
+        },
+      },
+      { $unwind: "$userInfo" },
+
+      // Thông tin comment
+      {
+        $lookup: {
+          from: "comments",
+          localField: "_id",
+          foreignField: "post",
+          as: "commentsInfo",
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "commentsInfo.user",
+          foreignField: "_id",
+          as: "commentUsers",
+        },
+      },
+
+      // Thông tin likes
+      {
+        $lookup: {
+          from: "likes",
+          localField: "_id",
+          foreignField: "post",
+          as: "likeUsers",
+        },
+      },
+      {
+        $lookup: {
+          from: "audios",
+          localField: "audioId",
+          foreignField: "_id",
+          as: "audioInfo",
+        },
+      },
+      {
+        $unwind: {
+          path: "$audioInfo",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      // Lấy thông tin user của audio
+      {
+        $lookup: {
+          from: "users",
+          localField: "audioInfo.user",
+          foreignField: "_id",
+          as: "audioUser",
+        },
+      },
+      {
+        $unwind: {
+          path: "$audioUser",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+
+      {
+        $project: {
+          caption: 1,
+          mediaUrls: 1,
+          likeCount: 1,
+          commentCount: 1,
+          shareCount: 1,
+          viewCount: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          audioId: 1, // lấy id audio gốc
+          "audioInfo._id": 1,
+          "audioInfo.title": 1,
+          "audioInfo.artist": 1,
+          "audioInfo.deezerId": 1,
+          "audioInfo.fileUrl": 1,
+          "audioInfo.cover": 1,
+          "audioUser._id": 1,
+          "audioUser.userId": 1,
+          "audioUser.avatarUrl": 1,
+          "user._id": "$userInfo._id",
+          "user.userId": "$userInfo.userId",
+          "user.avatar": "$userInfo.avatarUrl",
+          comments: {
+            $map: {
+              input: "$commentsInfo",
+              as: "c",
+              in: {
+                _id: "$$c._id",
+                content: "$$c.content",
+                user: {
+                  $arrayElemAt: [
+                    {
+                      $filter: {
+                        input: "$commentUsers",
+                        cond: { $eq: ["$$this._id", "$$c.user"] },
+                      },
+                    },
+                    0,
+                  ],
+                },
+              },
+            },
+          },
+          likedUsers: "$likeUsers.user",
+        },
+      },
+
+      { $sort: { score: -1, createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+    ]);
+
+    return reels;
+  }
+
+  static async incrementViewCount(postId: string) {
+    const post = await PostModel.findById(postId);
+    if (!post) throw new Error("Post not found");
+
+    await post.incrementView(); // 👈 dùng method có sẵn trong model
+    return post.viewCount; // trả lại số lượt xem sau khi tăng
   }
 }
 
