@@ -1,15 +1,28 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { Bookmark, Heart, MessageCircle, Send } from "lucide-react";
+import { toast } from "react-toastify";
 
+import SaveToCollectionModal from "@/components/collection/SaveToCollectionModal";
 import { usePostActions } from "@/hooks/usePost";
+import { unsavePost } from "@/lib/api";
 
-const PostActions = ({ post, onCommentClick, onShareClick }) => {
+const PostActions = ({ post, onCommentClick, onShareClick, hideActions = [] }) => {
   const [isLiked, setIsLiked] = useState(post?.isLiked || false);
   const [isSaved, setIsSaved] = useState(post?.isSaved || false);
   const [likeCount, setLikeCount] = useState(post?.likeCount || 0);
+  const [showSaveModal, setShowSaveModal] = useState(false);
 
   const { likePost, isLiking } = usePostActions();
+  const queryClient = useQueryClient();
+
+  // Sync with props when post changes
+  useEffect(() => {
+    setIsLiked(post?.isLiked || false);
+    setIsSaved(post?.isSaved || false);
+    setLikeCount(post?.likeCount || 0);
+  }, [post?.isLiked, post?.isSaved, post?.likeCount]);
 
   const handleLike = () => {
     if (isLiking) return;
@@ -22,9 +35,28 @@ const PostActions = ({ post, onCommentClick, onShareClick }) => {
     likePost(post._id);
   };
 
-  const handleSave = () => {
-    setIsSaved(!isSaved);
-    // TODO: Implement save post API call
+  const handleSave = async () => {
+    // If already saved, unsave
+    if (isSaved) {
+      try {
+        setIsSaved(false); // Optimistic update
+        await unsavePost(post._id);
+
+        // Invalidate saved posts queries to refresh UI
+        queryClient.invalidateQueries({ queryKey: ["savedPosts"] });
+        queryClient.invalidateQueries({ queryKey: ["collections"] });
+
+        toast.success("Đã bỏ lưu bài viết");
+      } catch (error) {
+        console.error("Error unsaving post:", error);
+        setIsSaved(true); // Revert on error
+        // API client transforms error to { status, ...data } format
+        toast.error(error?.message || "Không thể bỏ lưu bài viết");
+      }
+    } else {
+      // Show collection selection modal
+      setShowSaveModal(true);
+    }
   };
 
   return (
@@ -66,12 +98,14 @@ const PostActions = ({ post, onCommentClick, onShareClick }) => {
         </div>
 
         {/* Save Button */}
-        <button
-          onClick={handleSave}
-          className="text-gray-900 hover:text-gray-600 dark:text-gray-300 dark:hover:text-gray-100"
-        >
-          <Bookmark size={24} className={isSaved ? "fill-current" : ""} />
-        </button>
+        {!hideActions.includes("save") && (
+          <button
+            onClick={handleSave}
+            className="text-gray-900 hover:text-gray-600 dark:text-gray-300 dark:hover:text-gray-100"
+          >
+            <Bookmark size={24} className={isSaved ? "fill-current" : ""} />
+          </button>
+        )}
       </div>
 
       {/* Like Count */}
@@ -80,6 +114,16 @@ const PostActions = ({ post, onCommentClick, onShareClick }) => {
           {likeCount.toLocaleString()} lượt thích
         </span>
       )}
+
+      {/* Save to Collection Modal */}
+      <SaveToCollectionModal
+        isOpen={showSaveModal}
+        postId={post?._id}
+        onClose={() => {
+          setShowSaveModal(false);
+          setIsSaved(true); // Mark as saved after adding to collection
+        }}
+      />
     </>
   );
 };

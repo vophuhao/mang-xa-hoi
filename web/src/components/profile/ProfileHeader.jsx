@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Edit2, MoreHorizontal, Plus, Settings, Share, UserCheck } from "lucide-react";
+import { Edit2, Plus, Settings, Share, UserCheck } from "lucide-react";
 
 const ProfileHeader = ({
   user,
@@ -93,12 +93,12 @@ const ProfileHeader = ({
                     </button>
                   </>
                 )}
-                <button
+                {/* <button
                   onClick={() => setShowMore(!showMore)}
                   className="rounded-lg bg-gray-100 p-2 text-gray-900 hover:bg-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
                 >
                   <MoreHorizontal className="h-4 w-4" />
-                </button>
+                </button> */}
               </div>
             </div>
 

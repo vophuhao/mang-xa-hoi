@@ -14,7 +14,7 @@ const TRENDING_HASHTAGS = [
   { tag: "nature", count: "9.4M" },
   { tag: "fitness", count: "5.7M" },
   { tag: "coffee", count: "3.2M" },
-];
+]; // not constant because we might want to fetch this from server in the future
 
 const ExploreHeader = ({ onSearch }) => {
   const [query, setQuery] = useState("");
@@ -83,7 +83,7 @@ const ExploreHeader = ({ onSearch }) => {
             onChange={handleInputChange}
             onFocus={() => setShowSuggestions(query.length > 0)}
             placeholder="Tìm kiếm tài khoản và hashtag"
-            className="w-full rounded-lg border border-gray-300 bg-gray-50 py-3 pr-10 pl-10 text-sm text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400"
+            className="w-full rounded-lg border border-gray-300 bg-gray-50 py-3 pr-10 pl-10 text-sm text-gray-900 placeholder-gray-500 transition-colors focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:bg-gray-700"
           />
           {query && (
             <button

@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useParams } from "react-router-dom";
+// Removed unused imports
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
+import CollectionsGrid from "@/components/collection/CollectionsGrid";
 import PostModal from "@/components/feed/PostModal";
 import ProfileGrid from "@/components/profile/ProfileGrid";
 import ProfileHeader from "@/components/profile/ProfileHeader";
@@ -15,8 +17,24 @@ import { useCurrentUser, useUserPosts, useUserProfile } from "@/hooks/useUser";
 const Profile = () => {
   const { username } = useParams();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("posts");
+  const location = useLocation();
   const [selectedPost, setSelectedPost] = useState(null);
+  // Removed unused savedTab state
+
+  // Determine active tab from URL
+  const getActiveTabFromPath = useCallback(() => {
+    const path = location.pathname;
+    if (path.endsWith("/saved")) return "saved";
+    if (path.endsWith("/tagged")) return "tagged";
+    return "posts";
+  }, [location.pathname]);
+
+  const [activeTab, setActiveTab] = useState(() => getActiveTabFromPath());
+
+  // Update active tab when URL changes
+  useEffect(() => {
+    setActiveTab(getActiveTabFromPath());
+  }, [location.pathname, getActiveTabFromPath]);
 
   // Hooks
   const queryClient = useQueryClient();
@@ -36,7 +54,7 @@ const Profile = () => {
   const { followUser, unfollowUser } = useFollowActions();
 
   // Story hooks
-  const { data: highlights, isLoading: highlightsLoading } = useHighlights(username);
+  const { data: highlights } = useHighlights(username);
   const { data: userStoriesData } = useStoriesByUsername(username);
   const { data: myStoriesData } = useUserStories(); // For own profile highlights creation
 
@@ -155,10 +173,6 @@ const Profile = () => {
     }
   };
 
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-  };
-
   const handleLoadMore = () => {
     if (hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
@@ -206,11 +220,6 @@ const Profile = () => {
 
   const user = profileData?.data;
 
-  const handleAddHighlight = () => {
-    // TODO: Implement add highlight functionality
-    console.log("Add new highlight");
-  };
-
   const handleViewHighlight = (highlight) => {
     // TODO: Implement view highlight functionality
     console.log("View highlight:", highlight);
@@ -233,17 +242,12 @@ const Profile = () => {
         highlights={highlights || []}
         userStories={isOwnProfile ? myStoriesData : userStoriesData}
         isOwnProfile={isOwnProfile}
-        onAddHighlight={handleAddHighlight}
         onViewHighlight={handleViewHighlight}
         currentUserId={currentUser?.data?._id}
       />
 
       {/* Profile Tabs */}
-      <ProfileTabs
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        isOwnProfile={isOwnProfile}
-      />
+      <ProfileTabs activeTab={activeTab} isOwnProfile={isOwnProfile} />
 
       {/* Profile Content */}
       <div className="min-h-[400px]">
@@ -260,16 +264,13 @@ const Profile = () => {
         )}
 
         {activeTab === "saved" && isOwnProfile && (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="mb-4 rounded-full border-2 border-gray-900 p-6 dark:border-white">
-              <div className="h-12 w-12 rounded-full border-2 border-gray-900 dark:border-white" />
-            </div>
-            <h3 className="mb-2 text-2xl font-light text-gray-900 dark:text-white">
-              Lưu những gì bạn muốn xem lại
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Bạn chỉ có thể xem những gì mình đã lưu.
-            </p>
+          <div className="mx-auto max-w-4xl px-4 py-6">
+            <CollectionsGrid
+              onCollectionClick={(collection) => {
+                // Navigate to collection detail view
+                navigate(`/${username}/saved/collections/${collection._id}`);
+              }}
+            />
           </div>
         )}
 
@@ -297,6 +298,7 @@ const Profile = () => {
           isOpen={!!selectedPost}
           onClose={handleCloseModal}
           onUsernameClick={handleUsernameClick}
+          hideActions={["save"]} // Hide save button in profile view
         />
       )}
     </div>

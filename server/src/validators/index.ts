@@ -21,6 +21,9 @@ export * from "./comment.validator";
 // Message validators
 export * from "./directMessage.validator";
 
+// Collection validators
+export * from "./collection.validator";
+
 /**
  * Usage examples:
  *

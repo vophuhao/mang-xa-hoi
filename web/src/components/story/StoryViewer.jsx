@@ -59,7 +59,15 @@ const StoryViewer = ({
   const currentUserStories = activeUserStories[currentUserIndex] || { stories: [], user: null };
   const currentStory = currentUserStories.stories[currentStoryIndex];
   const isVideo = currentStory?.mediaType === "video";
-  const isOwner = currentStory?.user?._id === currentUserId;
+  const isOwner = currentStory?.user?._id?.toString() === currentUserId?.toString();
+
+  // Debug logging for owner check
+  console.log("StoryViewer Debug:", {
+    currentStoryUserId: currentStory?.user?._id,
+    currentUserId: currentUserId,
+    isOwner: isOwner,
+    isProfileView: isProfileView,
+  });
 
   // Ensure indexes are valid when cache updates
   useEffect(() => {
@@ -306,10 +314,16 @@ const StoryViewer = ({
               </button>
             )}
 
-            {/* More Options */}
-            <button className="rounded-full p-2 hover:bg-white/20">
-              <MoreHorizontal size={20} />
-            </button>
+            {/* More Options - Show for owner (both current stories and highlights) */}
+            {isOwner && (
+              <button
+                onClick={() => setShowLikesModal(true)}
+                className="rounded-full p-2 hover:bg-white/20"
+                title="Story Analytics"
+              >
+                <MoreHorizontal size={20} />
+              </button>
+            )}
 
             {/* Close Button */}
             <button onClick={onClose} className="rounded-full p-2 hover:bg-white/20">
@@ -389,8 +403,8 @@ const StoryViewer = ({
         )}
       </div>
 
-      {/* Bottom Actions */}
-      {!isOwner && (
+      {/* Bottom Actions - Hide for highlights of other users */}
+      {!isOwner && !(isProfileView && currentStory?.user?._id !== currentUserId) && (
         <div className="absolute right-0 bottom-0 left-0 z-20 p-4">
           {showReplyInput ? (
             <div className="flex items-center space-x-2 rounded-full bg-white/10 p-2 backdrop-blur-md">
@@ -494,6 +508,7 @@ const StoryViewer = ({
         }}
         storyId={currentStory?._id}
         currentStory={currentStory}
+        isOwnStory={currentStory?.user?._id === currentUserId}
       />
     </div>
   );

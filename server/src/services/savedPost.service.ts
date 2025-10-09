@@ -26,7 +26,11 @@ class SavedPostService {
   /**
    * Save a post for a user
    */
-  async savePost(userId: string, postId: string): Promise<{ message: string }> {
+  async savePost(
+    userId: string,
+    postId: string,
+    collectionId?: string
+  ): Promise<{ message: string }> {
     if (!userId || !postId) {
       throw ErrorFactory.requiredField("User ID and Post ID");
     }
@@ -38,20 +42,30 @@ class SavedPostService {
         throw ErrorFactory.resourceNotFound("Post");
       }
 
-      // Check if post is already saved
-      const existingSave = await SavedPostModel.findOne({
+      // Check if post is already saved in the same collection (or without collection)
+      const query: any = {
         user: userId,
         post: postId,
-      });
+      };
+
+      if (collectionId) {
+        query.collection = collectionId;
+      } else {
+        query.collection = { $exists: false };
+      }
+
+      const existingSave = await SavedPostModel.findOne(query);
 
       if (existingSave) {
-        throw ErrorFactory.resourceExists("Saved post", "Post is already saved");
+        const location = collectionId ? "in this collection" : "";
+        throw ErrorFactory.resourceExists("Saved post", `Post is already saved ${location}`);
       }
 
       // Save the post
       await SavedPostModel.create({
         user: userId,
         post: postId,
+        ...(collectionId && { collection: collectionId }),
       });
 
       return { message: "Post saved successfully" };
@@ -72,21 +86,14 @@ class SavedPostService {
     }
 
     try {
-      // Check if saved post exists
-      const savedPost = await SavedPostModel.findOne({
-        user: userId,
-        post: postId,
-      });
-
-      if (!savedPost) {
-        throw ErrorFactory.resourceNotFound("Saved post", "Post is not saved");
-      }
-
-      // Remove the saved post
+      // Remove the saved post (if exists)
       await SavedPostModel.deleteOne({
         user: userId,
         post: postId,
       });
+
+      // Even if no document was deleted (post wasn't saved), consider it successful
+      // This prevents errors when user clicks unsave multiple times
 
       return { message: "Post unsaved successfully" };
     } catch (error) {

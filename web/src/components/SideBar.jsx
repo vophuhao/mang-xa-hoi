@@ -99,7 +99,7 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
       id: "saved",
       label: "Đã lưu",
       icon: <Bookmark size={20} />,
-      action: () => console.log("Saved clicked"),
+      action: () => navigate("/saved"),
       closeOnClick: true,
     },
     {

@@ -1,6 +1,9 @@
 import { Bookmark, Grid3X3, UserCheck } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
 
-const ProfileTabs = ({ activeTab, onTabChange, isOwnProfile }) => {
+const ProfileTabs = ({ activeTab, isOwnProfile }) => {
+  const navigate = useNavigate();
+  const { username } = useParams();
   const tabs = [
     {
       id: "posts",
@@ -35,7 +38,13 @@ const ProfileTabs = ({ activeTab, onTabChange, isOwnProfile }) => {
             return (
               <button
                 key={tab.id}
-                onClick={() => onTabChange(tab.id)}
+                onClick={() => {
+                  if (tab.id === "posts") {
+                    navigate(`/${username}`);
+                  } else {
+                    navigate(`/${username}/${tab.id}`);
+                  }
+                }}
                 className={`flex flex-1 items-center justify-center space-x-2 py-4 text-xs font-semibold tracking-wide uppercase ${
                   activeTab === tab.id
                     ? "border-t-2 border-gray-900 text-gray-900 dark:border-white dark:text-white"

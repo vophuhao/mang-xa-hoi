@@ -51,6 +51,13 @@ export const deleteSession = async (id) => API.delete(`/sessions/${id}`);
 export const createPost = async (data) => API.post("/posts", data);
 export const getFeedPosts = async ({ page = 1, limit = 10 } = {}) =>
   API.get(`/posts/feed?page=${page}&limit=${limit}`);
+
+// =============== SAVED POST API ===============
+export const savePost = async (postId) => API.post(`/saved/${postId}`);
+export const unsavePost = async (postId) => API.delete(`/saved/${postId}`);
+export const getSavedPosts = async (page = 1, limit = 12) =>
+  API.get(`/saved?page=${page}&limit=${limit}`);
+export const checkSavedStatus = async (postId) => API.get(`/saved/${postId}/status`);
 export const getTrendingPosts = async ({ page = 1, limit = 20 } = {}) =>
   API.get(`/posts/trending?page=${page}&limit=${limit}`);
 export const getPostById = async (id) => API.get(`/posts/${id}`);
@@ -198,3 +205,22 @@ export const increasePostView = async (postId) => API.post(`/posts/views/${postI
 export const report = async (data) => {
   return API.post(`/report/create`, data);
 };
+
+// =============== COLLECTION API ===============
+// Collection CRUD
+export const createCollection = async (data) => API.post("/collections", data);
+export const getCollections = async ({ page = 1, limit = 10, includePrivate = true } = {}) =>
+  API.get(`/collections?page=${page}&limit=${limit}&includePrivate=${includePrivate}`);
+export const getCollectionById = async (id) => API.get(`/collections/${id}`);
+export const updateCollection = async (id, data) => API.put(`/collections/${id}`, data);
+export const deleteCollection = async (id) => API.delete(`/collections/${id}`);
+
+// Collection post management
+export const getCollectionPosts = async (id, { page = 1, limit = 12 } = {}) =>
+  API.get(`/collections/${id}/posts?page=${page}&limit=${limit}`);
+export const addPostToCollection = async (collectionId, postId) =>
+  API.post(`/collections/${collectionId}/posts/${postId}`);
+export const removePostFromCollection = async (collectionId, postId) =>
+  API.delete(`/collections/${collectionId}/posts/${postId}`);
+export const movePostToCollection = async (fromCollectionId, postId, toCollectionId) =>
+  API.put(`/collections/${fromCollectionId}/posts/${postId}/move/${toCollectionId}`);

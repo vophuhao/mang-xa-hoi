@@ -117,7 +117,11 @@ export const getTrendingPostsHandler = catchErrors(
   async (req: AuthenticatedRequest, res: Response) => {
     const { page = 1, limit = 10 } = req.query as any;
 
-    const posts = await PostService.getTrendingPosts(Number(page), Number(limit));
+    const posts = await PostService.getTrendingPosts(
+      Number(page),
+      Number(limit),
+      req.userId?.toString()
+    );
 
     return ResponseUtil.success(res, posts);
   }

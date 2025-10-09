@@ -50,12 +50,13 @@ const OptionsModal = ({ isOpen, onClose, title = "Tùy chọn", options = [], sh
                 option.onClick?.();
                 onClose();
               }}
-              className={`w-full cursor-pointer border-b px-6 py-4 text-center text-sm transition-colors last:border-b-0 dark:border-gray-700 ${
+              className={`flex w-full cursor-pointer items-center justify-center border-b px-6 py-4 text-center text-sm transition-colors last:border-b-0 dark:border-gray-700 ${
                 option.danger
                   ? "border-gray-700 font-medium text-red-600"
                   : "text-gray-900 dark:text-white"
               }`}
             >
+              {option.icon && <span className="mr-2">{option.icon}</span>}
               {option.label}
             </button>
           ))}

@@ -11,7 +11,7 @@ import PostHeader from "./PostHeader";
 import PostMedia from "./PostMedia";
 import PostOptionsModal from "./PostOptionsModal";
 
-const PostModal = ({ post, isOpen, onClose, onUsernameClick, onShareClick }) => {
+const PostModal = ({ post, isOpen, onClose, onUsernameClick, onShareClick, hideActions = [] }) => {
   const [replyState, setReplyState] = useState(null);
 
   // Use centralized post actions hook
@@ -132,6 +132,7 @@ const PostModal = ({ post, isOpen, onClose, onUsernameClick, onShareClick }) => 
             <div className="flex-shrink-0 border-t border-gray-200 p-3 dark:border-gray-700">
               <PostActions
                 post={post}
+                hideActions={hideActions}
                 onCommentClick={() => {
                   // Focus on comment input
                   const commentInput = document.querySelector("[data-comment-input]");

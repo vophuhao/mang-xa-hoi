@@ -23,13 +23,17 @@ export const useFeedPosts = (page = 1) => {
 /**
  * Hook to get single post
  */
-export const useSinglePost = (postId) => {
+export const useSinglePost = (postId, options = {}) => {
   return useQuery({
     queryKey: POST_QUERY_KEYS.post(postId),
     queryFn: () => getPostById(postId),
     enabled: !!postId,
+    ...options,
   });
 };
+
+// Alias for compatibility
+export const useGetPost = useSinglePost;
 
 /**
  * Hook to get trending posts with infinite scroll

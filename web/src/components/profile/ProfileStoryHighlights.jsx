@@ -26,9 +26,11 @@ const ProfileStoryHighlights = ({
     const highlightStories = highlight.stories.map((story) => ({
       ...story,
       user: {
-        _id: story.user || currentUserId,
+        _id: story.user?._id || story.user || currentUserId,
         username: highlight.username || "You",
-        avatarUrl: highlight.avatar,
+        avatarUrl: story.user?.avatarUrl || highlight.avatarUrl,
+        fullName: highlight.fullName,
+        isVerified: highlight.isVerified,
       },
     }));
 
@@ -38,7 +40,9 @@ const ProfileStoryHighlights = ({
           user: {
             _id: currentUserId,
             username: highlight.username || "You",
-            avatarUrl: highlight.avatar,
+            avatarUrl: highlight.avatarUrl,
+            fullName: highlight.fullName,
+            isVerified: highlight.isVerified,
           },
           stories: highlightStories,
           hasUnviewed: false,
@@ -52,9 +56,7 @@ const ProfileStoryHighlights = ({
   };
 
   const handleAddHighlight = () => {
-    if (userStories && userStories.length > 0) {
-      setShowCreateModal(true);
-    }
+    setShowCreateModal(true);
     onAddHighlight?.();
   };
 
@@ -123,7 +125,7 @@ const ProfileStoryHighlights = ({
             <button
               key={highlight.id || index}
               onClick={() => handleViewHighlight(highlight)}
-              className="group flex flex-shrink-0 flex-col items-center space-y-2"
+              className="group flex flex-shrink-0 flex-col items-center space-y-2 pl-1"
             >
               <div className="relative">
                 <div className="h-16 w-16 overflow-hidden rounded-full ring-2 ring-gray-200 transition-all group-hover:ring-gray-300 dark:ring-gray-700 dark:group-hover:ring-gray-600">

@@ -230,13 +230,13 @@ export const useDeleteStory = () => {
   });
 };
 
-// Hook to get story viewers
-export const useStoryViewers = (storyId) => {
+// Hook to get story viewers (only for own stories)
+export const useStoryViewers = (storyId, isOwnStory = false) => {
   return useQuery({
     queryKey: ["stories", "viewers", storyId],
     queryFn: () => storyAPI.getStoryViewers(storyId),
     select: (data) => data.data,
-    enabled: !!storyId,
+    enabled: !!storyId && isOwnStory, // Only fetch if it's user's own story
     staleTime: 30 * 1000, // 30 seconds
   });
 };

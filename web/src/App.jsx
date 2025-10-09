@@ -14,11 +14,13 @@ import VerifyEmail from "@/pages/VerifyEmail";
 
 import Audio from "./components/Audio";
 import HashtagPanel from "./components/HashtagPanel";
+import CollectionDetail from "./pages/CollectionDetail";
 import DirectInbox from "./pages/DirectInbox";
 import Explore from "./pages/Explore";
 import Feed from "./pages/Feed";
 import Layout from "./pages/Layout";
 import Messages from "./pages/Messages";
+import PostDetail from "./pages/PostDetail";
 import Profile from "./pages/Profile";
 import Reels from "./pages/Reels";
 
@@ -41,7 +43,12 @@ function App() {
           <Route path="explore" element={<Explore />} />
           <Route path="reels" element={<Reels />} />
           <Route path="direct/inbox" element={<DirectInbox />} />
+          <Route path="collections/:id" element={<CollectionDetail />} />
           <Route path=":username" element={<Profile />} />
+          <Route path=":username/p/:postId" element={<PostDetail />} />
+          <Route path=":username/saved" element={<Profile />} />
+          <Route path=":username/saved/collections/:id" element={<CollectionDetail />} />
+          <Route path=":username/tagged" element={<Profile />} />
           <Route path="audio/:id" element={<Audio />} />
           <Route path="hashtags/:name" element={<HashtagPanel />} />
           <Route path="message" element={<Messages />} />

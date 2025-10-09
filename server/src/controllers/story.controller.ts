@@ -116,7 +116,7 @@ export const getStoriesHandler = catchErrors(async (req: AuthenticatedRequest, r
     story: { $in: storyIds },
   }).select("story");
 
-  const likedStoryIds = new Set(userLikes.map(like => like.story.toString()));
+  const likedStoryIds = new Set(userLikes.map(like => like.story?.toString()).filter(Boolean));
 
   // Group stories by user and add like info
   const storiesByUser = stories.reduce((acc: any, story) => {
@@ -132,7 +132,7 @@ export const getStoriesHandler = catchErrors(async (req: AuthenticatedRequest, r
     // Add like status to story
     const storyWithLikeInfo = {
       ...story.toObject(),
-      isLiked: likedStoryIds.has(story._id.toString()),
+      isLiked: likedStoryIds.has((story._id as any).toString()),
     };
 
     acc[storyUserId].stories.push(storyWithLikeInfo);

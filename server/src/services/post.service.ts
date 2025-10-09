@@ -372,160 +372,61 @@ export class PostService {
   /**
    * Get trending posts
    */
-  static async getReelsFeed(page: number, limit: number) {
+  static async getTrendingPosts(page: number = 1, limit: number = 10, userId?: string) {
     const skip = (page - 1) * limit;
 
-    const reels = await PostModel.aggregate([
-      { $match: { type: "reel", isHidden: false } },
-      {
-        $addFields: {
-          score: {
-            $add: [
-              { $multiply: ["$likeCount", 3] },
-              { $multiply: ["$commentCount", 5] },
-              { $multiply: ["$shareCount", 4] },
-              { $multiply: ["$viewCount", 0] },
-              {
-                $cond: [
-                  { $gte: ["$createdAt", new Date(Date.now() - 1000 * 60 * 60 * 24)] },
-                  1000,
-                  0,
-                ],
-              },
-            ],
-          },
-        },
-      },
-      // Thông tin user
-      {
-        $lookup: {
-          from: "users",
-          localField: "user",
-          foreignField: "_id",
-          as: "userInfo",
-        },
-      },
-      { $unwind: "$userInfo" },
+    // First try to get posts from last 7 days with high engagement
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-      // Thông tin comment
-      {
-        $lookup: {
-          from: "comments",
-          localField: "_id",
-          foreignField: "post",
-          as: "commentsInfo",
-        },
-      },
-      {
-        $lookup: {
-          from: "users",
-          localField: "commentsInfo.user",
-          foreignField: "_id",
-          as: "commentUsers",
-        },
-      },
+    let posts = await PostModel.find({
+      createdAt: { $gte: weekAgo },
+      isHidden: false,
+    })
+      .populate("user", "username fullName avatarUrl isVerified")
+      .sort({
+        likeCount: -1,
+        commentCount: -1,
+        createdAt: -1,
+      })
+      .skip(skip)
+      .limit(limit)
+      .lean();
 
-      // Thông tin likes
-      {
-        $lookup: {
-          from: "likes",
-          localField: "_id",
-          foreignField: "post",
-          as: "likeUsers",
-        },
-      },
-      {
-        $lookup: {
-          from: "audios",
-          localField: "audioId",
-          foreignField: "_id",
-          as: "audioInfo",
-        },
-      },
-      {
-        $unwind: {
-          path: "$audioInfo",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      // Lấy thông tin user của audio
-      {
-        $lookup: {
-          from: "users",
-          localField: "audioInfo.user",
-          foreignField: "_id",
-          as: "audioUser",
-        },
-      },
-      {
-        $unwind: {
-          path: "$audioUser",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
+    // If no trending posts found, fall back to all posts sorted by engagement
+    if (posts.length === 0 && skip === 0) {
+      posts = await PostModel.find({
+        isHidden: false,
+      })
+        .populate("user", "username fullName avatarUrl isVerified")
+        .sort({
+          likeCount: -1,
+          commentCount: -1,
+          createdAt: -1,
+        })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+    }
 
-      {
-        $project: {
-          caption: 1,
-          mediaUrls: 1,
-          likeCount: 1,
-          commentCount: 1,
-          shareCount: 1,
-          viewCount: 1,
-          createdAt: 1,
-          updatedAt: 1,
-          audioId: 1, // lấy id audio gốc
-          "audioInfo._id": 1,
-          "audioInfo.title": 1,
-          "audioInfo.artist": 1,
-          "audioInfo.deezerId": 1,
-          "audioInfo.fileUrl": 1,
-          "audioInfo.cover": 1,
-          "audioUser._id": 1,
-          "audioUser.userId": 1,
-          "audioUser.avatarUrl": 1,
-          "user._id": "$userInfo._id",
-          "user.userId": "$userInfo.userId",
-          "user.avatar": "$userInfo.avatarUrl",
-          comments: {
-            $map: {
-              input: "$commentsInfo",
-              as: "c",
-              in: {
-                _id: "$$c._id",
-                content: "$$c.content",
-                user: {
-                  $arrayElemAt: [
-                    {
-                      $filter: {
-                        input: "$commentUsers",
-                        cond: { $eq: ["$$this._id", "$$c.user"] },
-                      },
-                    },
-                    0,
-                  ],
-                },
-              },
-            },
-          },
-          likedUsers: "$likeUsers.user",
-        },
-      },
+    // If user is provided, check like/save status
+    if (userId && posts.length > 0) {
+      const postIds = posts.map(post => post._id);
+      const [userLikes, userSaves] = await Promise.all([
+        LikeModel.find({ user: userId, post: { $in: postIds } }).select("post"),
+        SavedPostModel.find({ user: userId, post: { $in: postIds } }).select("post"),
+      ]);
 
-      { $sort: { score: -1, createdAt: -1 } },
-      { $skip: skip },
-      { $limit: limit },
-    ]);
+      const likedPostIds = new Set(userLikes.map(like => like.post?.toString()).filter(Boolean));
+      const savedPostIds = new Set(userSaves.map(save => save.post?.toString()).filter(Boolean));
 
-    return reels;
-  }
+      posts = posts.map(post => ({
+        ...post,
+        isLiked: likedPostIds.has(post._id.toString()),
+        isSaved: savedPostIds.has(post._id.toString()),
+      }));
+    }
 
-  static async incrementViewCount(postId: string) {
-    const post = await PostModel.findById(postId);
-    if (!post) throw new Error("Post not found");
-
-    await post.incrementView(); // 👈 dùng method có sẵn trong model
-    return post.viewCount; // trả lại số lượt xem sau khi tăng
+    return posts;
   }
 }
 
