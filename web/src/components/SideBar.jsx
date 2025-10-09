@@ -297,10 +297,7 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
         </div>
       </div>
 
-      <CreatePostModal
-        isOpen={showPostModal}
-        onClose={() => setShowPostModal(false)}
-      />
+      <CreatePostModal isOpen={showPostModal} onClose={() => setShowPostModal(false)} />
     </div>
   );
 }
