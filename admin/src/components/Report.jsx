@@ -74,8 +74,8 @@ const Segmented = ({ options, value, onChange }) => {
             key={opt.value}
             onClick={() => onChange(opt.value)}
             className={`px-3.5 py-2 rounded-lg text-sm font-medium inline-flex items-center gap-2 transition ${active
-                ? "bg-white text-blue-600 shadow dark:bg-gray-700"
-                : "text-gray-700 hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700/70"
+              ? "bg-white text-blue-600 shadow dark:bg-gray-700"
+              : "text-gray-700 hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700/70"
               }`}
           >
             {opt.icon}
@@ -104,6 +104,10 @@ export default function Report() {
   const [activeType, setActiveType] = useState("post"); // post | user
   const [activeStatus, setActiveStatus] = useState("pending"); // pending | resolved
   const [selected, setSelected] = useState(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const LIMIT = 10;
 
   // Fetch reports (logic giữ nguyên)
   const fetchReports = async () => {
@@ -112,10 +116,26 @@ export default function Report() {
       const res = await getReports({
         type: activeType,
         status: activeStatus,
-        page: 1,
-        limit: 10,
+        page,
+        limit: LIMIT,
       });
-      setReports(res.data?.data || []);
+
+      // Hỗ trợ cả 2 dạng payload: { data: [...], pagination } hoặc { data: { data: [...], pagination } }
+      const body = res?.data;
+      const payload = body?.data ?? body;
+      const items = Array.isArray(payload) ? payload : payload?.data || [];
+      const pagination = Array.isArray(payload)
+        ? body?.pagination
+        : payload?.pagination || body?.pagination;
+
+      setReports(items);
+      if (pagination) {
+        setTotalPages(pagination.totalPages || 1);
+        setTotal(pagination.total ?? items.length);
+      } else {
+        setTotalPages(1);
+        setTotal(items.length);
+      }
     } catch (err) {
       console.error("Lỗi tải danh sách báo cáo:", err);
     } finally {
@@ -126,9 +146,9 @@ export default function Report() {
   useEffect(() => {
     fetchReports();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeType, activeStatus]);
+  }, [activeType, activeStatus, page]);
 
-  const handleClick = async (postId, key)=> {
+  const handleClick = async (postId, key) => {
     try {
       const res = await resolveReport(postId, key);
       console.log("Kết quả xử lý:", res.data);
@@ -169,7 +189,10 @@ export default function Report() {
       <div className="flex flex-col md:flex-row md:items-center gap-3 mb-6">
         <Segmented
           value={activeType}
-          onChange={setActiveType}
+          onChange={(v) => {
+            setActiveType(v);
+            setPage(1); // reset page khi đổi filter
+          }}
           options={[
             {
               value: "post",
@@ -185,7 +208,10 @@ export default function Report() {
         />
         <Segmented
           value={activeStatus}
-          onChange={setActiveStatus}
+          onChange={(v) => {
+            setActiveStatus(v);
+            setPage(1); // reset page khi đổi filter
+          }}
           options={[
             {
               value: "pending",
@@ -323,6 +349,36 @@ export default function Report() {
               )}
             </tbody>
           </table>
+        </div>
+        {/* Pagination footer */}
+        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+          <div className="text-sm text-gray-600 dark:text-gray-300">
+            {total > 0
+              ? `Hiển thị ${Math.min((page - 1) * LIMIT + 1, total)}–${Math.min(
+                (page - 1) * LIMIT + reports.length,
+                total
+              )} trong ${total}`
+              : "Không có dữ liệu"}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              className="px-3 py-2 rounded-lg text-sm border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1 || loading}
+            >
+              Trước
+            </button>
+            <span className="text-sm text-gray-700 dark:text-gray-200">
+              Trang {page} / {totalPages}
+            </span>
+            <button
+              className="px-3 py-2 rounded-lg text-sm border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages || loading}
+            >
+              Sau
+            </button>
+          </div>
         </div>
       </div>
 

@@ -13,6 +13,7 @@ import {
   togglePanel,
 } from "@/store/slices/layoutSlice";
 
+
 const Layout = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -53,6 +54,9 @@ const Layout = () => {
           break;
         case "report":
           navigate("/report");
+          break;
+        case "user":
+          navigate("/user");
           break;
         default:
           break;

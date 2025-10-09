@@ -59,7 +59,7 @@ export default function ReportModal({ reelId, onBack, onClose }) {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
-                    className="bg-white dark:bg-neutral-900 w-[480px] rounded-2xl shadow-2xl overflow-hidden"
+                    className="bg-white dark:bg-neutral-900 w-[550px] rounded-2xl shadow-2xl overflow-hidden"
                     onClick={(e) => e.stopPropagation()}
                 >
                     {step === "select" ? (

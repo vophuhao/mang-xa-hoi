@@ -4,7 +4,7 @@ import { createSlice } from "@reduxjs/toolkit";
 const PANEL_MENUS = ["search", "notifications"];
 
 // Define which menus are regular pages
-const PAGE_MENUS = ["home", "report"];
+const PAGE_MENUS = ["home", "report","user"];
 
 // Helper functions
 const isPanelMenu = (menuId) => PANEL_MENUS.includes(menuId);

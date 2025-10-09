@@ -409,7 +409,7 @@ function ActionButtons({ reel, handleLike, likedMap, handleAudioClick, setOpenMe
       </button>
 
       <button
-        className="mt-2 relative z-20"
+        className=" relative z-20"
         onClick={(e) => {
           const rect = e.currentTarget.getBoundingClientRect(); // lấy toạ độ icon
           setOpenMenu({ x: rect.left, y: rect.bottom }); // lưu vị trí

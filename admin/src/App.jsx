@@ -11,6 +11,7 @@ import Login from "@/pages/Login";
 import store from "@/store";
 
 import ReportPage from "./components/Report";
+import User from "./components/User";
 import Layout from "./pages/Layout";
 
 
@@ -38,6 +39,7 @@ function App() {
         {/* Các route chính sau khi login */}
         <Route path="/" element={<Layout />}>  
                <Route path="report" element={<ReportPage/>} />
+                <Route path="user" element={<User/>} />
         </Route>
 
       </Routes> 

@@ -11,6 +11,7 @@ import {
   Settings,
   Sun,
   SwitchCamera,
+  User,
 
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -30,6 +31,7 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
   const navItems = [
     { id: "home", label: "Trang chủ", icon: <Home size={24} /> },
     { id: "report", label: "Báo cáo", icon: <AlertCircle size={24} /> },
+    { id: "user", label: "Người dùng", icon: <User size={24} /> },
   ];
 
   const { mutate: handleLogout } = useMutation({
