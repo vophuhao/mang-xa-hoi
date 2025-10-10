@@ -1,13 +1,17 @@
 import React, { useEffect, use, useState, useRef } from "react";
 
 import { Heart, MessageCircle, Eye, Play, Pause } from "lucide-react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 
-import { checkSavedAudio, fetchPreviewUrl, getAudio, getReelByAudioId, saveAudio } from "@/lib/api";
+import { checkSavedAudio, fetchPreviewUrl, 
+    getAudio, getReelByAudioId, saveAudio } from "@/lib/api";
+
+import PostModal from "./feed/PostModal";
 
 
 export default function Audio() {
     const { id } = useParams();
+    const navigate = useNavigate();
     const [reels, setReels] = React.useState([]);
     const [audio, setAudio] = React.useState(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -15,6 +19,19 @@ export default function Audio() {
     const audioRef = useRef(null);
     const [isSaved, setIsSaved] = useState(false);
 
+    const { name } = useParams();
+    const [selectedPost, setSelectedPost] = useState(null);
+
+    const handleUsernameClick = (username) => {
+        navigate(`/${username}`);
+    };
+    const handleCloseModal = () => {
+        setSelectedPost(null);
+    };
+
+    const handlePostClick = (post) => {
+        setSelectedPost(post);
+    };
 
     useEffect(() => {
         const fetchAudioSave = async () => {
@@ -35,7 +52,13 @@ export default function Audio() {
             try {
                 const res = await getAudio(id);
                 setAudio(res.data);
-                setAudioUrl(res.data.fileUrl);
+                if (res.data.fileUrl) {
+                    setAudioUrl(res.data.fileUrl);
+                }
+                else {
+                    const res = await fetchPreviewUrl(audio.deezerId);
+                    setAudioUrl(res.data.previewUrl);
+                }
             } catch (error) {
                 console.error("Lỗi khi tải audio:", error);
             }
@@ -62,32 +85,6 @@ export default function Audio() {
         const res = await saveAudio(id);
         setIsSaved(res.saved);
     };
-
-
-    const handlePlay = async () => {
-
-        try {
-            if (!audioUrl && audio.deezerId) {
-
-                const res = await fetchPreviewUrl(audio.deezerId);
-                setAudioUrl(res.data.previewUrl);
-                audioRef.current.src = res.data.previewUrl;
-            }
-
-            // Nếu đang phát → dừng
-            if (isPlaying) {
-                audioRef.current.pause();
-                setIsPlaying(false);
-            } else {
-                // Nếu chưa phát → phát
-                await audioRef.current.play();
-                setIsPlaying(true);
-            }
-        } catch (error) {
-            console.error("Không thể phát âm thanh:", error);
-        }
-    };
-
     // Khi nhạc kết thúc → reset lại icon
     const handleEnded = () => setIsPlaying(false);
 
@@ -134,13 +131,13 @@ export default function Audio() {
             {/* Video list */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {reels.map((video) => (
-                    <a
-                        key={video.id}
-                        href={`/reel/${video.id}`}
+                    <div
+                        key={video._id}
+                        onClick={() => handlePostClick(video)}
                         className="relative group"
                     >
                         <video
-                            src={video.thumbnail}
+                            src={video.mediaUrls}
                             alt={video.caption}
                             className="object-cover w-full h-100 "
                         />
@@ -148,23 +145,32 @@ export default function Audio() {
                         {/* Hiển thị số view ở góc dưới bên trái (luôn thấy) */}
                         <div className="absolute bottom-3 left-4 flex items-center text-white text-sm font-medium drop-shadow">
                             <Eye className="w-4 h-4 mr-1" />
-                            <span>{video.views} </span>
+                            <span>{video.viewCount} </span>
                         </div>
 
                         {/* Hiển thị like & comment khi hover */}
                         <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-4 text-white text-sm font-medium rounded-lg">
                             <div className="flex items-center gap-1">
-                                <Heart className="h-4 w-4" />
-                                {video.likes}
+                                <Heart className="h-5 w-5" fill="white" />
+                                {video.likeCount}
                             </div>
                             <div className="flex items-center gap-1">
-                                <MessageCircle className="h-4 w-4" />
-                                {video.comments}
+                                <MessageCircle className="h-5 w-5" fill="white" />
+                                {video.commentCount}
                             </div>
                         </div>
-                    </a>
+                    </div>
                 ))}
             </div>
+
+            {selectedPost && (
+                <PostModal
+                    post={selectedPost}
+                    isOpen={!!selectedPost}
+                    onClose={handleCloseModal}
+                    onUsernameClick={handleUsernameClick}
+                />
+            )}
 
         </div>
     );

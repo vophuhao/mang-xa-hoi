@@ -454,7 +454,7 @@ function Caption({ caption }) {
         return (
           <span
             key={index}
-            onClick={() => navigate(`/hashtag/${encodeURIComponent(tag)}`)}
+            onClick={() => navigate(`/hashtags/${encodeURIComponent(tag)}`)}
             className="text-white cursor-pointer "
           >
             {part}
@@ -462,12 +462,12 @@ function Caption({ caption }) {
         );
       }
       if (part.startsWith("@")) {
-        const username = part.slice(1);
+        const userId = part.slice(1);
         return (
           <span
             key={index}
-            onClick={() => navigate(`/user/${encodeURIComponent(username)}`)}
-            className="text-pink-400 cursor-pointer hover:underline"
+            onClick={() => navigate(`/${encodeURIComponent(userId)}`)}
+            className=" cursor-pointer"
           >
             {part}
           </span>

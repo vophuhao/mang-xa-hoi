@@ -213,16 +213,9 @@ export const getAllReelPostsByAudio = catchErrors(async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    const formatted = reels.map((r) => ({
-      id: r._id,
-      caption: r.caption,
-      thumbnail: r.mediaUrls[0], // thumbnail reel
-      views: r.viewCount,
-      likes: r.likeCount,
-      comments: r.commentCount,
-    }));
+    
 
-    res.status(200).json(formatted);
+    res.status(200).json(reels);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
