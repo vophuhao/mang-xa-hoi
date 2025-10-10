@@ -44,11 +44,11 @@ storyRoutes.get("/:storyId/analytics", getStoryAnalyticsHandler);
 storyRoutes.post("/cleanup/viewers", cleanupDuplicateViewersHandler);
 
 // Get stories by username
-storyRoutes.get("/user/:username", getStoriesByUsernameHandler);
+storyRoutes.get("/user/:userId", getStoriesByUsernameHandler);
 
 // Highlights
 storyRoutes.post("/highlights", createHighlightHandler);
-storyRoutes.get("/highlights/:username", getHighlightsHandler);
+storyRoutes.get("/highlights/:userId", getHighlightsHandler);
 storyRoutes.delete("/highlights/:highlightTitle", deleteHighlightHandler);
 storyRoutes.delete("/:storyId/highlight", removeFromHighlightHandler);
 

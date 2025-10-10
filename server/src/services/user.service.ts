@@ -7,7 +7,7 @@ import ErrorFactory from "@/utils/ErrorFactory";
 export interface UserProfile {
   _id: string;
   username: string;
-  fullName: string | undefined;
+  userId: string | undefined;
   email: string;
   avatarUrl?: string;
   bio?: string;
@@ -73,7 +73,7 @@ export class UserService {
     const userProfile = {
       _id: (user._id as any).toString(),
       username: user.username,
-      fullName: user.fullName,
+      userId: user.userId,
       email: user.email,
       avatarUrl: user.avatarUrl,
       bio: user.bio,
@@ -112,7 +112,7 @@ export class UserService {
     const userProfile = {
       _id: (user._id as any).toString(),
       username: user.username,
-      fullName: user.fullName,
+      userId: user.userId,
       email: user.email,
       avatarUrl: user.avatarUrl,
       bio: user.bio,
@@ -241,8 +241,8 @@ export class UserService {
   /**
    * Get user's following
    */
-  static async getUserFollowing(username: string, page: number = 1, limit: number = 20) {
-    const user = await UserModel.findOne({ username });
+  static async getUserFollowing(userId: string, page: number = 1, limit: number = 20) {
+    const user = await UserModel.findOne({ userId });
     if (!user) {
       throw ErrorFactory.resourceNotFound("User");
     }
@@ -251,7 +251,7 @@ export class UserService {
 
     const [following, total] = await Promise.all([
       FollowModel.find({ follower: user._id })
-        .populate("following", "username fullName avatarUrl isVerified")
+        .populate("following", "username userId avatarUrl isVerified")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
@@ -342,8 +342,8 @@ export class UserService {
   /**
    * Get user's posts
    */
-  static async getUserPosts(username: string, page: number = 1, limit: number = 12) {
-    const user = await UserModel.findOne({ username });
+  static async getUserPosts(userId: string, page: number = 1, limit: number = 12) {
+    const user = await UserModel.findOne({ userId });
     if (!user) {
       throw ErrorFactory.resourceNotFound("User");
     }

@@ -11,6 +11,7 @@ import {
   searchUsersSchema,
   updateProfileSchema,
 } from "@/validators/user.validator";
+import { get } from "node:http";
 
 /**
  * Get current user profile
@@ -86,10 +87,10 @@ export const unfollowUserHandler = catchErrors(async (req: AuthenticatedRequest,
  * @route GET /users/:username/followers
  */
 export const getFollowersHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
-  const { username } = getUserByUsernameSchema.parse(req.params);
+  const { userId } = getUserByUserIdSchema.parse(req.params);
   const { page = 1, limit = 20 } = req.query as any;
 
-  const result = await UserService.getUserFollowers(username, Number(page), Number(limit));
+  const result = await UserService.getUserFollowers(userId, Number(page), Number(limit));
   return ResponseUtil.paginated(res, result.data, result.pagination);
 });
 
@@ -98,10 +99,10 @@ export const getFollowersHandler = catchErrors(async (req: AuthenticatedRequest,
  * @route GET /users/:username/following
  */
 export const getFollowingHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
-  const { username } = getUserByUsernameSchema.parse(req.params);
+  const { userId } = getUserByUserIdSchema.parse(req.params);
   const { page = 1, limit = 20 } = req.query as any;
 
-  const result = await UserService.getUserFollowing(username, Number(page), Number(limit));
+  const result = await UserService.getUserFollowing(userId, Number(page), Number(limit));
   return ResponseUtil.paginated(res, result.data, result.pagination);
 });
 
@@ -141,9 +142,9 @@ export const searchUsersHandler = catchErrors(async (req: AuthenticatedRequest, 
  * @route GET /users/:username/posts
  */
 export const getUserPostsHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
-  const { username } = getUserByUsernameSchema.parse(req.params);
+  const { userId } = getUserByUserIdSchema.parse(req.params);
   const { page = 1, limit = 12 } = req.query as any;
 
-  const result = await UserService.getUserPosts(username, Number(page), Number(limit));
+  const result = await UserService.getUserPosts(userId, Number(page), Number(limit));
   return ResponseUtil.paginated(res, result.data, result.pagination);
 });

@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, MessageCircle, Send, Bookmark, Volume2, VolumeX, Play, MoreHorizontal } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import useAuth from "@/hooks/useAuth";
+import { USER_QUERY_KEYS, useUser, useUserFollowing } from "@/hooks/useUser";
 import { getReelsFeed, increasePostView, likePost } from "@/lib/api";
-import ReportModal from "@/modals/ReportModal";
+import { navigate } from "@/lib/navigation";
 
 import MoreOptionsMenu from "./MoreOptionsMenu";
 
@@ -26,14 +28,30 @@ export default function ReelWeb() {
   const [openMenu, setOpenMenu] = useState(null); // null hoặc {x, y}
   const [reelId, setReelId] = useState(null);
 
-
+  const { toggleFollow } = useUser();
+  const queryClient = useQueryClient();
 
   const navigate = useNavigate();
+
+  const { data: followingData } = useUserFollowing(user?.data?.userId, 1);
+  const followingIds = new Set(followingData?.data?.map((u) => u._id));
+
+  const handleFollowClick = async (targetUserId, isFollowing) => {
+    try {
+
+      await toggleFollow(targetUserId, isFollowing); 
+      // Cập nhật lại cache sau khi follow/unfollow
+      queryClient.invalidateQueries(["userFollowing", user?.data?.userId],1);
+    } catch (err) {
+      console.error("Follow error:", err);
+    }
+  };
 
   const handleAudioClick = (audioInfo) => () => {
     if (!audioInfo) return;
     navigate(`/audio/${audioInfo._id}`);
   };
+
 
 
   useEffect(() => {
@@ -274,6 +292,7 @@ export default function ReelWeb() {
       >
         <div className="flex flex-col items-center w-full">
           {reels.map((reel, index) => (
+
             <div key={reel._id} className="flex snap-center items-center justify-center my-2 w-full">
               <div
 
@@ -309,7 +328,12 @@ export default function ReelWeb() {
 
 
                 {/* Info overlay */}
-                <InfoOverlay reel={reel} handleAudioClick={handleAudioClick} />
+                <InfoOverlay reel={reel}
+                  handleAudioClick={handleAudioClick}
+                  user={user}
+                  handleFollowClick={handleFollowClick}
+                   isFollowing={followingIds.has(reel.user?._id)}
+                />
 
                 {/* Nút Mute/Unmute */}
                 <button
@@ -349,13 +373,13 @@ export default function ReelWeb() {
   );
 }
 
-function InfoOverlay({ reel, handleAudioClick }) {
+function InfoOverlay({ reel, handleAudioClick, user,handleFollowClick,isFollowing }) {
   return (
     <div className={`absolute left-4 flex flex-col space-y-2 ${reel.caption ? "bottom-4" : "bottom-10"}`}>
       <div className="flex items-center space-x-2">
-        <img src={reel.user?.avatar} alt="avatar" className="w-8 h-8 rounded-full" />
+        <img src={reel.user?.avatar} alt="avatar" className="w-8 h-8 rounded-full" onClick={() => navigate(`/${reel.user?.userId}`)} />
         <div>
-          <span className="font-semibold text-[13px] text-white">{reel.user?.username || "user"}</span>
+          <span onClick={() => navigate(`/${reel.user?.userId}`)} className="font-semibold text-[13px] text-white">{reel.user?.userId || "user"}</span>
           <div onClick={handleAudioClick(reel.audioInfo)} className="flex items-center space-x-1 text-[13px] text-gray-200 w-[180px] overflow-hidden">
             <span className="mr-1">🎵</span>
             <div className="relative w-full overflow-hidden">
@@ -365,17 +389,23 @@ function InfoOverlay({ reel, handleAudioClick }) {
             </div>
           </div>
         </div>
-        <button className="px-3 py-1 mt-3 text-sm font-semibold text-white border border-white rounded-md bg-white/10 hover:bg-white/20 transition">
-          Theo dõi
-        </button>
+        {reel.user?._id !== user.data._id ? (
+          <button
+            
+            onClick={() => handleFollowClick(reel.user?._id, isFollowing)}
+            className="cursor-pointer px-3 py-1 mt-3 text-sm font-semibold text-white border border-white rounded-md bg-white/10 hover:bg-white/20 transition">
+            {isFollowing ? "Đang theo dõi" : "Theo dõi"}
+          </button>
+        ) : null}
       </div>
+
       {reel.caption && <Caption caption={reel.caption} />}
     </div>
 
   );
 }
 
-function ActionButtons({ reel, handleLike, likedMap, handleAudioClick, setOpenMenu ,setReelId}) {
+function ActionButtons({ reel, handleLike, likedMap, handleAudioClick, setOpenMenu, setReelId }) {
   return (
     <div className="flex flex-col mt-100 ml-5 items-center justify-center space-y-6">
       {/* Like button */}

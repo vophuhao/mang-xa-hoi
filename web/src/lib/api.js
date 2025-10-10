@@ -225,3 +225,4 @@ export const removePostFromCollection = async (collectionId, postId) =>
 export const movePostToCollection = async (fromCollectionId, postId, toCollectionId) =>
   API.put(`/collections/${fromCollectionId}/posts/${postId}/move/${toCollectionId}`);
 
+

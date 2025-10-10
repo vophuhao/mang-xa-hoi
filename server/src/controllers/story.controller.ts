@@ -206,11 +206,11 @@ export const getAllUserStoriesHandler = catchErrors(
 // Get stories by username
 export const getStoriesByUsernameHandler = catchErrors(
   async (req: AuthenticatedRequest, res: Response) => {
-    const { username } = req.params;
+    const { userId } = req.params;
     const currentUserId = req.userId;
 
     // Find user by username
-    const user = await UserModel.findOne({ username });
+    const user = await UserModel.findOne({ userId });
     if (!user) {
       throw AppError.notFound("User not found");
     }
@@ -527,11 +527,11 @@ export const createHighlightHandler = catchErrors(
 // Get user's highlights
 export const getHighlightsHandler = catchErrors(
   async (req: AuthenticatedRequest, res: Response) => {
-    const { username } = req.params;
+    const { userId } = req.params;
     const currentUserId = req.userId;
 
     // Find user by username
-    const user = await UserModel.findOne({ username });
+    const user = await UserModel.findOne({ userId });
     if (!user) {
       throw AppError.notFound("User not found");
     }

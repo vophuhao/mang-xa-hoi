@@ -50,11 +50,10 @@ const ExploreGrid = ({ searchQuery, onPostClick }) => {
         post.caption?.toLowerCase().includes(hashtag)
       );
     }
-
     // Search by username or caption
     return (
       post.user?.username?.toLowerCase().includes(query) ||
-      post.user?.fullName?.toLowerCase().includes(query) ||
+      post.user?.userId?.toLowerCase().includes(query) ||
       post.caption?.toLowerCase().includes(query)
     );
   });
@@ -188,9 +187,8 @@ const ExploreGrid = ({ searchQuery, onPostClick }) => {
 
 const ExploreGridItem = ({ post, onClick, className }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
-
   const mediaUrl = post.mediaUrls?.[0];
-  const isVideo = post.mediaType === "video";
+  const isVideo = post.mediaType === "reel";
 
   return (
     <div

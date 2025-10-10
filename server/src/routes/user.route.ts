@@ -34,13 +34,13 @@ userRoutes.patch("/me", updateProfileHandler);
 userRoutes.get("/:userId", getUserByIdHandler);
 
 // Get user's posts
-userRoutes.get("/:username/posts", getUserPostsHandler);
+userRoutes.get("/:userId/posts", getUserPostsHandler);
 
 // Get user's followers
-userRoutes.get("/:username/followers", getFollowersHandler);
+userRoutes.get("/:userId/followers", getFollowersHandler);
 
 // Get user's following
-userRoutes.get("/:username/following", getFollowingHandler);
+userRoutes.get("/:userId/following", getFollowingHandler);
 
 // Follow/unfollow users
 userRoutes.post("/:userId/follow", followUserHandler);

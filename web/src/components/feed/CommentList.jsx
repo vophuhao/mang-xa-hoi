@@ -1,8 +1,10 @@
 import { MessageCircle, Plus } from "lucide-react";
 
 import { useCommentActions, useInfiniteComments } from "@/hooks/useComment";
+import { navigate } from "@/lib/navigation";
 
 import CommentItem from "./CommentItem";
+import PostCaption from "./PostCaption";
 
 const CommentList = ({ postId, currentUserId, post, onUsernameClick, onReplyStateChange }) => {
   const {
@@ -70,6 +72,9 @@ const CommentList = ({ postId, currentUserId, post, onUsernameClick, onReplyStat
     });
   };
 
+  const onTagClick = (tag) => {
+    navigate(`/hashtags/${tag}`);
+  }
   const handleDelete = (commentId, additionalData) => {
     // additionalData contains: { postId, parentId, isReply }
     deleteComment({
@@ -123,18 +128,29 @@ const CommentList = ({ postId, currentUserId, post, onUsernameClick, onReplyStat
     <div className="scrollbar-hide max-h-133 flex-1 space-y-1 overflow-y-auto p-2">
       {/* Show caption as first comment if exists */}
       {post?.caption && (
-        <CommentItem
-          key={`caption-${post._id}`}
-          comment={createCaptionComment(post)}
-          currentUserId={currentUserId}
-          onLike={() => {}} // Caption can't be liked
-          onReply={() => {}} // Caption can't be replied to
-          onDelete={() => {}} // Caption can't be deleted here
-          onReport={() => {}} // Caption can't be reported
-          onUsernameClick={onUsernameClick}
-          isCaption={true}
-          postId={postId}
-        />
+        // <CommentItem
+        //   key={`caption-${post._id}`}
+        //   comment={createCaptionComment(post)}
+        //   currentUserId={currentUserId}
+        //   onLike={() => {}} // Caption can't be liked
+        //   onReply={() => {}} // Caption can't be replied to
+        //   onDelete={() => {}} // Caption can't be deleted here
+        //   onReport={() => {}} // Caption can't be reported
+        //   onUsernameClick={onUsernameClick}
+        //   isCaption={true}
+        //   postId={postId}
+        // />
+        <div className="flex items-start space-x-3 py-2">
+          <img
+            src={post?.user?.avatarUrl || "/default-avatar.png"}
+            alt={post?.user?.username}
+            className="h-8 w-8 flex-shrink-0 rounded-full object-cover"
+          />
+
+          <PostCaption caption={post.caption} user={post.user}
+            onTagClick={onTagClick}
+            onUsernameClick={onUsernameClick} />
+        </div>
       )}
 
       {/* Regular comments */}

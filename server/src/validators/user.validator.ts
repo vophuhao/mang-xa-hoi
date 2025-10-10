@@ -32,7 +32,7 @@ export const getUserByIdSchema = z.object({
 
 // Get user by UserID
 export const getUserByUserIdSchema = z.object({
-  userId: z.string().min(1),
+  userId: z.string(),
 });
 
 // Follow/Unfollow user
