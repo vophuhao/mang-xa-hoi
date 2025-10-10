@@ -77,9 +77,10 @@ const storySchema = new mongoose.Schema<StoryDocument>(
         type: [Number],
         validate: {
           validator: function (v: number[]) {
-            return !v || v.length === 2;
+            // Allow null, undefined, or exactly 2 coordinates
+            return !v || v.length === 0 || v.length === 2;
           },
-          message: "Coordinates must be [longitude, latitude]",
+          message: "Coordinates must be [longitude, latitude] or empty",
         },
       },
     },

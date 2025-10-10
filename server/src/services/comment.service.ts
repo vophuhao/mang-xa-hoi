@@ -19,6 +19,7 @@ export interface GetCommentsParams {
   postId: string;
   page: number;
   limit: number;
+  userId?: string;
 }
 
 /**
@@ -74,15 +75,21 @@ export class CommentService {
     // If it's a reply, create notification for parent comment author
     if (parentId) {
       const parentComment = await CommentModel.findById(parentId).populate("user");
-      if (parentComment && parentComment.user._id.toString() !== userId) {
-        await NotificationModel.create({
-          recipient: parentComment.user._id,
-          sender: userId,
-          type: "reply",
-          post: postId,
-          comment: comment._id,
-          message: "replied to your comment",
-        });
+      if (parentComment) {
+        // Increment reply count on parent comment
+        await parentComment.incrementReply();
+
+        // Create notification if not replying to own comment
+        if (parentComment.user._id.toString() !== userId) {
+          await NotificationModel.create({
+            recipient: parentComment.user._id,
+            sender: userId,
+            type: "reply",
+            post: postId,
+            comment: comment._id,
+            message: "replied to your comment",
+          });
+        }
       }
     }
 
@@ -95,7 +102,7 @@ export class CommentService {
   /**
    * Get comments for a post with pagination
    */
-  static async getComments({ postId, page = 1, limit = 10 }: GetCommentsParams) {
+  static async getComments({ postId, page = 1, limit = 10, userId }: GetCommentsParams) {
     // Verify post exists
     const postExists = await PostModel.exists({ _id: postId });
     if (!postExists) {
@@ -132,8 +139,27 @@ export class CommentService {
       }),
     ]);
 
+    // Add isLiked field for each comment if userId is provided
+    let commentsWithLikeStatus = comments;
+    if (userId) {
+      const commentsWithLike = await Promise.all(
+        comments.map(async comment => {
+          const isLiked = await LikeModel.exists({
+            user: userId,
+            comment: comment._id,
+          });
+
+          return {
+            ...comment.toObject(),
+            isLiked: !!isLiked,
+          };
+        })
+      );
+      commentsWithLikeStatus = commentsWithLike as any;
+    }
+
     return {
-      data: comments,
+      data: commentsWithLikeStatus,
       pagination: {
         page,
         limit,
@@ -148,7 +174,12 @@ export class CommentService {
   /**
    * Get replies for a comment
    */
-  static async getCommentReplies(commentId: string, page: number = 1, limit: number = 10) {
+  static async getCommentReplies(
+    commentId: string,
+    page: number = 1,
+    limit: number = 10,
+    userId?: string
+  ) {
     // Verify comment exists
     const parentComment = await CommentModel.findById(commentId);
     if (!parentComment) {
@@ -166,8 +197,27 @@ export class CommentService {
       CommentModel.countDocuments({ parentComment: commentId }),
     ]);
 
+    // Add isLiked field for each reply if userId is provided
+    let repliesWithLikeStatus = replies;
+    if (userId) {
+      const repliesWithLike = await Promise.all(
+        replies.map(async reply => {
+          const isLiked = await LikeModel.exists({
+            user: userId,
+            comment: reply._id,
+          });
+
+          return {
+            ...reply.toObject(),
+            isLiked: !!isLiked,
+          };
+        })
+      );
+      repliesWithLikeStatus = repliesWithLike as any;
+    }
+
     return {
-      data: replies,
+      data: repliesWithLikeStatus,
       pagination: {
         page,
         limit,
@@ -225,6 +275,14 @@ export class CommentService {
 
     // Delete all replies to this comment
     await CommentModel.deleteMany({ parentComment: commentId });
+
+    // If this comment is a reply, decrement parent comment's reply count
+    if (comment.parentComment) {
+      const parentComment = await CommentModel.findById(comment.parentComment);
+      if (parentComment) {
+        await parentComment.decrementReply();
+      }
+    }
 
     // Delete the comment
     await CommentModel.findByIdAndDelete(commentId);

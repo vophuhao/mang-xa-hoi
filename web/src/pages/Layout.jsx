@@ -1,28 +1,64 @@
 import { useEffect } from "react";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useDispatch, useSelector } from "react-redux";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import MobileFooter from "@/components/MobileFooter";
 import MobileHeader from "@/components/MobileHeader";
 import Sidebar from "@/components/SideBar";
 import SidePanel from "@/components/SidePanel";
+import { USER_QUERY_KEYS } from "@/hooks/useUser";
 import {
   closePanels,
   isPanelMenu,
+  setActiveMenu,
   setScreenSize,
-  setIsCollapsed,
   togglePanel,
-  isPageMenu,
-  setActiveMenu
 } from "@/store/slices/layoutSlice";
+
+// Route mappings (outside component to avoid recreating)
+const routeMap = {
+  home: "/",
+  explore: "/explore",
+  reels: "/reels",
+  message: "/message",
+  profile: "/profile",
+};
+
+const pathToMenu = {
+  "/": "home",
+  "/explore": "explore",
+  "/reels": "reels",
+  "/message": "message",
+  "/profile": "profile",
+};
 
 const Layout = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { activeMenu, isCollapsed, isMobile } = useSelector(
-    (state) => state.layout
-  );
+  const location = useLocation();
+  const { activeMenu, isCollapsed, isMobile } = useSelector((state) => state.layout);
+  const queryClient = useQueryClient();
+  const currentUser = queryClient.getQueryData(USER_QUERY_KEYS.currentUser).data;
+
+  // Sync activeMenu with current route on mount/route change
+  useEffect(() => {
+    const currentPath = location.pathname;
+    if (currentPath.startsWith("/") && currentUser?.userId) {
+      if (currentPath === `/${currentUser.userId}`) {
+        // Only set to profile if not currently showing a panel menu
+        if (!isPanelMenu(activeMenu)) {
+          dispatch(setActiveMenu("profile"));
+        }
+        return;
+      }
+    }
+    const currentMenu = pathToMenu[currentPath];
+    if (currentMenu && activeMenu !== currentMenu && !isPanelMenu(activeMenu)) {
+      dispatch(setActiveMenu(currentMenu));
+    }
+  }, [location.pathname, activeMenu, currentUser, dispatch]);
 
   // Responsive breakpoints detection
   useEffect(() => {
@@ -49,42 +85,30 @@ const Layout = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, [dispatch]);
 
-// ...existing code...
-const handleMenuClick = (menuId) => {
-  if (isPanelMenu(menuId)) {
-    dispatch(togglePanel(menuId));
-  } else if (isPageMenu(menuId)) {
-    // Set active menu cho page trước
-    dispatch(setActiveMenu(menuId));
+  const handleMenuClick = (menuId) => {
+    // Handle panel menus (search, notifications)
+    if (isPanelMenu(menuId)) {
+      dispatch(togglePanel(menuId));
+    } else {
+      // Handle page menus (home, explore, reels, message, profile)
+      dispatch(setActiveMenu(menuId));
 
-    // Điều hướng
-    if (menuId === "home") {
-      navigate("/");
-      if (!isMobile) dispatch(setIsCollapsed(false));
-    } else if (menuId === "explore") {
-      navigate("/explore");
-      if (!isMobile) dispatch(setIsCollapsed(false));
-    } else if (menuId === "message") {
-      navigate("/message");
-      dispatch(setIsCollapsed(true)); // luôn thu nhỏ
-    } else if (menuId === "profile") {
-      navigate("/profile");
-      if (!isMobile) dispatch(setIsCollapsed(false));
-    } else if (menuId === "reels") {
-      navigate("/reels");
-      if (!isMobile) dispatch(setIsCollapsed(false));
+      // Navigate to the corresponding route
+      let route = routeMap[menuId];
+      if (menuId === "profile" && currentUser?.userId) {
+        route = `/${currentUser.userId}`;
+      }
+
+      if (route) {
+        navigate(route);
+      }
     }
-
-    // Đóng panel nếu đang mở (không làm thay đổi activeMenu của page)
-    dispatch(closePanels());
-  }
-};
-// ...existing code...
+  };
 
   const handleOutsideClick = () => {
     dispatch(closePanels());
   };
-  console.log("Rendering Layout with activeMenu:", activeMenu)
+  console.log("Rendering Layout with activeMenu:", activeMenu);
 
   return (
     <div className="flex h-screen flex-col bg-gray-50 md:flex-row dark:bg-gray-900">
@@ -93,40 +117,15 @@ const handleMenuClick = (menuId) => {
 
       {/* Desktop/Tablet Sidebar */}
       {!isMobile && (
-        <Sidebar
-          activeMenu={activeMenu}
-          isCollapsed={isCollapsed}
-          onMenuClick={handleMenuClick}
-        />
+        <Sidebar activeMenu={activeMenu} isCollapsed={isCollapsed} onMenuClick={handleMenuClick} />
       )}
 
       {/* Side Panel (Search/Notifications) */}
-      <SidePanel
-        activeMenu={activeMenu}
-        onClose={handleOutsideClick}
-        isMobile={isMobile}
-      />
+      <SidePanel activeMenu={activeMenu} onClose={handleOutsideClick} isMobile={isMobile} />
 
       {/* Main Content Area */}
-      <div className="flex flex-1 overflow-hidden">
-        <div
-          className="scrollbar-hide flex-1 overflow-y-auto"
-          onClick={handleOutsideClick}
-        >
-          <div className={`mx-auto ${isMobile ? "px-4" : ""}`}>
-            <Outlet />
-          </div>
-        </div>
-
-        {/* Right Sidebar Placeholder - Desktop only */}
-        {!isMobile &&
-          !isCollapsed &&
-          activeMenu === "home" &&
-          !isPanelMenu(activeMenu) && (
-            <div className="hidden w-80 xl:block">
-              {/* Right sidebar content here */}
-            </div>
-          )}
+      <div className="scrollbar-hide flex-1 overflow-y-auto" onClick={handleOutsideClick}>
+        <Outlet />
       </div>
 
       {/* Mobile Footer */}

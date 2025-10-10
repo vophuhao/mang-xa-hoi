@@ -3,13 +3,12 @@ import {
   getFollowersHandler,
   getFollowingHandler,
   getSuggestedUsersHandler,
-  getUserByUsernameHandler,
+  getUserByIdHandler,
   getUserHandler,
   getUserPostsHandler,
   searchUsersHandler,
   unfollowUserHandler,
   updateProfileHandler,
-  getUserByIdHandler,
 } from "@/controllers/user.controller";
 import authenticate from "@/middleware/authenticate";
 import { Router } from "express";
@@ -32,7 +31,7 @@ userRoutes.get("/suggestions", getSuggestedUsersHandler);
 userRoutes.patch("/me", updateProfileHandler);
 
 // Get user profile by username
-userRoutes.get("/:username", getUserByUsernameHandler);
+userRoutes.get("/:userId", getUserByIdHandler);
 
 // Get user's posts
 userRoutes.get("/:username/posts", getUserPostsHandler);
@@ -47,7 +46,5 @@ userRoutes.get("/:username/following", getFollowingHandler);
 userRoutes.post("/:userId/follow", followUserHandler);
 userRoutes.delete("/:userId/follow", unfollowUserHandler);
 userRoutes.get("/userid/:userId", getUserByIdHandler);
-
-
 
 export default userRoutes;

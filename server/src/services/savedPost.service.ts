@@ -1,3 +1,4 @@
+import CollectionModel from "@/models/collection.model";
 import PostModel from "@/models/post.model";
 import SavedPostModel from "@/models/savedPost.model";
 import ErrorFactory from "@/utils/ErrorFactory";
@@ -26,7 +27,11 @@ class SavedPostService {
   /**
    * Save a post for a user
    */
-  async savePost(userId: string, postId: string): Promise<{ message: string }> {
+  async savePost(
+    userId: string,
+    postId: string,
+    collectionId?: string
+  ): Promise<{ message: string }> {
     if (!userId || !postId) {
       throw ErrorFactory.requiredField("User ID and Post ID");
     }
@@ -38,20 +43,30 @@ class SavedPostService {
         throw ErrorFactory.resourceNotFound("Post");
       }
 
-      // Check if post is already saved
-      const existingSave = await SavedPostModel.findOne({
+      // Check if post is already saved in the same collection (or without collection)
+      const query: any = {
         user: userId,
         post: postId,
-      });
+      };
+
+      if (collectionId) {
+        query.collection = collectionId;
+      } else {
+        query.collection = { $exists: false };
+      }
+
+      const existingSave = await SavedPostModel.findOne(query);
 
       if (existingSave) {
-        throw ErrorFactory.resourceExists("Saved post", "Post is already saved");
+        const location = collectionId ? "in this collection" : "";
+        throw ErrorFactory.resourceExists("Saved post", `Post is already saved ${location}`);
       }
 
       // Save the post
       await SavedPostModel.create({
         user: userId,
         post: postId,
+        ...(collectionId && { collection: collectionId }),
       });
 
       return { message: "Post saved successfully" };
@@ -72,21 +87,29 @@ class SavedPostService {
     }
 
     try {
-      // Check if saved post exists
+      // Find saved post to check if it's in a collection
       const savedPost = await SavedPostModel.findOne({
         user: userId,
         post: postId,
       });
 
-      if (!savedPost) {
-        throw ErrorFactory.resourceNotFound("Saved post", "Post is not saved");
+      if (savedPost) {
+        // If post is in a collection, update the collection's postCount
+        if (savedPost.collection) {
+          await CollectionModel.findByIdAndUpdate(savedPost.collection, {
+            $inc: { postCount: -1 },
+          });
+        }
+
+        // Remove the saved post
+        await SavedPostModel.deleteOne({
+          user: userId,
+          post: postId,
+        });
       }
 
-      // Remove the saved post
-      await SavedPostModel.deleteOne({
-        user: userId,
-        post: postId,
-      });
+      // Even if no document was deleted (post wasn't saved), consider it successful
+      // This prevents errors when user clicks unsave multiple times
 
       return { message: "Post unsaved successfully" };
     } catch (error) {
@@ -250,7 +273,30 @@ class SavedPostService {
     }
 
     try {
-      await SavedPostModel.deleteMany({ post: postId });
+      // Find all saved posts for this post to update collection counts
+      const savedPosts = await SavedPostModel.find({
+        post: postId,
+        collection: { $exists: true },
+      }).select("collection");
+
+      // Group by collection to get counts
+      const collectionCounts = savedPosts.reduce(
+        (acc, savedPost) => {
+          const collectionId = savedPost.collection.toString();
+          acc[collectionId] = (acc[collectionId] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>
+      );
+
+      // Update collection counts
+      const updatePromises = Object.entries(collectionCounts).map(([collectionId, count]) =>
+        CollectionModel.findByIdAndUpdate(collectionId, {
+          $inc: { postCount: -count },
+        })
+      );
+
+      await Promise.all([...updatePromises, SavedPostModel.deleteMany({ post: postId })]);
     } catch (error: any) {
       // Log error but don't throw - this is a cleanup operation
       console.error("Failed to remove saved posts for deleted post:", error);

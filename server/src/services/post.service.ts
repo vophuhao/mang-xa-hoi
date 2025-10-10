@@ -1,14 +1,14 @@
+import { increaseAudioUsedCount } from "@/controllers/audio.controller";
 import FollowModel from "@/models/follow.model";
 import HashtagModel from "@/models/hashtag.model";
 import LikeModel from "@/models/like.model";
 import NotificationModel from "@/models/notification.model";
 import PostModel from "@/models/post.model";
 import SavedPostModel from "@/models/savedPost.model";
-import ErrorFactory from "@/utils/ErrorFactory";
-import mongoose from "mongoose";
 import UserModel from "@/models/user.model";
-import { increaseAudioUsedCount } from "@/controllers/audio.controller";
+import ErrorFactory from "@/utils/ErrorFactory";
 import { getAudioByIdSchema } from "@/validators/audio.validator";
+import mongoose from "mongoose";
 export type CreateNewPost = {
   user: mongoose.Types.ObjectId;
   caption?: string;
@@ -36,9 +36,6 @@ export interface GetPostParams {
  * Post service containing all post-related business logic
  */
 export class PostService {
-  static getTrendingPosts(arg0: number, arg1: number) {
-    throw new Error("Method not implemented.");
-  }
   /**
    * Create a new post
    */
@@ -77,18 +74,15 @@ export class PostService {
       })
     );
 
-
     const userDocs = await UserModel.find({
-      userId: { $in: data.mentions || [] }
+      userId: { $in: data.mentions || [] },
     }).select("_id");
 
     // Lấy mảng ObjectId
     const mentionIds = userDocs.map(u => u._id);
 
-
     // Create location object if provided
     const location = data.location ? { name: data.location } : undefined;
-
 
     let audioObjectId: mongoose.Types.ObjectId | undefined = undefined;
     if (data.audioId) {
@@ -117,7 +111,6 @@ export class PostService {
     });
 
     // Update hashtag counts
-
 
     // Create notifications for mentioned users
     if (data.mentions && data.mentions.length > 0) {
@@ -184,7 +177,7 @@ export class PostService {
         user: { $in: userIds },
         isHidden: false,
       })
-        .populate("user", "username fullName avatarUrl isVerified")
+        .populate("user", "username fullName avatarUrl isVerified userId")
         .populate("comments")
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -270,7 +263,6 @@ export class PostService {
     return { isLiked, likeCount };
   }
 
-
   /**
    * Delete a post
    */
@@ -299,11 +291,8 @@ export class PostService {
 
     // Decrement hashtag counts
     if (post.tags && post.tags.length > 0) {
-      await Promise.all(
-        post.tags.map(tag => HashtagModel.decrementPostCount(tag.toString()))
-      );
+      await Promise.all(post.tags.map(tag => HashtagModel.decrementPostCount(tag.toString())));
     }
-
 
     // Delete the post
     await PostModel.findByIdAndDelete(postId);
@@ -340,7 +329,7 @@ export class PostService {
 
         // Ép kiểu rõ ràng cho Promise.all
         const hashtagIds: mongoose.Types.ObjectId[] = await Promise.all(
-          hashtagNames.map(async (name) => {
+          hashtagNames.map(async name => {
             const hashtag = await HashtagModel.incrementPostCount(name);
             if (!hashtag) throw new Error("Hashtag creation failed"); // tránh null
             return hashtag._id as mongoose.Types.ObjectId;
@@ -375,6 +364,66 @@ export class PostService {
   /**
    * Get trending posts
    */
+  static async getTrendingPosts(page: number = 1, limit: number = 10, userId?: string) {
+    const skip = (page - 1) * limit;
+
+    // First try to get posts from last 7 days with high engagement
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    let posts = await PostModel.find({
+      createdAt: { $gte: weekAgo },
+      isHidden: false,
+    })
+      .populate("user", "username fullName avatarUrl isVerified")
+      .sort({
+        likeCount: -1,
+        commentCount: -1,
+        createdAt: -1,
+      })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    // If no trending posts found, fall back to all posts sorted by engagement
+    if (posts.length === 0 && skip === 0) {
+      posts = await PostModel.find({
+        isHidden: false,
+      })
+        .populate("user", "username fullName avatarUrl isVerified")
+        .sort({
+          likeCount: -1,
+          commentCount: -1,
+          createdAt: -1,
+        })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+    }
+
+    // If user is provided, check like/save status
+    if (userId && posts.length > 0) {
+      const postIds = posts.map(post => post._id);
+      const [userLikes, userSaves] = await Promise.all([
+        LikeModel.find({ user: userId, post: { $in: postIds } }).select("post"),
+        SavedPostModel.find({ user: userId, post: { $in: postIds } }).select("post"),
+      ]);
+
+      const likedPostIds = new Set(userLikes.map(like => like.post?.toString()).filter(Boolean));
+      const savedPostIds = new Set(userSaves.map(save => save.post?.toString()).filter(Boolean));
+
+      posts = posts.map(post => ({
+        ...post,
+        isLiked: likedPostIds.has(post._id.toString()),
+        isSaved: savedPostIds.has(post._id.toString()),
+      }));
+    }
+
+    return posts;
+  }
+
+  /**
+   * Get trending posts
+   */
   static async getReelsFeed(page: number, limit: number) {
     const skip = (page - 1) * limit;
 
@@ -388,10 +437,16 @@ export class PostService {
               { $multiply: ["$commentCount", 5] },
               { $multiply: ["$shareCount", 4] },
               { $multiply: ["$viewCount", 0] },
-              { $cond: [{ $gte: ["$createdAt", new Date(Date.now() - 1000 * 60 * 60 * 24)] }, 1000, 0] }
-            ]
-          }
-        }
+              {
+                $cond: [
+                  { $gte: ["$createdAt", new Date(Date.now() - 1000 * 60 * 60 * 24)] },
+                  1000,
+                  0,
+                ],
+              },
+            ],
+          },
+        },
       },
       // Thông tin user
       {
@@ -399,8 +454,8 @@ export class PostService {
           from: "users",
           localField: "user",
           foreignField: "_id",
-          as: "userInfo"
-        }
+          as: "userInfo",
+        },
       },
       { $unwind: "$userInfo" },
 
@@ -410,16 +465,16 @@ export class PostService {
           from: "comments",
           localField: "_id",
           foreignField: "post",
-          as: "commentsInfo"
-        }
+          as: "commentsInfo",
+        },
       },
       {
         $lookup: {
           from: "users",
           localField: "commentsInfo.user",
           foreignField: "_id",
-          as: "commentUsers"
-        }
+          as: "commentUsers",
+        },
       },
 
       // Thông tin likes
@@ -428,22 +483,22 @@ export class PostService {
           from: "likes",
           localField: "_id",
           foreignField: "post",
-          as: "likeUsers"
-        }
+          as: "likeUsers",
+        },
       },
       {
         $lookup: {
           from: "audios",
           localField: "audioId",
           foreignField: "_id",
-          as: "audioInfo"
-        }
+          as: "audioInfo",
+        },
       },
       {
         $unwind: {
           path: "$audioInfo",
-          preserveNullAndEmptyArrays: true
-        }
+          preserveNullAndEmptyArrays: true,
+        },
       },
       // Lấy thông tin user của audio
       {
@@ -451,14 +506,14 @@ export class PostService {
           from: "users",
           localField: "audioInfo.user",
           foreignField: "_id",
-          as: "audioUser"
-        }
+          as: "audioUser",
+        },
       },
       {
         $unwind: {
           path: "$audioUser",
-          preserveNullAndEmptyArrays: true
-        }
+          preserveNullAndEmptyArrays: true,
+        },
       },
 
       {
@@ -496,22 +551,22 @@ export class PostService {
                     {
                       $filter: {
                         input: "$commentUsers",
-                        cond: { $eq: ["$$this._id", "$$c.user"] }
-                      }
+                        cond: { $eq: ["$$this._id", "$$c.user"] },
+                      },
                     },
-                    0
-                  ]
-                }
-              }
-            }
+                    0,
+                  ],
+                },
+              },
+            },
           },
-          likedUsers: "$likeUsers.user"
-        }
+          likedUsers: "$likeUsers.user",
+        },
       },
 
       { $sort: { score: -1, createdAt: -1 } },
       { $skip: skip },
-      { $limit: limit }
+      { $limit: limit },
     ]);
 
     return reels;
@@ -524,7 +579,6 @@ export class PostService {
     await post.incrementView(); // 👈 dùng method có sẵn trong model
     return post.viewCount; // trả lại số lượt xem sau khi tăng
   }
-
 }
 
 // Legacy function for backward compatibility

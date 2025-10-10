@@ -155,16 +155,15 @@ export class UserService {
 
     // Create follow relationship and notification in parallel
     await Promise.all([
-      FollowModel.create({
-        follower: currentUserId,
-        following: userToFollowId,
-      }),
+      FollowModel.create({ follower: currentUserId, following: userToFollowId }),
       NotificationModel.create({
         recipient: userToFollowId,
         sender: currentUserId,
         type: "follow",
         message: "started following you",
       }),
+      UserModel.findByIdAndUpdate(userToFollowId, { $inc: { followersCount: 1 } }),
+      UserModel.findByIdAndUpdate(currentUserId, { $inc: { followingCount: 1 } }),
     ]);
 
     return { message: "User followed successfully" };
@@ -185,15 +184,20 @@ export class UserService {
 
     // Remove follow relationship and related notification
     await Promise.all([
-      FollowModel.deleteOne({
-        follower: currentUserId,
-        following: userToUnfollowId,
-      }),
+      FollowModel.deleteOne({ follower: currentUserId, following: userToUnfollowId }),
       NotificationModel.findOneAndDelete({
         recipient: userToUnfollowId,
         sender: currentUserId,
         type: "follow",
       }),
+      UserModel.updateOne(
+        { _id: userToUnfollowId, followersCount: { $gt: 0 } },
+        { $inc: { followersCount: -1 } }
+      ),
+      UserModel.updateOne(
+        { _id: currentUserId, followingCount: { $gt: 0 } },
+        { $inc: { followingCount: -1 } }
+      ),
     ]);
 
     return { message: "User unfollowed successfully" };
@@ -351,7 +355,7 @@ export class UserService {
         user: user._id,
         isHidden: false,
       })
-        .select("_id mediaUrls mediaType likeCount commentCount createdAt")
+        .select("_id caption mediaUrls mediaType likeCount commentCount createdAt location")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
@@ -382,7 +386,6 @@ export class UserService {
       // Get users that the current user is not following
       const followingIds = await FollowModel.find({
         follower: currentUserId,
-        isActive: true,
       }).select("following");
 
       const followingUserIds = followingIds.map(follow => follow.following.toString());
