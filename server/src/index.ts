@@ -25,6 +25,7 @@ import mediaRoutes from "./routes/media.route";
 import ReportRoutes from "./routes/report.route";
 import searchRoutes from "./routes/search.route";
 import { initializeSocket } from "./socket"; // import h�m kh?i t?o socket
+import UserBlockRoutes from "./routes/userBlock.routes";
 
 const app = express();
 const allowedOrigins = [APP_ORIGIN, ADMIN_ORIGIN];
@@ -69,6 +70,7 @@ app.use("/audio", authenticate, AudioRoutes);
 app.use("/report", authenticate, ReportRoutes);
 
 app.use("/api/search", authenticate, searchRoutes);
+app.use("/block/user", authenticate, UserBlockRoutes);
 
 // error handler
 app.use(errorHandler);

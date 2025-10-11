@@ -226,3 +226,10 @@ export const movePostToCollection = async (fromCollectionId, postId, toCollectio
   API.put(`/collections/${fromCollectionId}/posts/${postId}/move/${toCollectionId}`);
 
 
+
+
+export const toggleBlockUser = async (userId) => 
+  API.post(`/block/user/${userId}`);
+
+export const getBlockedUsers = async (page = 1, limit = 20) =>
+  API.get(`/blocked?page=${page}&limit=${limit}`);

@@ -1,6 +1,12 @@
 import { useState } from "react";
 
-import { Edit2, Plus, Settings, Share, UserCheck } from "lucide-react";
+import { Edit2, Plus, Settings, MoreHorizontal, UserCheck } from "lucide-react";
+
+import { USER_QUERY_KEYS, useUser, useUserFollowers, useUserFollowing } from "@/hooks/useUser";
+import FollowerModal from "@/modals/FollowerModal";
+import FollowingModal from "@/modals/FollowingModel";
+
+import OptionsMenuProfile from "../popup/OptionsMenuProfile";
 
 const ProfileHeader = ({
   user,
@@ -11,6 +17,14 @@ const ProfileHeader = ({
   isFollowing,
 }) => {
   const [showMore, setShowMore] = useState(false);
+  const [openMenu, setOpenMenu] = useState(null);
+  const [openFollowerModal, setOpenFollowerModal] = useState(false);
+  const [openFollowingModal, setOpenFollowingModal] = useState(false);
+
+  const { data: followingData } = useUserFollowing(user?.userId, 1);
+
+  const { data: followerData } = useUserFollowers(user?.userId, 1);
+
 
   const formatCount = (count) => {
     if (count >= 1000000) {
@@ -88,8 +102,10 @@ const ProfileHeader = ({
                     <button className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700">
                       Nhắn tin
                     </button>
-                    <button className="rounded-lg bg-gray-100 p-2 text-gray-900 hover:bg-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700">
-                      <Share className="h-4 w-4" />
+                    <button onClick={(e) => {
+                      setOpenMenu(true);
+                    }} className="rounded-lg cursor-pointer p-2 text-gray-900  dark:text-white ">
+                      <MoreHorizontal className="h-4 w-4" />
                     </button>
                   </>
                 )}
@@ -110,13 +126,13 @@ const ProfileHeader = ({
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">bài viết</div>
               </div>
-              <div className="text-center">
+              <div className="text-center cursor-pointer" onClick={() => setOpenFollowerModal(true)}>
                 <div className="text-xl font-semibold text-gray-900 dark:text-white">
                   {formatCount(user?.followersCount || 0)}
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">người theo dõi</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400 ">người theo dõi</div>
               </div>
-              <div className="text-center">
+              <div className="text-center cursor-pointer" onClick={() => setOpenFollowingModal(true)}>
                 <div className="text-xl font-semibold text-gray-900 dark:text-white">
                   {formatCount(user?.followingCount || 0)}
                 </div>
@@ -126,8 +142,8 @@ const ProfileHeader = ({
 
             {/* Bio Section */}
             <div className="space-y-1">
-              {user?.fullName && (
-                <div className="font-semibold text-gray-900 dark:text-white">{user.fullName}</div>
+              {user?.userId && (
+                <div className="font-semibold text-gray-900 dark:text-white">{user.userId}</div>
               )}
               {user?.bio && (
                 <div className="text-sm text-gray-900 dark:text-white">
@@ -200,6 +216,34 @@ const ProfileHeader = ({
           </div>
         )}
       </div>
+      {openMenu && (
+        <OptionsMenuProfile
+          onClose={() => setOpenMenu(null)}
+          user={user} // 👈 truyền user
+          position={openMenu} // 👈 truyền vị trí
+        />
+      )}
+
+      { openFollowerModal && (
+        <FollowerModal
+          isOpen={openFollowerModal}
+          onClose={() => setOpenFollowerModal(false)}
+          followersData={followerData?.data || []}
+          followingIds={followingData.data}
+        />
+      )}
+
+
+      {openFollowingModal && (
+        <FollowingModal
+          isOpen={openFollowingModal}
+          onClose={() => setOpenFollowingModal(false)}
+          followingData={followingData.data || []}
+
+        />
+
+      )}
+
     </div>
   );
 };

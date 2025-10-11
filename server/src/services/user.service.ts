@@ -206,8 +206,8 @@ export class UserService {
   /**
    * Get user's followers
    */
-  static async getUserFollowers(username: string, page: number = 1, limit: number = 20) {
-    const user = await UserModel.findOne({ username });
+  static async getUserFollowers(userId: string, page: number = 1, limit: number = 20) {
+    const user = await UserModel.findOne({ userId });
     if (!user) {
       throw ErrorFactory.resourceNotFound("User");
     }
@@ -216,7 +216,7 @@ export class UserService {
 
     const [followers, total] = await Promise.all([
       FollowModel.find({ following: user._id })
-        .populate("follower", "username fullName avatarUrl isVerified")
+        .populate("follower", "userId username avatarUrl isVerified")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
