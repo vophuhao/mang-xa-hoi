@@ -424,7 +424,7 @@ export default function Report() {
                       {selected.reporter?.avatarUrl ? (
                         <img
                           src={selected.reporter.avatarUrl}
-                          alt={selected.reporter?.fullName || "User"}
+                          alt={selected.reporter?.userId || "User"}
                           className="w-9 h-9 rounded-full object-cover"
                         />
                       ) : (

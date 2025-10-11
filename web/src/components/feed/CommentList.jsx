@@ -143,7 +143,7 @@ const CommentList = ({ postId, currentUserId, post, onUsernameClick, onReplyStat
         <div className="flex items-start space-x-3 py-2">
           <img
             src={post?.user?.avatarUrl || "/default-avatar.png"}
-            alt={post?.user?.username}
+            alt={post?.user?.userId}
             className="h-8 w-8 flex-shrink-0 rounded-full object-cover"
           />
 

@@ -15,7 +15,7 @@ import {
 // Update profile validation
 export const updateProfileSchema = z.object({
   username: usernameSchema.optional(),
-  fullName: nameSchema.optional(),
+  userId: nameSchema.optional(),
   bio: bioSchema,
   avatarUrl: imageUrlSchema,
 });

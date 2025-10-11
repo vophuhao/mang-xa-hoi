@@ -30,7 +30,7 @@ export class NotificationService {
 
     const [notifications, total, unreadCount] = await Promise.all([
       NotificationModel.find(filter)
-        .populate("sender", "username fullName avatarUrl isVerified")
+        .populate("sender", "username userId avatarUrl isVerified")
         .populate("post", "_id mediaUrls mediaType")
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -199,7 +199,7 @@ export class NotificationService {
       story,
     });
 
-    await notification.populate("sender", "username fullName avatarUrl isVerified");
+    await notification.populate("sender", "username userId avatarUrl isVerified");
 
     return notification;
   }

@@ -88,7 +88,7 @@ export const createStoryHandler = catchErrors(async (req: AuthenticatedRequest, 
   const story = await StoryModel.create(storyData);
 
   // Populate user details
-  await story.populate("user", "username fullName avatarUrl isVerified");
+  await story.populate("user", "username userId avatarUrl isVerified");
 
   return ResponseUtil.created(res, story, "Story created successfully");
 });
@@ -106,7 +106,7 @@ export const getStoriesHandler = catchErrors(async (req: AuthenticatedRequest, r
     user: { $in: userIds },
     expiresAt: { $gt: new Date() },
   })
-    .populate("user", "username fullName avatarUrl isVerified")
+    .populate("user", "username userId avatarUrl isVerified")
     .sort({ createdAt: -1 });
 
   // Get user's likes for these stories
@@ -174,7 +174,7 @@ export const getUserStoriesHandler = catchErrors(
       user: userId,
       expiresAt: { $gt: new Date() },
     })
-      .populate("user", "username fullName avatarUrl isVerified")
+      .populate("user", "username userId avatarUrl isVerified")
       .sort({ createdAt: -1 });
 
     // Add like info for own stories (always false since users can't like their own stories)
@@ -195,7 +195,7 @@ export const getAllUserStoriesHandler = catchErrors(
     const stories = await StoryModel.find({
       user: userId,
     })
-      .populate("user", "username fullName avatarUrl isVerified")
+      .populate("user", "username userId avatarUrl isVerified")
       .sort({ createdAt: -1 })
       .limit(50); // Limit to last 50 stories to avoid performance issues
 
@@ -231,7 +231,7 @@ export const getStoriesByUsernameHandler = catchErrors(
       user: user._id,
       expiresAt: { $gt: new Date() },
     })
-      .populate("user", "username fullName avatarUrl isVerified")
+      .populate("user", "username userId avatarUrl isVerified")
       .sort({ createdAt: -1 });
 
     return ResponseUtil.success(res, stories);
@@ -281,8 +281,8 @@ export const getStoryViewersHandler = catchErrors(
     const userId = req.userId;
 
     const story = await StoryModel.findById(storyId)
-      .populate("viewers", "username fullName avatarUrl isVerified")
-      .populate("user", "username fullName avatarUrl isVerified");
+      .populate("viewers", "username userId avatarUrl isVerified")
+      .populate("user", "username userId avatarUrl isVerified");
 
     if (!story) {
       throw AppError.notFound("Story not found");
@@ -391,7 +391,7 @@ export const getStoryLikesHandler = catchErrors(
     }
 
     const likes = await LikeModel.find({ story: storyId })
-      .populate("user", "username fullName avatarUrl isVerified")
+      .populate("user", "username userId avatarUrl isVerified")
       .sort({ createdAt: -1 })
       .limit(Number(limit) * Number(page))
       .skip((Number(page) - 1) * Number(limit));
@@ -514,7 +514,7 @@ export const createHighlightHandler = catchErrors(
     // Get updated stories
     const highlightedStories = await StoryModel.find({
       _id: { $in: storyIds },
-    }).populate("user", "username fullName avatarUrl isVerified");
+    }).populate("user", "username userId avatarUrl isVerified");
 
     return ResponseUtil.success(res, {
       title,
@@ -553,7 +553,7 @@ export const getHighlightsHandler = catchErrors(
       user: user._id,
       isHighlight: true,
     })
-      .populate("user", "username fullName avatarUrl isVerified")
+      .populate("user", "username userId avatarUrl isVerified")
       .sort({ createdAt: -1 });
 
     // Group by highlight title

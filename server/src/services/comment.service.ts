@@ -94,7 +94,7 @@ export class CommentService {
     }
 
     // Populate user info for response
-    await comment.populate("user", "username fullName avatarUrl");
+    await comment.populate("user", "username userId avatarUrl");
 
     return comment;
   }
@@ -117,13 +117,13 @@ export class CommentService {
         post: postId,
         parentComment: null,
       })
-        .populate("user", "username fullName avatarUrl isVerified")
+        .populate("user", "username userId avatarUrl isVerified")
         .populate({
           path: "replies",
           select: "content user createdAt",
           populate: {
             path: "user",
-            select: "username fullName avatarUrl isVerified",
+            select: "username userId avatarUrl isVerified",
           },
           options: {
             limit: 3, // Only show first 3 replies
@@ -190,7 +190,7 @@ export class CommentService {
 
     const [replies, total] = await Promise.all([
       CommentModel.find({ parentComment: commentId })
-        .populate("user", "username fullName avatarUrl isVerified")
+        .populate("user", "username userId avatarUrl isVerified")
         .sort({ createdAt: 1 })
         .skip(skip)
         .limit(limit),
@@ -247,7 +247,7 @@ export class CommentService {
     comment.content = content.trim();
     await comment.save();
 
-    await comment.populate("user", "username fullName avatarUrl");
+    await comment.populate("user", "username userId avatarUrl");
 
     return comment;
   }

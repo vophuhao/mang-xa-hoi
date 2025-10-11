@@ -187,25 +187,39 @@ const ExploreGrid = ({ searchQuery, onPostClick }) => {
 
 const ExploreGridItem = ({ post, onClick, className }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
-  const mediaUrl = post.mediaUrls?.[0];
-  const isVideo = post.mediaType === "reel";
+
+  // ✅ Lấy phần tử media đầu tiên
+  const mediaUrl = Array.isArray(post.mediaUrls)
+    ? post.mediaUrls[0]
+    : post.mediaUrls;
+
+  // ✅ Kiểm tra định dạng file (ảnh / video)
+  const isVideo = mediaUrl?.match(/\.(mp4|mov|avi|webm)$/i);
+  const isImage = mediaUrl?.match(/\.(jpg|jpeg|png|gif|webp|avif)$/i);
 
   return (
     <div
       className={`group relative overflow-hidden bg-gray-100 dark:bg-gray-800 ${className}`}
       onClick={onClick}
     >
-      {/* Media */}
       <div className="relative h-full w-full">
+        {/* ✅ Nếu là video */}
         {isVideo ? (
           <div className="relative h-full w-full">
-            <video src={mediaUrl} className="h-full w-full object-cover" muted preload="metadata" />
+            <video
+              src={mediaUrl}
+              className="h-full w-full object-cover"
+              muted
+              preload="metadata"
+            />
+            {/* Icon video góc phải */}
             <div className="absolute top-2 right-2">
               <Play className="h-4 w-4 text-white drop-shadow-lg" fill="white" />
             </div>
           </div>
-        ) : (
+        ) : isImage ? (
           <>
+            {/* Skeleton khi ảnh chưa load */}
             {!imageLoaded && (
               <div className="absolute inset-0 animate-pulse bg-gray-200 dark:bg-gray-700" />
             )}
@@ -219,9 +233,13 @@ const ExploreGridItem = ({ post, onClick, className }) => {
               loading="lazy"
             />
           </>
+        ) : (
+          <div className="bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-400 h-full">
+            Không có media
+          </div>
         )}
 
-        {/* Overlay with stats - appears on hover */}
+        {/* ✅ Overlay hiện like/comment khi hover */}
         <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
           <div className="flex items-center space-x-6 text-white">
             <div className="flex items-center space-x-1">
@@ -235,22 +253,27 @@ const ExploreGridItem = ({ post, onClick, className }) => {
           </div>
         </div>
 
-        {/* Multi-image indicator */}
+        {/* ✅ Dấu chấm nếu nhiều ảnh */}
         {post.mediaUrls?.length > 1 && (
-          <div className="absolute top-2 right-2">
-            <div className="flex space-x-1">
-              {[...Array(Math.min(post.mediaUrls.length, 3))].map((_, i) => (
-                <div key={i} className="h-2 w-2 rounded-full bg-white/80 backdrop-blur-sm" />
-              ))}
-              {post.mediaUrls.length > 3 && (
-                <div className="ml-1 text-xs text-white/80">+{post.mediaUrls.length - 3}</div>
-              )}
-            </div>
+          <div className="absolute top-2 right-2 flex space-x-1">
+            {[...Array(Math.min(post.mediaUrls.length, 3))].map((_, i) => (
+              <div
+                key={i}
+                className="h-2 w-2 rounded-full bg-white/80 backdrop-blur-sm"
+              />
+            ))}
+            {post.mediaUrls.length > 3 && (
+              <div className="ml-1 text-xs text-white/80">
+                +{post.mediaUrls.length - 3}
+              </div>
+            )}
           </div>
         )}
       </div>
     </div>
   );
 };
+
+
 
 export default ExploreGrid;

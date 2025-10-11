@@ -3,13 +3,14 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
 
-import { toggleBlockUser } from "@/lib/api";
+import { useBlockActions } from "@/hooks/useBlock";
 import ReportModal from "@/modals/ReportModal";
 
 
 export default function OptionsMenuProfile({ onClose, user }) {
   const [showReportModal, setShowReportModal] = useState(false);
 
+  const { toggleBlockUser } = useBlockActions();
   const options = [
     { label: "Báo cáo", action: () => setShowReportModal(true), danger: true },
     { label: "Chặn", action: () => handleBlockUser(user._id), danger: true },

@@ -413,10 +413,10 @@ function ActionButtons({ reel, handleLike, likedMap, handleAudioClick, setOpenMe
         <button onClick={handleLike(reel._id)}>
           <Heart
             size={25}
-            className={`transition-colors duration-200 ${likedMap[reel._id] ? "fill-red-500 text-red-500" : "text-black"}`}
+            className={`transition-colors duration-200 ${likedMap[reel._id] ? "fill-red-500 text-red-500" : "text-black dark:text-white"}`}
           />
         </button>
-        {!reel.likesHidden && <span className="text-xs text-black">{reel.likeCount}</span>}
+        {!reel.likesHidden && <span className="text-xs text-black dark:text-white">{reel.likeCount}</span>}
       </div>
 
       {/* Comment button */}
@@ -424,29 +424,29 @@ function ActionButtons({ reel, handleLike, likedMap, handleAudioClick, setOpenMe
         <button disabled={reel.commentsDisabled}>
           <MessageCircle
             size={25}
-            className={`transform rotate-270 ${reel.commentsDisabled ? "text-gray-400" : "text-black"}`}
+            className={`transform rotate-270 ${reel.commentsDisabled ? "text-gray-400" : "text-black dark:text-white"}`}
           />
         </button>
-        <span className="text-xs text-black">{reel.commentCount}</span>
+        <span className="text-xs text-black dark:text-white">{reel.commentCount}</span>
       </div>
 
       <button>
-        <Send size={25} className="text-black" />
+        <Send size={25} className="text-black dark:text-white" />
       </button>
 
       <button className="mt-2">
-        <Bookmark size={25} className="text-black" />
+        <Bookmark size={25} className="text-black dark:text-white" />
       </button>
 
       <button
-        className=" relative z-20"
+        className=" relative z-20 dark:text-white "
         onClick={(e) => {
           const rect = e.currentTarget.getBoundingClientRect(); // lấy toạ độ icon
           setOpenMenu({ x: rect.left, y: rect.bottom }); // lưu vị trí
           setReelId(reel._id); // lưu reelId
         }}
       >
-        <MoreHorizontal size={25} className="text-black" />
+        <MoreHorizontal size={25} className="text-black dark:text-white" />
       </button>
 
 

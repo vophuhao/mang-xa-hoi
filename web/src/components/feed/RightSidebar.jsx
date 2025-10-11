@@ -49,7 +49,7 @@ const RightSidebar = ({
               {currentUser.username}
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {currentUser.fullName || currentUser.username}
+              {currentUser.userId || currentUser.username}
             </p>
           </div>
         </div>

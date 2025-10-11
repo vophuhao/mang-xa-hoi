@@ -82,7 +82,7 @@ const CollectionDetail = () => {
       user: {
         _id: post.user._id || post.user,
         username: post.user.username,
-        fullName: post.user.fullName,
+        userId: post.user.userId,
         avatarUrl: post.user.avatarUrl,
         isVerified: post.user.isVerified,
       },

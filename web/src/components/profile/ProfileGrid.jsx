@@ -75,44 +75,60 @@ const ProfileGrid = ({
   );
 };
 
+
 const ProfileGridItem = ({ post, onClick }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const mediaUrl = post.mediaUrls?.[0];
-  const isVideo = post.mediaType === "video";
   const hasMultipleMedia = post.mediaUrls?.length > 1;
+
+  // ✅ Tự động xác định có phải video hay không dựa vào đuôi file hoặc post.mediaType
+  const isVideo =
+    post.mediaType === "reel" ||
+    (mediaUrl && mediaUrl.match(/\.(mp4|mov|webm|ogg)$/i));
 
   return (
     <div
       className="group relative aspect-square cursor-pointer overflow-hidden bg-gray-100 dark:bg-gray-800"
       onClick={onClick}
     >
-      {/* Media */}
       <div className="relative h-full w-full">
-        {isVideo ? (
-          <div className="relative h-full w-full">
-            <video src={mediaUrl} className="h-full w-full object-cover" muted preload="metadata" />
-            <div className="absolute top-2 right-2">
-              <Play className="h-4 w-4 text-white drop-shadow-lg" fill="white" />
+        {/* ✅ Kiểm tra mediaUrl để hiển thị video hoặc ảnh */}
+        {mediaUrl ? (
+          isVideo ? (
+            <div className="relative h-full w-full">
+              <video
+                src={mediaUrl}
+                className="h-full w-full object-cover"
+                muted
+                preload="metadata"
+              />
+              <div className="absolute top-2 right-2">
+                <Play className="h-4 w-4 text-white drop-shadow-lg" fill="white" />
+              </div>
             </div>
-          </div>
+          ) : (
+            <>
+              {!imageLoaded && (
+                <div className="absolute inset-0 animate-pulse bg-gray-200 dark:bg-gray-700" />
+              )}
+              <img
+                src={mediaUrl}
+                alt={post.caption || "Post"}
+                className={`h-full w-full object-cover transition-opacity duration-200 ${
+                  imageLoaded ? "opacity-100" : "opacity-0"
+                }`}
+                onLoad={() => setImageLoaded(true)}
+                loading="lazy"
+              />
+            </>
+          )
         ) : (
-          <>
-            {!imageLoaded && (
-              <div className="absolute inset-0 animate-pulse bg-gray-200 dark:bg-gray-700" />
-            )}
-            <img
-              src={mediaUrl}
-              alt={post.caption || "Post"}
-              className={`h-full w-full object-cover transition-opacity duration-200 ${
-                imageLoaded ? "opacity-100" : "opacity-0"
-              }`}
-              onLoad={() => setImageLoaded(true)}
-              loading="lazy"
-            />
-          </>
+          <div className="flex h-full w-full items-center justify-center text-gray-400">
+            No media
+          </div>
         )}
 
-        {/* Multiple media indicator */}
+        {/* ✅ Hiển thị chấm tròn nếu có nhiều ảnh/video */}
         {hasMultipleMedia && (
           <div className="absolute top-2 right-2">
             <div className="flex space-x-1">
@@ -128,7 +144,7 @@ const ProfileGridItem = ({ post, onClick }) => {
           </div>
         )}
 
-        {/* Hover overlay with stats */}
+        {/* ✅ Overlay hiện khi hover */}
         <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
           <div className="flex items-center space-x-6 text-white">
             <div className="flex items-center space-x-2">
@@ -145,5 +161,7 @@ const ProfileGridItem = ({ post, onClick }) => {
     </div>
   );
 };
+
+
 
 export default ProfileGrid;

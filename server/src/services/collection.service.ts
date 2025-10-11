@@ -244,7 +244,7 @@ export class CollectionService {
           path: "post",
           populate: {
             path: "user",
-            select: "username fullName profilePicture",
+            select: "username userId profilePicture",
           },
         })
         .sort({ createdAt: -1 })

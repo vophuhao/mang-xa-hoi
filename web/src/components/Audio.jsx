@@ -92,7 +92,7 @@ export default function Audio() {
     return (
         <div className="max-w-5xl mx-auto p-6 font-sans">
             {/* Header */}
-            <h1 className="text-2xl font-bold mb-4">Âm thanh</h1>
+            <h1 className="text-2xl font-bold mb-4 dark:text-white">Âm thanh</h1>
 
             {/* User info */}
             <div className="flex items-center gap-4 mb-6">
@@ -102,8 +102,8 @@ export default function Audio() {
                     className="w-39 h-39 rounded-xl object-cover mr-4"
                 />
                 <div>
-                    <h2 className="text-lg font-semibold">{audio?.title}</h2>
-                    <p className="text-sm text-gray-500">{audio?.used} thước phim</p>
+                    <h2 className="text-lg font-semibold dark:text-white">{audio?.title}</h2>
+                    <p className="text-sm text-gray-500 dark:text-white">{audio?.used} thước phim</p>
 
                     <button
                         onClick={handleToggleSave}

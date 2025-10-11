@@ -74,7 +74,7 @@ const Profile = () => {
       user: {
         _id: user._id,
         username: user.username,
-        fullName: user.fullName,
+        userId: user.userId,
         avatarUrl: user.avatarUrl,
         isVerified: user.isVerified,
       },

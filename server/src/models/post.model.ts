@@ -168,7 +168,7 @@ postSchema.virtual("comments", {
     limit: 3,
     populate: {
       path: "user",
-      select: "username fullName avatarUrl isVerified",
+      select: "username userId avatarUrl isVerified",
     },
   },
 });

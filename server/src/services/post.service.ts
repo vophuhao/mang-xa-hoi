@@ -126,7 +126,7 @@ export class PostService {
       await Promise.all(mentionNotifications);
     }
 
-    return post.populate("user", "username fullName avatarUrl isVerified");
+    return post.populate("user", "username userId avatarUrl isVerified");
   }
 
   /**
@@ -134,7 +134,7 @@ export class PostService {
    */
   static async getPostById({ postId, userId }: GetPostParams) {
     const post = await PostModel.findById(postId)
-      .populate("user", "username fullName avatarUrl isVerified")
+      .populate("user", "username userId avatarUrl isVerified")
       .populate("comments");
 
     if (!post) {
@@ -177,7 +177,7 @@ export class PostService {
         user: { $in: userIds },
         isHidden: false,
       })
-        .populate("user", "username fullName avatarUrl isVerified userId")
+        .populate("user", "username userId avatarUrl isVerified userId")
         .populate("comments")
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -356,7 +356,7 @@ export class PostService {
     }
 
     await post.save();
-    await post.populate("user", "username fullName avatarUrl isVerified");
+    await post.populate("user", "username userId avatarUrl isVerified");
 
     return post;
   }
@@ -374,7 +374,7 @@ export class PostService {
       createdAt: { $gte: weekAgo },
       isHidden: false,
     })
-      .populate("user", "username fullName avatarUrl isVerified")
+      .populate("user", "username userId avatarUrl isVerified")
       .sort({
         likeCount: -1,
         commentCount: -1,
@@ -389,7 +389,7 @@ export class PostService {
       posts = await PostModel.find({
         isHidden: false,
       })
-        .populate("user", "username fullName avatarUrl isVerified")
+        .populate("user", "username userId avatarUrl isVerified")
         .sort({
           likeCount: -1,
           commentCount: -1,

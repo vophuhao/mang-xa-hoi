@@ -116,7 +116,7 @@ const StoryLikesModal = ({ isOpen, onClose, storyId, currentStory, isOwnStory = 
                       />
                       <div className="flex-1">
                         <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {viewer.user?.fullName || viewer.user?.username}
+                          {viewer.user?.userId || viewer.user?.username}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
                           @{viewer.user?.username}

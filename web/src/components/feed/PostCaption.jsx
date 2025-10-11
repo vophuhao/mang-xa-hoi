@@ -18,7 +18,7 @@ const PostCaption = ({ user, caption, onTagClick, onUsernameClick }) => {
           <span
             key={index}
             onClick={() => onTagClick?.(word.slice(1))}
-            className="cursor-pointer font-medium text-blue-600 hover:underline dark:text-blue-400"
+            className="cursor-pointer font-medium text-[#4150f7]  dark:text-[#8193f7]"
           >
             {word}{" "}
           </span>
@@ -28,7 +28,7 @@ const PostCaption = ({ user, caption, onTagClick, onUsernameClick }) => {
           <span
             key={index}
             onClick={() => onUsernameClick?.(word.slice(1))}
-            className="cursor-pointer font-medium text-blue-600 hover:underline dark:text-blue-400"
+            className="cursor-pointer font-medium text-[#4150f7]  dark:text-[#8193f7]"
           >
             {word}{" "}
           </span>

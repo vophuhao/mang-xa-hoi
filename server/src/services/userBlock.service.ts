@@ -47,23 +47,15 @@ static async toggleBlockUser(blockerId: string, blockedId: string) {
   /**
    * Get list of users current user has blocked
    */
-  static async getBlockedList(userId: string, page: number, limit: number) {
+  static async getBlockedList(userId: string) {
     const [blocks, total] = await Promise.all([
       userBlockModel.find({ blocker: userId })
-        .populate("blocked", "username fullName avatarUrl isVerified")
-        .skip((page - 1) * limit)
-        .limit(limit),
+        .populate("blocked", "username userId avatarUrl isVerified"),
       userBlockModel.countDocuments({ blocker: userId }),
     ]);
 
     return {
       data: blocks,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
     };
   }
 

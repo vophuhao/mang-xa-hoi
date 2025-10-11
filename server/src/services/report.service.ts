@@ -68,8 +68,8 @@ class ReportService {
 
     const [reports, total] = await Promise.all([
       ReportModel.find(query)
-        .populate("reporter", "username fullName avatarUrl userId")
-        .populate("resolvedBy", "username fullName")
+        .populate("reporter", "username userId avatarUrl userId")
+        .populate("resolvedBy", "username userId")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
@@ -152,8 +152,8 @@ class ReportService {
    */
   async getReportDetail(reportId: string | mongoose.Types.ObjectId) {
     const report = await ReportModel.findById(reportId)
-      .populate("reporter", "username fullName avatarUrl")
-      .populate("resolvedBy", "username fullName");
+      .populate("reporter", "username userId avatarUrl")
+      .populate("resolvedBy", "username userId");
 
     if (!report) throw ErrorFactory.resourceNotFound("Report");
     return report;

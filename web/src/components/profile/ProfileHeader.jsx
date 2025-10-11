@@ -2,7 +2,9 @@ import { useState } from "react";
 
 import { Edit2, Plus, Settings, MoreHorizontal, UserCheck } from "lucide-react";
 
+import { useBlockedUsers } from "@/hooks/useBlockedUsers";
 import { USER_QUERY_KEYS, useUser, useUserFollowers, useUserFollowing } from "@/hooks/useUser";
+import BlockedModal from "@/modals/Blocked";
 import FollowerModal from "@/modals/FollowerModal";
 import FollowingModal from "@/modals/FollowingModel";
 
@@ -20,10 +22,13 @@ const ProfileHeader = ({
   const [openMenu, setOpenMenu] = useState(null);
   const [openFollowerModal, setOpenFollowerModal] = useState(false);
   const [openFollowingModal, setOpenFollowingModal] = useState(false);
+  const [openBlockModal, setOpenBlockModal] = useState(false);
 
   const { data: followingData } = useUserFollowing(user?.userId, 1);
 
   const { data: followerData } = useUserFollowers(user?.userId, 1);
+
+  const {data : blockedData} =  useBlockedUsers();
 
 
   const formatCount = (count) => {
@@ -138,6 +143,15 @@ const ProfileHeader = ({
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">đang theo dõi</div>
               </div>
+              {isOwnProfile && (
+                <div className="text-center cursor-pointer" onClick={() => setOpenBlockModal(true)}>
+                  <div className="text-xl font-semibold text-gray-900 dark:text-white">
+                    {formatCount(blockedData?.data.length || 0)}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Chặn</div>
+                </div>
+              )}
+
             </div>
 
             {/* Bio Section */}
@@ -174,18 +188,26 @@ const ProfileHeader = ({
             </div>
             <div className="text-xs text-gray-600 dark:text-gray-400">bài viết</div>
           </div>
-          <div className="text-center">
+          <div className="text-center" onClick={() => setOpenFollowerModal(true)}>
             <div className="text-lg font-semibold text-gray-900 dark:text-white">
               {formatCount(user?.followersCount || 0)}
             </div>
             <div className="text-xs text-gray-600 dark:text-gray-400">người theo dõi</div>
           </div>
-          <div className="text-center">
+          <div className="text-center" onClick={() => setOpenFollowingModal(true)}>
             <div className="text-lg font-semibold text-gray-900 dark:text-white">
               {formatCount(user?.followingCount || 0)}
             </div>
             <div className="text-xs text-gray-600 dark:text-gray-400">đang theo dõi</div>
           </div>
+          {isOwnProfile && (
+            <div className="text-center" onClick={() => setOpenBlockModal(true)}>
+              <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                {formatCount(blockedData?.data.length || 0)}
+              </div>
+              <div className="text-xs text-gray-600 dark:text-gray-400">Chặn</div>
+            </div>
+          )}
         </div>
 
         {/* Story Highlights - Only show if user has stories */}
@@ -241,9 +263,15 @@ const ProfileHeader = ({
           followingData={followingData.data || []}
 
         />
-
       )}
 
+      {openBlockModal && (
+        <BlockedModal
+          isOpen={openBlockModal}
+          onClose={() => setOpenBlockModal(false)}
+          blockedData={blockedData.data || []}
+        />
+      )}
     </div>
   );
 };

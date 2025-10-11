@@ -29,7 +29,7 @@ const ProfileStoryHighlights = ({
         _id: story.user?._id || story.user || currentUserId,
         username: highlight.username || "You",
         avatarUrl: story.user?.avatarUrl || highlight.avatarUrl,
-        fullName: highlight.fullName,
+        userId: highlight.userId,
         isVerified: highlight.isVerified,
       },
     }));
@@ -41,7 +41,7 @@ const ProfileStoryHighlights = ({
             _id: currentUserId,
             username: highlight.username || "You",
             avatarUrl: highlight.avatarUrl,
-            fullName: highlight.fullName,
+            userId: highlight.userId,
             isVerified: highlight.isVerified,
           },
           stories: highlightStories,

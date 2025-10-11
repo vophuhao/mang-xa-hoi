@@ -53,7 +53,7 @@ declare module "socket.io" {
     user?: {
       id: string;
       username?: string;
-      fullName?: string;
+      userId?: string;
       avatarUrl?: string;
     };
   }

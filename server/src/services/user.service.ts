@@ -28,7 +28,7 @@ export interface SearchUsersParams {
 
 export interface UpdateProfileParams {
   username?: string;
-  fullName?: string;
+  userId?: string;
   bio?: string;
   avatarUrl?: string;
 }
@@ -314,12 +314,12 @@ export class UserService {
     const searchRegex = new RegExp(query.trim(), "i");
 
     const searchFilter = {
-      $or: [{ username: searchRegex }, { fullName: searchRegex }],
+      $or: [{ username: searchRegex }, { userId: searchRegex }],
     };
 
     const [users, total] = await Promise.all([
       UserModel.find(searchFilter)
-        .select("username fullName avatarUrl isVerified followersCount userId")
+        .select("username userId avatarUrl isVerified followersCount userId")
         .sort({ followersCount: -1, username: 1 })
         .skip(skip)
         .limit(limit),
@@ -395,14 +395,14 @@ export class UserService {
       const suggestedUsers = await UserModel.find({
         _id: { $nin: followingUserIds },
       })
-        .select("_id username fullName avatarUrl bio isVerified")
+        .select("_id username userId avatarUrl bio isVerified")
         .limit(limit)
         .sort({ createdAt: -1 }); // Sort by newest users first
 
       return suggestedUsers.map(user => ({
         _id: user._id,
         username: user.username,
-        fullName: user.fullName,
+        userId: user.userId,
         avatar: user.avatarUrl,
         bio: user.bio,
         isVerified: user.isVerified,

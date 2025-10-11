@@ -142,7 +142,7 @@ class SavedPostService {
           populate: [
             {
               path: "user",
-              select: "username fullName avatarUrl isVerified",
+              select: "username userId avatarUrl isVerified",
             },
             {
               path: "hashtags",
@@ -233,7 +233,7 @@ class SavedPostService {
       const skip = (page - 1) * limit;
 
       const savedPosts = await SavedPostModel.find({ post: postId })
-        .populate("user", "username fullName avatarUrl isVerified followersCount")
+        .populate("user", "username userId avatarUrl isVerified followersCount")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);

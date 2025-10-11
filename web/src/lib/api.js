@@ -231,5 +231,5 @@ export const movePostToCollection = async (fromCollectionId, postId, toCollectio
 export const toggleBlockUser = async (userId) => 
   API.post(`/block/user/${userId}`);
 
-export const getBlockedUsers = async (page = 1, limit = 20) =>
-  API.get(`/blocked?page=${page}&limit=${limit}`);
+export const getBlockedUsers = async () =>
+  API.get(`/block/user/blocked`);
