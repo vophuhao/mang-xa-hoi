@@ -41,10 +41,10 @@ const PostCaption = ({ user, caption, onTagClick, onUsernameClick }) => {
   return (
     <div className="text-sm text-gray-900 dark:text-white">
       <span
-        onClick={() => onUsernameClick?.(user.username)}
+        onClick={() => onUsernameClick?.(user.userId)}
         className="cursor-pointer font-semibold hover:underline"
       >
-        {user.username}
+        {user.userId}
       </span>{" "}
       <span>{formatText(displayCaption)}</span>
       {shouldTruncate && !showFullCaption && (

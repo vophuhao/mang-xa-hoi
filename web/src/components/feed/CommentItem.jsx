@@ -120,7 +120,7 @@ const CommentItem = ({
       {/* User Avatar */}
       <img
         src={comment?.user?.avatarUrl || "/default-avatar.png"}
-        alt={comment?.user?.username}
+        alt={comment?.user?.userId}
         className="h-8 w-8 flex-shrink-0 rounded-full object-cover"
       />
 
@@ -134,9 +134,9 @@ const CommentItem = ({
             >
               <span
                 className="mr-2 cursor-pointer text-sm font-semibold text-gray-900 hover:underline dark:text-white"
-                onClick={() => onUsernameClick?.(comment?.user?.username)}
+                onClick={() => onUsernameClick?.(comment?.user?.userId)}
               >
-                {comment?.user?.username}
+                {comment?.user?.userId}
               </span>
               <span
                 className="text-sm break-words whitespace-pre-wrap text-gray-900 dark:text-white"

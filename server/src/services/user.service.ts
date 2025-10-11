@@ -3,6 +3,8 @@ import NotificationModel from "@/models/notification.model";
 import PostModel from "@/models/post.model";
 import UserModel from "@/models/user.model";
 import ErrorFactory from "@/utils/ErrorFactory";
+import { UserBlockService } from "./userBlock.service";
+import mongoose from "mongoose";
 
 export interface UserProfile {
   _id: string;
@@ -57,8 +59,13 @@ export class UserService {
     const user = await UserModel.findOne({ username }).select("-password");
 
     if (!user) {
-      throw ErrorFactory.resourceNotFound("User", `User with username "${username}" not found`);
+      throw ErrorFactory.resourceNotFound(
+        "User",
+        `User with username "${username}" not found`
+      );
     }
+
+
 
     // Get user stats and relationships in parallel
     const [isFollowing, followsBack, followersCount, followingCount, postsCount] =
@@ -89,16 +96,23 @@ export class UserService {
     return userProfile as UserProfile;
   }
 
+
+
   /**
    * Get user profile by userId
    */
   static async getUserByUserId(userId: string, currentUserId: string): Promise<UserProfile> {
-    const user = await UserModel.findOne({userId}).select("-password");
+    const user = await UserModel.findOne({ userId }).select("-password");
 
     if (!user) {
       throw ErrorFactory.resourceNotFound("User", `User with id "${userId}" not found`);
     }
 
+    // ✅ Kiểm tra block 2 chiều
+    const excludedUserIds = await UserBlockService.getExcludedUserIds(currentUserId);
+    if (excludedUserIds.includes((user._id as any).toString())) {
+      throw ErrorFactory.forbiddenAction("You cannot view this user profile");
+    }
     // Get user stats and relationships in parallel
     const [isFollowing, followsBack, followersCount, followingCount, postsCount] =
       await Promise.all([
@@ -305,17 +319,23 @@ export class UserService {
   /**
    * Search users
    */
-  static async searchUsers({ query, page = 1, limit = 20 }: SearchUsersParams) {
+  static async searchUsers({ query, page = 1, limit = 20, userId }: SearchUsersParams & { userId?: string }) {
     if (!query?.trim()) {
       throw ErrorFactory.requiredField("Search query");
     }
 
     const skip = (page - 1) * limit;
     const searchRegex = new RegExp(query.trim(), "i");
+    const excludedUserIds = await UserBlockService.getExcludedUserIds((userId as any).toString());
 
-    const searchFilter = {
+    const searchFilter: any = {
       $or: [{ username: searchRegex }, { userId: searchRegex }],
     };
+
+    if (excludedUserIds.length > 0) {
+      searchFilter._id = { $nin: excludedUserIds.map(id => new mongoose.Types.ObjectId(id)) };
+    }
+
 
     const [users, total] = await Promise.all([
       UserModel.find(searchFilter)

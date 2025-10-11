@@ -8,6 +8,7 @@ import {
   createPostSchema,
   getFeedPostsSchema,
   getPostByIdSchema,
+  getUserByUserIdSchema,
   likePostSchema,
 } from "@/validators";
 
@@ -128,10 +129,12 @@ export const getTrendingPostsHandler = catchErrors(
 );
 
 export const getReelsFeedHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const userId  = req.userId;
+ 
   const page = parseInt((req.query.page as string) || "1", 10);
   const limit = parseInt((req.query.limit as string) || "10", 10);
 
-  const reels = await PostService.getReelsFeed(page, limit);
+  const reels = await PostService.getReelsFeed(page, limit, (userId as any).toString());
 
   return ResponseUtil.success(res, reels);
 });

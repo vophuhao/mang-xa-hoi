@@ -251,11 +251,11 @@ const ProfileHeader = ({
           isOpen={openFollowerModal}
           onClose={() => setOpenFollowerModal(false)}
           followersData={followerData?.data || []}
-          followingIds={followingData.data}
+          followingData={followingData.data}
         />
       )}
 
-
+      
       {openFollowingModal && (
         <FollowingModal
           isOpen={openFollowingModal}

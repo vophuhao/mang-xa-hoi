@@ -1,4 +1,5 @@
 
+import FollowModel from "@/models/follow.model";
 import userBlockModel from "@/models/userBlock.model";
 import ErrorFactory from "@/utils/ErrorFactory";
 
@@ -32,6 +33,15 @@ static async toggleBlockUser(blockerId: string, blockedId: string) {
       blocker: blockerId,
       blocked: blockedId,
     });
+
+    // 🔹 Xóa follow lẫn nhau nếu có
+    await FollowModel.deleteMany({
+      $or: [
+        { follower: blockerId, following: blockedId },
+        { follower: blockedId, following: blockerId }
+      ]
+    });
+
 
     const populated = await newBlock.populate("blocked", "username userId avatarUrl");
 

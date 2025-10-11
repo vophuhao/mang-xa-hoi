@@ -143,7 +143,7 @@ export default function FollowingModal({ isOpen, onClose, followingData = [] }) 
                                                 )}
                                             </div>
                                             <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                                                {u.userId ? `${u.userId}` : "Người dùng"}
+                                                {u.userId ? `@${u.userId}` : "Người dùng"}
                                             </p>
                                         </div>
                                     </div>

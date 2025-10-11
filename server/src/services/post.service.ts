@@ -9,6 +9,7 @@ import UserModel from "@/models/user.model";
 import ErrorFactory from "@/utils/ErrorFactory";
 import { getAudioByIdSchema } from "@/validators/audio.validator";
 import mongoose from "mongoose";
+import { UserBlockService } from "./userBlock.service";
 export type CreateNewPost = {
   user: mongoose.Types.ObjectId;
   caption?: string;
@@ -165,6 +166,7 @@ export class PostService {
   static async getFeed({ userId, page = 1, limit = 10 }: GetFeedParams) {
     const skip = (page - 1) * limit;
 
+    const excludedUserIds = await UserBlockService.getExcludedUserIds((userId as any).toString());
     // Get users that current user follows
     const following = await FollowModel.find({ follower: userId }).select("following");
     const followingIds = following.map(f => f.following);
@@ -173,9 +175,9 @@ export class PostService {
     const userIds = [userId, ...followingIds];
 
     const [posts, total] = await Promise.all([
-      PostModel.find({
-        user: { $in: userIds },
+      PostModel.find({      
         isHidden: false,
+        user: { $nin: excludedUserIds.map(id => new mongoose.Types.ObjectId(id)) },
       })
         .populate("user", "username userId avatarUrl isVerified userId")
         .populate("comments")
@@ -367,12 +369,14 @@ export class PostService {
   static async getTrendingPosts(page: number = 1, limit: number = 10, userId?: string) {
     const skip = (page - 1) * limit;
 
+     const excludedUserIds = await UserBlockService.getExcludedUserIds((userId as any).toString());
     // First try to get posts from last 7 days with high engagement
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
     let posts = await PostModel.find({
       createdAt: { $gte: weekAgo },
       isHidden: false,
+      user: { $nin: excludedUserIds.map(id => new mongoose.Types.ObjectId(id)) },
     })
       .populate("user", "username userId avatarUrl isVerified")
       .sort({
@@ -424,11 +428,16 @@ export class PostService {
   /**
    * Get trending posts
    */
-  static async getReelsFeed(page: number, limit: number) {
+  static async getReelsFeed(page: number, limit: number,userId: string) {
     const skip = (page - 1) * limit;
+    const excludedUserIds = await UserBlockService.getExcludedUserIds((userId as any).toString());
 
     const reels = await PostModel.aggregate([
-      { $match: { type: "reel", isHidden: false } },
+      { $match:
+        { type: "reel",
+          isHidden: false,
+          user: { $nin: excludedUserIds.map(id => new mongoose.Types.ObjectId(id)) },
+        } },
       {
         $addFields: {
           score: {

@@ -132,6 +132,7 @@ export const searchUsersHandler = catchErrors(async (req: AuthenticatedRequest, 
     query,
     page: Number(page),
     limit: Number(limit),
+    userId: (req.userId as any).toString()
   });
 
   return ResponseUtil.paginated(res, result.data, result.pagination);
