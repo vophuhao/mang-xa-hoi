@@ -6,7 +6,7 @@ import { navigate } from "@/lib/navigation";
 import CommentItem from "./CommentItem";
 import PostCaption from "./PostCaption";
 
-const CommentList = ({ postId, currentUserId, post, onUsernameClick, onReplyStateChange }) => {
+const CommentListReel = ({ postId, currentUserId, post, onUsernameClick, onReplyStateChange }) => {
   const {
     data: commentsData,
     isLoading,
@@ -87,7 +87,7 @@ const CommentList = ({ postId, currentUserId, post, onUsernameClick, onReplyStat
   const handleReport = (comment) => {
     // TODO: Implement report functionality
     console.log("Report comment:", comment._id);
-    alert(`Đã báo cáo bình luận của ${comment.user.username}`);
+    alert(`Đã báo cáo bình luận của ${comment.user.userId}`);
   };
 
   if (isLoading) {
@@ -126,33 +126,8 @@ const CommentList = ({ postId, currentUserId, post, onUsernameClick, onReplyStat
 
   return (
     <div className="scrollbar-hide max-h-133 flex-1 space-y-1 overflow-y-auto p-2">
-      {/* Show caption as first comment if exists */}
-      {post?.caption && (
-        // <CommentItem
-        //   key={`caption-${post._id}`}
-        //   comment={createCaptionComment(post)}
-        //   currentUserId={currentUserId}
-        //   onLike={() => {}} // Caption can't be liked
-        //   onReply={() => {}} // Caption can't be replied to
-        //   onDelete={() => {}} // Caption can't be deleted here
-        //   onReport={() => {}} // Caption can't be reported
-        //   onUsernameClick={onUsernameClick}
-        //   isCaption={true}
-        //   postId={postId}
-        // />
-        <div className="flex items-start space-x-3 py-2">
-          <img
-            src={post?.user?.avatarUrl || "/default-avatar.png"}
-            alt={post?.user?.userId}
-            className="h-8 w-8 flex-shrink-0 rounded-full object-cover"
-          />
 
-          <PostCaption caption={post.caption} user={post.user}
-            onTagClick={onTagClick}
-            onUsernameClick={onUsernameClick} />
-        </div>
-      )}
-
+    
       {/* Regular comments */}
       {comments?.map((comment) => (
         <CommentItem
@@ -189,4 +164,4 @@ const CommentList = ({ postId, currentUserId, post, onUsernameClick, onReplyStat
   );
 };
 
-export default CommentList;
+export default CommentListReel;

@@ -50,7 +50,7 @@ const CommentItem = ({
   const formatContentWithMentions = (content) => {
     if (!content) return "";
 
-    const mentionRegex = /@(\w+)/g;
+    const mentionRegex = /@([^\s]+)/g;
     const parts = content.split(mentionRegex);
 
     return parts.map((part, index) => {
@@ -60,7 +60,7 @@ const CommentItem = ({
           <span
             key={index}
             className="cursor-pointer text-blue-600 hover:underline dark:text-blue-400"
-            onClick={() => onUsernameClick?.({ username: part })}
+            onClick={() => onUsernameClick?.(part)}
           >
             @{part}
           </span>

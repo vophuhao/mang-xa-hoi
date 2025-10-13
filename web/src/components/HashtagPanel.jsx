@@ -38,10 +38,10 @@ export default function HashtagPanel() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-6 font-sans">
+    <div className="max-w-5xl mx-auto  p-6 font-sans">
       <h2 style={{ fontWeight: 600, fontSize: 22, margin: "16px 0" }}>#{name}</h2>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 h-[350px]">
         {posts.map((post) => {
           // ✅ Lấy phần tử media đầu tiên
           const firstMedia = Array.isArray(post.mediaUrls)
@@ -56,7 +56,7 @@ export default function HashtagPanel() {
             <div
               key={post._id || post.id}
               onClick={() => handlePostClick(post)}
-              className="relative group cursor-pointer overflow-hidden rounded-lg"
+              className="relative group cursor-pointer overflow-hidden "
             >
               {/* ✅ Hiển thị ảnh hoặc video */}
               {isVideo ? (

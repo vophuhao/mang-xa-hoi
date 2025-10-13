@@ -9,8 +9,10 @@ import useAuth from "@/hooks/useAuth";
 import { USER_QUERY_KEYS, useUser, useUserFollowing } from "@/hooks/useUser";
 import { getReelsFeed, increasePostView, likePost } from "@/lib/api";
 import { navigate } from "@/lib/navigation";
+import CommentModal from "@/modals/CommentReelModal";
 
 import MoreOptionsMenu from "./MoreOptionsMenu";
+
 
 export default function ReelWeb() {
   const [reels, setReels] = useState([]);
@@ -29,6 +31,8 @@ export default function ReelWeb() {
   const [reelId, setReelId] = useState(null);
 
   const { toggleFollow } = useUser();
+  const [showComments, setShowComments] = useState(false);
+  const [selectedReel, setSelectedReel] = useState(null);
   const queryClient = useQueryClient();
 
   const navigate = useNavigate();
@@ -39,9 +43,9 @@ export default function ReelWeb() {
   const handleFollowClick = async (targetUserId, isFollowing) => {
     try {
 
-      await toggleFollow(targetUserId, isFollowing); 
+      await toggleFollow(targetUserId, isFollowing);
       // Cập nhật lại cache sau khi follow/unfollow
-      queryClient.invalidateQueries(["userFollowing", user?.data?.userId],1);
+      queryClient.invalidateQueries(["userFollowing", user?.data?.userId], 1);
     } catch (err) {
       console.error("Follow error:", err);
     }
@@ -332,7 +336,7 @@ export default function ReelWeb() {
                   handleAudioClick={handleAudioClick}
                   user={user}
                   handleFollowClick={handleFollowClick}
-                   isFollowing={followingIds.has(reel.user?._id)}
+                  isFollowing={followingIds.has(reel.user?._id)}
                 />
 
                 {/* Nút Mute/Unmute */}
@@ -349,12 +353,18 @@ export default function ReelWeb() {
                 reel={reel}
                 handleLike={handleLike}
                 likedMap={likedMap}
+                handleAudioClick={handleAudioClick}
                 setOpenMenu={setOpenMenu}
                 setReelId={setReelId}
-                handleAudioClick={handleAudioClick} // 👈 Truyền thêm prop này
+                user={user}
+                onOpenComments={() => {
+                  setSelectedReel(reel); // lưu reel hiện tại
+                  setShowComments(true); // mở modal
+                }}
               />
 
             </div>
+
           ))}
           <div ref={loadMoreRef} className="h-10"></div>
 
@@ -368,12 +378,23 @@ export default function ReelWeb() {
         />
       )}
 
+      {showComments && selectedReel && (
+        <CommentModal
+          isOpen={showComments}
+          onClose={() => setShowComments(false)}
+          postId={selectedReel._id}
+          post={selectedReel}
+          currentUserId={user.data._id}
+        />
+      )}
+
+
     </div>
 
   );
 }
 
-function InfoOverlay({ reel, handleAudioClick, user,handleFollowClick,isFollowing }) {
+function InfoOverlay({ reel, handleAudioClick, user, handleFollowClick, isFollowing }) {
   return (
     <div className={`absolute left-4 flex flex-col space-y-2 ${reel.caption ? "bottom-4" : "bottom-10"}`}>
       <div className="flex items-center space-x-2">
@@ -391,7 +412,7 @@ function InfoOverlay({ reel, handleAudioClick, user,handleFollowClick,isFollowin
         </div>
         {reel.user?._id !== user.data._id ? (
           <button
-            
+
             onClick={() => handleFollowClick(reel.user?._id, isFollowing)}
             className="cursor-pointer px-3 py-1 mt-3 text-sm font-semibold text-white border border-white rounded-md bg-white/10 hover:bg-white/20 transition">
             {isFollowing ? "Đang theo dõi" : "Theo dõi"}
@@ -405,41 +426,42 @@ function InfoOverlay({ reel, handleAudioClick, user,handleFollowClick,isFollowin
   );
 }
 
-function ActionButtons({ reel, handleLike, likedMap, handleAudioClick, setOpenMenu, setReelId }) {
+function ActionButtons({ reel, handleLike, likedMap, handleAudioClick, setOpenMenu, setReelId, onOpenComments  }) {
   return (
     <div className="flex flex-col mt-100 ml-5 items-center justify-center space-y-6">
       {/* Like button */}
-      <div className="flex flex-col items-center space-y-1">
+      <div className="flex flex-col items-center space-y-1 ">
         <button onClick={handleLike(reel._id)}>
           <Heart
             size={25}
-            className={`transition-colors duration-200 ${likedMap[reel._id] ? "fill-red-500 text-red-500" : "text-black dark:text-white"}`}
+            className={` cursor-pointer transition-colors duration-200 ${likedMap[reel._id] ? "fill-red-500 text-red-500" : "text-black dark:text-white"}`}
           />
         </button>
         {!reel.likesHidden && <span className="text-xs text-black dark:text-white">{reel.likeCount}</span>}
       </div>
 
       {/* Comment button */}
-      <div className="flex flex-col items-center space-y-1">
+      <div className="flex flex-col items-center space-y-1 "
+      onClick={onOpenComments} >
         <button disabled={reel.commentsDisabled}>
           <MessageCircle
             size={25}
-            className={`transform rotate-270 ${reel.commentsDisabled ? "text-gray-400" : "text-black dark:text-white"}`}
+            className={`cursor-pointer transform rotate-270 ${reel.commentsDisabled ? "text-gray-400" : "text-black dark:text-white"}`}
           />
         </button>
         <span className="text-xs text-black dark:text-white">{reel.commentCount}</span>
       </div>
 
       <button>
-        <Send size={25} className="text-black dark:text-white" />
+        <Send size={25} className="text-black dark:text-white cursor-pointer" />
       </button>
 
       <button className="mt-2">
-        <Bookmark size={25} className="text-black dark:text-white" />
+        <Bookmark size={25} className="text-black dark:text-white cursor-pointer" />
       </button>
 
       <button
-        className=" relative z-20 dark:text-white "
+        className=" relative z-20 dark:text-white  cursor-pointer"
         onClick={(e) => {
           const rect = e.currentTarget.getBoundingClientRect(); // lấy toạ độ icon
           setOpenMenu({ x: rect.left, y: rect.bottom }); // lưu vị trí
@@ -460,6 +482,7 @@ function ActionButtons({ reel, handleLike, likedMap, handleAudioClick, setOpenMe
         />
       </div>
     </div>
+
   );
 }
 
