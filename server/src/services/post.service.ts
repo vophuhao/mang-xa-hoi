@@ -10,6 +10,7 @@ import ErrorFactory from "@/utils/ErrorFactory";
 import { getAudioByIdSchema } from "@/validators/audio.validator";
 import mongoose from "mongoose";
 import { UserBlockService } from "./userBlock.service";
+import { disable } from "colors";
 export type CreateNewPost = {
   user: mongoose.Types.ObjectId;
   caption?: string;
@@ -532,6 +533,12 @@ export class PostService {
           likeCount: 1,
           commentCount: 1,
           shareCount: 1,
+          commentsDisabled: 1,
+          likesHidden: 1,
+          isHidden: 1,
+          location: 1,
+          tags: 1,
+          mentions: 1,
           viewCount: 1,
           createdAt: 1,
           updatedAt: 1,

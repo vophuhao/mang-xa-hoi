@@ -13,7 +13,7 @@ export default function CommentModal({
     postId,
     post,
     currentUserId,
-    
+
 }) {
     const [replyState, setReplyState] = useState(null);
 
@@ -24,7 +24,7 @@ export default function CommentModal({
         setReplyState(null);
     };
     const onUsernameClick = (userId) => {
-       navigate(`/${userId}`);
+        navigate(`/${userId}`);
     };
     if (!isOpen) return null;
 
@@ -55,22 +55,29 @@ export default function CommentModal({
                         post={post}
                         currentUserId={currentUserId}
                         onUsernameClick={onUsernameClick}
-                         onReplyStateChange={handleReplyStateChange}
+                        onReplyStateChange={handleReplyStateChange}
                     />
                 </div>
 
                 {/* Ô nhập bình luận */}
                 <div className="border-t p-2 flex items-center gap-2 dark:border-gray-700">
-                    <CommentInputReel
+                    {post.commentsDisabled ? (
+                        <div className="w-full p-3 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                            Bình luận đã bị tắt cho bài viết này.
+                        </div>
+                    ) : <div className="flex-shrink-0">
+                        <CommentInputReel
+                            postId={post._id}
+                            placeholder={
+                                replyState ? `Trả lời @${replyState.parentUsername}...` : "Thêm bình luận..."
+                            }
+                            parentId={replyState?.parentId}
+                            initialContent={replyState?.initialContent}
+                            onReplyCancel={handleReplyCancel}
+                        />
+                    </div>
 
-                        postId={post._id}
-                        placeholder={
-                            replyState ? `Trả lời @${replyState.parentUsername}...` : "Thêm bình luận..."
-                        }
-                        parentId={replyState?.parentId}
-                        initialContent={replyState?.initialContent}
-                        onReplyCancel={handleReplyCancel}
-                    />
+                    }
                 </div>
             </div>
         </div>

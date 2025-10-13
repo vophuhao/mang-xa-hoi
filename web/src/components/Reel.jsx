@@ -426,30 +426,50 @@ function InfoOverlay({ reel, handleAudioClick, user, handleFollowClick, isFollow
   );
 }
 
-function ActionButtons({ reel, handleLike, likedMap, handleAudioClick, setOpenMenu, setReelId, onOpenComments  }) {
+function ActionButtons({ reel, handleLike, likedMap, handleAudioClick, setOpenMenu, setReelId, onOpenComments }) {
+
   return (
     <div className="flex flex-col mt-100 ml-5 items-center justify-center space-y-6">
       {/* Like button */}
       <div className="flex flex-col items-center space-y-1 ">
-        <button onClick={handleLike(reel._id)}>
+        <button
+          onClick={() => {
+            if (!reel.likesHidden) handleLike(reel._id);
+          }}
+          disabled={reel.likesHidden}
+          className={`cursor-pointer transition-colors duration-200 
+    ${reel.likesHidden ? "cursor-not-allowed" : ""}
+  `}
+        >
           <Heart
             size={25}
-            className={` cursor-pointer transition-colors duration-200 ${likedMap[reel._id] ? "fill-red-500 text-red-500" : "text-black dark:text-white"}`}
+            className={`transition-colors duration-200 
+      ${likedMap[reel._id]
+                ? "fill-red-500 text-red-500"
+                : "text-black dark:text-white"}
+    `}
           />
         </button>
-        {!reel.likesHidden && <span className="text-xs text-black dark:text-white">{reel.likeCount}</span>}
+
+        {!reel.likesHidden && (
+          <span className="text-xs text-black dark:text-white">{reel.likeCount}</span>
+        )}
+
       </div>
 
       {/* Comment button */}
       <div className="flex flex-col items-center space-y-1 "
-      onClick={onOpenComments} >
-        <button disabled={reel.commentsDisabled}>
+        onClick={onOpenComments} >
+        <button >
           <MessageCircle
             size={25}
-            className={`cursor-pointer transform rotate-270 ${reel.commentsDisabled ? "text-gray-400" : "text-black dark:text-white"}`}
+            className={"cursor-pointer transform rotate-270  text-black dark:text-white"}
           />
         </button>
-        <span className="text-xs text-black dark:text-white">{reel.commentCount}</span>
+        {
+          !reel.commentsDisabled && <span className="text-xs text-black dark:text-white">{reel.commentCount}</span>
+        }
+
       </div>
 
       <button>

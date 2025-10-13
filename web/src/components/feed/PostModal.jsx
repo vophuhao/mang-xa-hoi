@@ -143,9 +143,11 @@ const PostModal = ({ post, isOpen, onClose, onUsernameClick, onShareClick, hideA
                 onShareClick={() => onShareClick?.(post)}
               />
             </div>
-
-            {/* Comment Input */}
-            <div className="flex-shrink-0">
+            {post.commentsDisabled ? (
+              <div className="border-t border-gray-200 p-3 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                Bình luận đã bị tắt cho bài viết này.
+              </div>
+            ) : <div className="flex-shrink-0">
               <CommentInput
                 postId={post._id}
                 placeholder={
@@ -156,6 +158,10 @@ const PostModal = ({ post, isOpen, onClose, onUsernameClick, onShareClick, hideA
                 onReplyCancel={handleReplyCancel}
               />
             </div>
+
+            }
+
+
           </div>
         </div>
       </div>

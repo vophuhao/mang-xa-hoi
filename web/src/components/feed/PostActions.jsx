@@ -95,8 +95,8 @@ const PostActions = ({ post, onCommentClick, onShareClick, hideActions = [] }) =
           {/* Like Button */}
           <button
             onClick={handleLike}
-            disabled={isLiking}
-            className="transition-colors duration-200"
+            disabled={post.likesHidden}
+            className="transition-colors duration-200 cursor-pointer"
           >
             <Heart
               size={24}
@@ -111,7 +111,7 @@ const PostActions = ({ post, onCommentClick, onShareClick, hideActions = [] }) =
           {/* Comment Button */}
           <button
             onClick={onCommentClick}
-            className="text-gray-900 hover:text-gray-600 dark:text-gray-300 dark:hover:text-gray-100"
+            className="cursor-pointer text-gray-900 hover:text-gray-600 dark:text-gray-300 dark:hover:text-gray-100"
           >
             <MessageCircle size={24} />
           </button>
@@ -119,7 +119,7 @@ const PostActions = ({ post, onCommentClick, onShareClick, hideActions = [] }) =
           {/* Share Button */}
           <button
             onClick={onShareClick}
-            className="text-gray-900 hover:text-gray-600 dark:text-gray-300 dark:hover:text-gray-100"
+            className="cursor-pointer text-gray-900 hover:text-gray-600 dark:text-gray-300 dark:hover:text-gray-100"
           >
             <Send size={24} />
           </button>
