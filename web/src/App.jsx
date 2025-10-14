@@ -15,6 +15,7 @@ import VerifyEmail from "@/pages/VerifyEmail";
 import Audio from "./components/Audio";
 import HashtagPanel from "./components/HashtagPanel";
 import ReelWeb from "./components/Reel";
+import CollectionAudio from "./pages/ColectionAudio";
 import CollectionDetail from "./pages/CollectionDetail";
 import DirectInbox from "./pages/DirectInbox";
 import Explore from "./pages/Explore";
@@ -49,6 +50,7 @@ function App() {
             <Route path=":username" element={<Profile />} />
             <Route path=":username/p/:postId" element={<PostDetail />} />
             <Route path=":username/saved" element={<Profile />} />
+            <Route path=":username/saved/audio" element={<CollectionAudio />} />
             <Route path=":username/saved/collections/:id" element={<CollectionDetail />} />
             <Route path=":username/tagged" element={<Profile />} />
             <Route path="audio/:id" element={<Audio />} />

@@ -399,16 +399,20 @@ function InfoOverlay({ reel, handleAudioClick, user, handleFollowClick, isFollow
     <div className={`absolute left-4 flex flex-col space-y-2 ${reel.caption ? "bottom-4" : "bottom-10"}`}>
       <div className="flex items-center space-x-2">
         <img src={reel.user?.avatar} alt="avatar" className="w-8 h-8 rounded-full" onClick={() => navigate(`/${reel.user?.userId}`)} />
+
         <div>
           <span onClick={() => navigate(`/${reel.user?.userId}`)} className="font-semibold text-[13px] text-white">{reel.user?.userId || "user"}</span>
-          <div onClick={handleAudioClick(reel.audioInfo)} className="flex items-center space-x-1 text-[13px] text-gray-200 w-[180px] overflow-hidden">
-            <span className="mr-1">🎵</span>
-            <div className="relative w-full overflow-hidden">
-              <div className="animate-marquee whitespace-nowrap text-[13px]">
-                {reel.audioInfo?.title || "Âm thanh gốc"} • {reel.audioUser?.userId || reel.audioInfo?.artist}
+          {reel.audioUser?.avatarUrl || reel.audioInfo?.coverUrl ? (
+            <div onClick={handleAudioClick(reel.audioInfo)} className="flex items-center space-x-1 text-[13px] text-gray-200 w-[180px] overflow-hidden">
+              <span className="mr-1">🎵</span>
+              <div className="relative w-full overflow-hidden">
+                <div className="animate-marquee whitespace-nowrap text-[13px]">
+                  {reel.audioInfo?.title || "Âm thanh gốc"} • {reel.audioUser?.userId || reel.audioInfo?.artist}
+                </div>
               </div>
             </div>
-          </div>
+          ) : null}
+
         </div>
         {reel.user?._id !== user.data._id ? (
           <button
@@ -493,14 +497,17 @@ function ActionButtons({ reel, handleLike, likedMap, handleAudioClick, setOpenMe
 
 
 
-      {/* 👇 Thêm click chuyển trang âm thanh */}
-      <div className="mt-4 cursor-pointer" onClick={handleAudioClick(reel.audioInfo)}>
-        <img
-          src={reel.audioUser?.avatarUrl || reel.audioInfo?.coverUrl}
-          alt="avatar"
-          className="w-8 h-8 rounded-sm object-cover hover:opacity-80 transition"
-        />
-      </div>
+      {reel.audioUser?.avatarUrl || reel.audioInfo?.cover ? (
+        <div className="mt-4 cursor-pointer" onClick={handleAudioClick(reel.audioInfo)}>
+          <img
+            src={reel.audioInfo?.cover || reel.audioUser?.avatarUrl}
+            alt="avatar"
+            className="w-8 h-8 rounded-sm object-cover hover:opacity-80 transition"
+          />
+
+        </div>
+      ) : null}
+
     </div>
 
   );

@@ -41,7 +41,7 @@ const CollectionDetail = () => {
 
   const handleBack = () => {
     // Navigate back to profile saved tab
-    const username = currentUser?.data?.username;
+    const username = currentUser?.data?.userId;
     if (username) {
       navigate(`/${username}/saved`);
     } else {

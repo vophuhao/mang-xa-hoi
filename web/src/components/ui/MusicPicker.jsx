@@ -132,7 +132,7 @@ export default function MusicPicker({ audioList, selected, onSelect, hasOriginal
           >
             {/* Ảnh */}
             <img
-              src={audio.cover || audio.user.avatarUrl}
+              src={audio.cover ? audio.cover : audio.user?.avatarUrl}
               alt=""
               className="w-12 h-12 rounded-lg object-cover border shadow flex-shrink-0"
               referrerPolicy="no-referrer"

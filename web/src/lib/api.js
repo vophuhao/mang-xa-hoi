@@ -183,6 +183,13 @@ export const getReelByAudioId = async (audioId) => API.get(`/audio/${audioId}/re
 
 export const getAudio = async (id) => API.get(`/audio/${id}`);
 
+export const getAudioByUser = async () => API.get("/audio/list/userSave");
+
+export const updateAudio = async (id, data) => API.put(`/audio/update/${id}`, data);
+
+export const deleteAudio = async (id) => API.delete(`/audio/delete/${id}`);
+
+
 export const getPostsByHashtag = async (name, page = 1, limit = 30) =>
   API.get(`/hashtags/${name}/posts`, { params: { page, limit } });
 
@@ -193,6 +200,8 @@ export const searchAll = async (query, page = 1, limit = 10) => {
   );
   return response; // Đảm bảo trả về response, không phải response.data
 };
+
+export const getSavedAudios = async () => API.get("/audio/saved/list");
 
 export const saveAudio = async (audioId) => API.post(`/audio/save/${audioId}`);
 

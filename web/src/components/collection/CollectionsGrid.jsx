@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { Lock, Plus } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 
+import useAuth from "@/hooks/useAuth";
 import { useCollections, useDeleteCollection } from "@/hooks/useCollection";
+import { getSavedAudios } from "@/lib/api";
 
 import CreateCollectionModal from "./CreateCollectionModal";
 import EditCollectionModal from "./EditCollectionModal";
@@ -11,10 +14,40 @@ const CollectionsGrid = ({ onCollectionClick }) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCollection, setEditingCollection] = useState(null);
   const [showOptionsId, setShowOptionsId] = useState(null);
-
+  const [audios, setAudios] = useState([]);
   const { data: collectionsResponse, isLoading, error } = useCollections();
   const deleteCollectionMutation = useDeleteCollection();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
+  const handleClick = () => {
+    const currentPath = location.pathname;
+    const newPath = currentPath.endsWith('/')
+      ? `${currentPath}audio`
+      : `${currentPath}/audio`;
+
+    // ✅ Truyền audios qua state
+    navigate(newPath, { state: { audios } });
+  };
+
+
+
+  useEffect(() => {
+    const fetchSavedAudios = async () => {
+      try {
+        const res = await getSavedAudios();
+        if (res.success)
+          setAudios(res.data);
+      } catch (error) {
+        console.error("Error fetching saved audios:", error);
+      }
+    };
+
+    fetchSavedAudios();
+  }, []);
+
+  const firstFour = audios.slice(0, 4);
   const collections = collectionsResponse?.data || [];
 
   const handleDeleteCollection = async (collectionId) => {
@@ -71,6 +104,51 @@ const CollectionsGrid = ({ onCollectionClick }) => {
             Bộ sưu tập mới
           </span>
         </button>
+
+        <div className="relative">
+          <button
+            onClick={handleClick}
+            className="relative aspect-square w-full overflow-hidden rounded-lg bg-gray-100 transition hover:opacity-90 dark:bg-gray-800"
+          >
+            {/* Lưới 4 ô nhỏ */}
+            <div className="grid grid-cols-2 grid-rows-2 h-full w-full">
+              {firstFour.length > 0 ? (
+                firstFour.map((audio, index) => (
+                  <div key={index} className="relative">
+                    {audio.cover || audio.fileUrl ? (
+                      <img
+                        src={audio.cover || audio.fileUrl}
+                        alt={audio.title}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600">
+                        <span className="text-lg font-bold text-white">
+                          {audio.title?.charAt(0).toUpperCase() || "A"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                // Không có audio nào → gradient mặc định
+                <div className="col-span-2 row-span-2 flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600">
+                  <span className="text-2xl font-bold text-white">A</span>
+                </div>
+              )}
+            </div>
+
+            {/* Nền mờ và chữ */}
+            <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/60 to-transparent">
+              <div className="w-full p-3 text-white">
+                <h3 className="text-base font-semibold">Âm thanh</h3>
+                <p className="text-xs opacity-90">
+                  {audios.length} bài
+                </p>
+              </div>
+            </div>
+          </button>
+        </div>
 
         {/* Collection Cards */}
         {collections.map((collection) => (
