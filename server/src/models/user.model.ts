@@ -110,8 +110,8 @@ const userSchema = new mongoose.Schema<UserDocument>(
     },
 
     // Social counts
-    followersCount: { type: Number, default: 0 },
-    followingCount: { type: Number, default: 0 },
+    followersCount: { type: Number, default: 0, min: 0 },
+    followingCount: { type: Number, default: 0, min: 0 },
     postsCount: { type: Number, default: 0 },
 
     // Settings

@@ -3,11 +3,13 @@ import NotificationModel from "@/models/notification.model";
 import PostModel from "@/models/post.model";
 import UserModel from "@/models/user.model";
 import ErrorFactory from "@/utils/ErrorFactory";
+import { UserBlockService } from "./userBlock.service";
+import mongoose from "mongoose";
 
 export interface UserProfile {
   _id: string;
   username: string;
-  fullName: string | undefined;
+  userId: string | undefined;
   email: string;
   avatarUrl?: string;
   bio?: string;
@@ -28,7 +30,7 @@ export interface SearchUsersParams {
 
 export interface UpdateProfileParams {
   username?: string;
-  fullName?: string;
+  userId?: string;
   bio?: string;
   avatarUrl?: string;
 }
@@ -57,8 +59,13 @@ export class UserService {
     const user = await UserModel.findOne({ username }).select("-password");
 
     if (!user) {
-      throw ErrorFactory.resourceNotFound("User", `User with username "${username}" not found`);
+      throw ErrorFactory.resourceNotFound(
+        "User",
+        `User with username "${username}" not found`
+      );
     }
+
+
 
     // Get user stats and relationships in parallel
     const [isFollowing, followsBack, followersCount, followingCount, postsCount] =
@@ -73,7 +80,7 @@ export class UserService {
     const userProfile = {
       _id: (user._id as any).toString(),
       username: user.username,
-      fullName: user.fullName,
+      userId: user.userId,
       email: user.email,
       avatarUrl: user.avatarUrl,
       bio: user.bio,
@@ -89,16 +96,23 @@ export class UserService {
     return userProfile as UserProfile;
   }
 
+
+
   /**
    * Get user profile by userId
    */
   static async getUserByUserId(userId: string, currentUserId: string): Promise<UserProfile> {
-    const user = await UserModel.findOne({userId}).select("-password");
+    const user = await UserModel.findOne({ userId }).select("-password");
 
     if (!user) {
       throw ErrorFactory.resourceNotFound("User", `User with id "${userId}" not found`);
     }
 
+    // ✅ Kiểm tra block 2 chiều
+    const excludedUserIds = await UserBlockService.getExcludedUserIds(currentUserId);
+    if (excludedUserIds.includes((user._id as any).toString())) {
+      throw ErrorFactory.forbiddenAction("You cannot view this user profile");
+    }
     // Get user stats and relationships in parallel
     const [isFollowing, followsBack, followersCount, followingCount, postsCount] =
       await Promise.all([
@@ -112,7 +126,7 @@ export class UserService {
     const userProfile = {
       _id: (user._id as any).toString(),
       username: user.username,
-      fullName: user.fullName,
+      userId: user.userId,
       email: user.email,
       avatarUrl: user.avatarUrl,
       bio: user.bio,
@@ -155,16 +169,15 @@ export class UserService {
 
     // Create follow relationship and notification in parallel
     await Promise.all([
-      FollowModel.create({
-        follower: currentUserId,
-        following: userToFollowId,
-      }),
+      FollowModel.create({ follower: currentUserId, following: userToFollowId }),
       NotificationModel.create({
         recipient: userToFollowId,
         sender: currentUserId,
         type: "follow",
         message: "started following you",
       }),
+      UserModel.findByIdAndUpdate(userToFollowId, { $inc: { followersCount: 1 } }),
+      UserModel.findByIdAndUpdate(currentUserId, { $inc: { followingCount: 1 } }),
     ]);
 
     return { message: "User followed successfully" };
@@ -185,15 +198,20 @@ export class UserService {
 
     // Remove follow relationship and related notification
     await Promise.all([
-      FollowModel.deleteOne({
-        follower: currentUserId,
-        following: userToUnfollowId,
-      }),
+      FollowModel.deleteOne({ follower: currentUserId, following: userToUnfollowId }),
       NotificationModel.findOneAndDelete({
         recipient: userToUnfollowId,
         sender: currentUserId,
         type: "follow",
       }),
+      UserModel.updateOne(
+        { _id: userToUnfollowId, followersCount: { $gt: 0 } },
+        { $inc: { followersCount: -1 } }
+      ),
+      UserModel.updateOne(
+        { _id: currentUserId, followingCount: { $gt: 0 } },
+        { $inc: { followingCount: -1 } }
+      ),
     ]);
 
     return { message: "User unfollowed successfully" };
@@ -202,8 +220,8 @@ export class UserService {
   /**
    * Get user's followers
    */
-  static async getUserFollowers(username: string, page: number = 1, limit: number = 20) {
-    const user = await UserModel.findOne({ username });
+  static async getUserFollowers(userId: string, page: number = 1, limit: number = 20) {
+    const user = await UserModel.findOne({ userId });
     if (!user) {
       throw ErrorFactory.resourceNotFound("User");
     }
@@ -212,7 +230,7 @@ export class UserService {
 
     const [followers, total] = await Promise.all([
       FollowModel.find({ following: user._id })
-        .populate("follower", "username fullName avatarUrl isVerified")
+        .populate("follower", "userId username avatarUrl isVerified")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
@@ -237,8 +255,8 @@ export class UserService {
   /**
    * Get user's following
    */
-  static async getUserFollowing(username: string, page: number = 1, limit: number = 20) {
-    const user = await UserModel.findOne({ username });
+  static async getUserFollowing(userId: string, page: number = 1, limit: number = 20) {
+    const user = await UserModel.findOne({ userId });
     if (!user) {
       throw ErrorFactory.resourceNotFound("User");
     }
@@ -247,7 +265,7 @@ export class UserService {
 
     const [following, total] = await Promise.all([
       FollowModel.find({ follower: user._id })
-        .populate("following", "username fullName avatarUrl isVerified")
+        .populate("following", "username userId avatarUrl isVerified")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
@@ -301,21 +319,27 @@ export class UserService {
   /**
    * Search users
    */
-  static async searchUsers({ query, page = 1, limit = 20 }: SearchUsersParams) {
+  static async searchUsers({ query, page = 1, limit = 20, userId }: SearchUsersParams & { userId?: string }) {
     if (!query?.trim()) {
       throw ErrorFactory.requiredField("Search query");
     }
 
     const skip = (page - 1) * limit;
     const searchRegex = new RegExp(query.trim(), "i");
+    const excludedUserIds = await UserBlockService.getExcludedUserIds((userId as any).toString());
 
-    const searchFilter = {
-      $or: [{ username: searchRegex }, { fullName: searchRegex }],
+    const searchFilter: any = {
+      $or: [{ username: searchRegex }, { userId: searchRegex }],
     };
+
+    if (excludedUserIds.length > 0) {
+      searchFilter._id = { $nin: excludedUserIds.map(id => new mongoose.Types.ObjectId(id)) };
+    }
+
 
     const [users, total] = await Promise.all([
       UserModel.find(searchFilter)
-        .select("username fullName avatarUrl isVerified followersCount userId")
+        .select("username userId avatarUrl isVerified followersCount userId")
         .sort({ followersCount: -1, username: 1 })
         .skip(skip)
         .limit(limit),
@@ -338,8 +362,8 @@ export class UserService {
   /**
    * Get user's posts
    */
-  static async getUserPosts(username: string, page: number = 1, limit: number = 12) {
-    const user = await UserModel.findOne({ username });
+  static async getUserPosts(userId: string, page: number = 1, limit: number = 12) {
+    const user = await UserModel.findOne({ userId });
     if (!user) {
       throw ErrorFactory.resourceNotFound("User");
     }
@@ -351,7 +375,7 @@ export class UserService {
         user: user._id,
         isHidden: false,
       })
-        .select("_id mediaUrls mediaType likeCount commentCount createdAt")
+        .select("_id caption mediaUrls mediaType likeCount commentCount createdAt location")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
@@ -382,7 +406,6 @@ export class UserService {
       // Get users that the current user is not following
       const followingIds = await FollowModel.find({
         follower: currentUserId,
-        isActive: true,
       }).select("following");
 
       const followingUserIds = followingIds.map(follow => follow.following.toString());
@@ -392,14 +415,14 @@ export class UserService {
       const suggestedUsers = await UserModel.find({
         _id: { $nin: followingUserIds },
       })
-        .select("_id username fullName avatarUrl bio isVerified")
+        .select("_id username userId avatarUrl bio isVerified")
         .limit(limit)
         .sort({ createdAt: -1 }); // Sort by newest users first
 
       return suggestedUsers.map(user => ({
         _id: user._id,
         username: user.username,
-        fullName: user.fullName,
+        userId: user.userId,
         avatar: user.avatarUrl,
         bio: user.bio,
         isVerified: user.isVerified,

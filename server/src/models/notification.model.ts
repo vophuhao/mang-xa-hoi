@@ -3,7 +3,15 @@ import mongoose from "mongoose";
 export interface NotificationDocument extends mongoose.Document {
   recipient: mongoose.Types.ObjectId;
   sender: mongoose.Types.ObjectId;
-  type: "like" | "comment" | "follow" | "mention" | "story_view" | "direct_message" | "post_share";
+  type:
+    | "like"
+    | "comment"
+    | "reply"
+    | "follow"
+    | "mention"
+    | "story_view"
+    | "direct_message"
+    | "post_share";
   message: string;
 
   // Reference to related content
@@ -39,7 +47,16 @@ const notificationSchema = new mongoose.Schema<NotificationDocument>(
     },
     type: {
       type: String,
-      enum: ["like", "comment", "follow", "mention", "story_view", "direct_message", "post_share"],
+      enum: [
+        "like",
+        "comment",
+        "reply",
+        "follow",
+        "mention",
+        "story_view",
+        "direct_message",
+        "post_share",
+      ],
       required: true,
       index: true,
     },

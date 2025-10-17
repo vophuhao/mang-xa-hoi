@@ -510,17 +510,17 @@ export default function MessagePanel() {
                   {/* Avatar + badge */}
                   <img
                     src={conversation.partner?.avatarUrl ||
-                      `https://ui-avatars.com/api/?name=${encodeURIComponent(conversation.partner?.fullName || conversation.partner?.username || 'User')}&background=random`}
-                    alt={conversation.partner?.fullName || conversation.partner?.username || 'User'}
+                      `https://ui-avatars.com/api/?name=${encodeURIComponent(conversation.partner?.userId || conversation.partner?.username || 'User')}&background=random`}
+                    alt={conversation.partner?.userId || conversation.partner?.username || 'User'}
                     className="w-10 h-10 rounded-full object-cover border mr-3"
                     onError={(e) => {
-                      e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(conversation.partner?.fullName || conversation.partner?.username || 'User')}&background=random`;
+                      e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(conversation.partner?.userId || conversation.partner?.username || 'User')}&background=random`;
                     }}
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <span className="font-medium text-gray-900 truncate">
-                        {conversation.partner?.fullName || conversation.partner?.username || 'Unknown User'}
+                        {conversation.partner?.userId || conversation.partner?.username || 'Unknown User'}
                       </span>
                       {conversation.lastMessage && (
                         <span className="text-xs text-gray-400 ml-2 whitespace-nowrap">
@@ -546,13 +546,13 @@ export default function MessagePanel() {
             {/* Chat Header */}
             <div className="p-4 border-b border-gray-300  flex items-center space-x-3">
               <img
-                src={selectedChat.partner?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedChat.partner?.fullName || selectedChat.partner?.username || 'User')}&background=random`}
-                alt={selectedChat.partner?.fullName || selectedChat.partner?.username || 'User'}
+                src={selectedChat.partner?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedChat.partner?.userId || selectedChat.partner?.username || 'User')}&background=random`}
+                alt={selectedChat.partner?.userId || selectedChat.partner?.username || 'User'}
                 className="w-10 h-10 rounded-full object-cover"
               />
               <div>
                 <h3 className="font-bold text-gray-900">
-                  {selectedChat.partner?.fullName || selectedChat.partner?.username || 'Unknown User'}
+                  {selectedChat.partner?.userId || selectedChat.partner?.username || 'Unknown User'}
                   {selectedChat.partner?.isVerified && (
                     <span className="ml-1 text-blue-500">✓</span>
                   )}
@@ -571,7 +571,7 @@ export default function MessagePanel() {
                   <div className="flex flex-col items-center p-6   w-72">
                     {/* Avatar */}
                     <img
-                      src={selectedChat.partner?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedChat.partner?.fullName || selectedChat.partner?.username || 'User')}&background=random`}
+                      src={selectedChat.partner?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedChat.partner?.userId || selectedChat.partner?.username || 'User')}&background=random`}
                       alt="avatar"
                       className="w-24 h-24 rounded-full object-cover"
                     />
@@ -678,7 +678,7 @@ export default function MessagePanel() {
                       {/* ✅ Show avatar for user's messages */}
                       {isOwn && (
                         <img
-                          src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || user?.username || 'You')}&background=random`}
+                          src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.userId || user?.username || 'You')}&background=random`}
                           alt="You"
                           className="w-8 h-8 rounded-full object-cover ml-2 mt-1"
                         />

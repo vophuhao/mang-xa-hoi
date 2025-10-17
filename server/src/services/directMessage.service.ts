@@ -122,8 +122,8 @@ export class DirectMessageService {
     });
 
     return message.populate([
-      { path: "sender", select: "username fullName avatarUrl isVerified" },
-      { path: "recipient", select: "username fullName avatarUrl isVerified" },
+      { path: "sender", select: "username userId avatarUrl isVerified" },
+      { path: "recipient", select: "username userId avatarUrl isVerified" },
       { path: "replyTo" },
       { path: "sharedPost", populate: { path: "user", select: "username avatarUrl" } },
       { path: "sharedStory", populate: { path: "user", select: "username avatarUrl" } }
@@ -158,8 +158,8 @@ export class DirectMessageService {
         ]
       })
       .populate([
-        { path: "sender", select: "username fullName avatarUrl isVerified" },
-        { path: "recipient", select: "username fullName avatarUrl isVerified" },
+        { path: "sender", select: "username userId avatarUrl isVerified" },
+        { path: "recipient", select: "username userId avatarUrl isVerified" },
         { path: "replyTo" },
         { path: "sharedPost", populate: { path: "user", select: "username avatarUrl" } },
         { path: "sharedStory", populate: { path: "user", select: "username avatarUrl" } }
@@ -381,7 +381,7 @@ export class DirectMessageService {
           partner: {
             _id: 1,
             username: 1,
-            fullName: 1,
+            userId: 1,
             avatarUrl: 1,
             isVerified: 1
           },
@@ -466,8 +466,8 @@ export class DirectMessageService {
   static async getMessageById(messageId: string, userId: string) {
     const message = await DirectMessageModel.findById(messageId)
       .populate([
-        { path: "sender", select: "username fullName avatarUrl isVerified" },
-        { path: "recipient", select: "username fullName avatarUrl isVerified" },
+        { path: "sender", select: "username userId avatarUrl isVerified" },
+        { path: "recipient", select: "username userId avatarUrl isVerified" },
         { path: "replyTo" },
         { path: "sharedPost", populate: { path: "user", select: "username avatarUrl" } },
         { path: "sharedStory", populate: { path: "user", select: "username avatarUrl" } }

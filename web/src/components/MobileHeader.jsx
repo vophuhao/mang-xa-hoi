@@ -3,7 +3,12 @@ import { Bell, Search } from "lucide-react";
 const MobileHeader = ({ activeMenu, onMenuClick }) => (
   <div className="flex items-center justify-between bg-white px-4 py-3 text-gray-900 md:hidden dark:bg-black dark:text-white">
     <div className="flex items-center space-x-3">
-      <span className="font-pacifico pb-2 text-3xl font-normal">Pixyy</span>
+      <button
+        onClick={() => onMenuClick("home")}
+        className="transition-opacity hover:opacity-80"
+      >
+        <span className="font-pacifico pb-2 text-3xl font-normal">Pixyy</span>
+      </button>
     </div>
 
     <div className="flex items-center space-x-4">

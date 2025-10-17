@@ -80,7 +80,7 @@ export default function SearchPanel() {
     // Lưu lại vào localStorage
     localStorage.setItem("recentUsers", JSON.stringify(limited));
     // Chuyển hướng sang profile
-    navigate(`/home/users/userid/${user.userId}`);
+    navigate(`/${user.userId}`);
   };
 
   const handleHashtagClick = (hashtag) => {
@@ -95,7 +95,7 @@ export default function SearchPanel() {
     // Lưu lại vào localStorage
     localStorage.setItem("recentHashtags", JSON.stringify(limited));
     // Chuyển hướng sang trang hashtag
-    navigate(`/home/hashtags/${hashtag.name}`);
+    navigate(`/hashtags/${hashtag.name}`);
   };
 
   return (
@@ -158,7 +158,7 @@ export default function SearchPanel() {
                 <img src={u.avatarUrl} alt={u.username} className="search-user-avatar" />
                 <div className="search-user-info">
                   <div className="search-user-username">{u.username}</div>
-                  <div className="search-user-meta">{u.fullName || u.userId}</div>
+                  <div className="search-user-meta">{ u.userId}</div>
                 </div>
               </div>
             ))}
@@ -177,7 +177,7 @@ export default function SearchPanel() {
               }}
               className="search-recent-clear"
             >
-              Clear all
+              <p className="text-black dark:text-white">Clear All</p>
             </button>
           </div>
           {recentItems.map(item => (
@@ -185,13 +185,13 @@ export default function SearchPanel() {
               <div
                 key={item.userId}
                 className="search-user-row search-recent-row"
-                onClick={() => navigate(`/home/users/userid/${item.userId}`)}
+                onClick={() => navigate(`/${item.userId}`)}
                 style={{ cursor: "pointer" }}
               >
                 <img src={item.avatarUrl} alt={item.username} className="search-user-avatar" />
                 <div className="search-user-info">
                   <div className="search-user-username">{item.username}</div>
-                  <div className="search-user-meta">{item.fullName || item.userId}</div>
+                  <div className="search-user-meta">{ item.userId}</div>
                 </div>
                 <button
                   onClick={e => {

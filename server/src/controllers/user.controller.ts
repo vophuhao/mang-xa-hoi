@@ -6,15 +6,16 @@ import catchErrors from "@/utils/catchErrors";
 import { ResponseUtil } from "@/utils/response";
 import {
   followUserSchema,
+  getUserByUserIdSchema,
   getUserByUsernameSchema,
   searchUsersSchema,
   updateProfileSchema,
-  getUserByUserIdSchema,
 } from "@/validators/user.validator";
+import { get } from "node:http";
 
 /**
  * Get current user profile
- * @route GET /user/me
+ * @route GET /users/me
  */
 export const getUserHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
   const user = await UserService.getCurrentUser((req.userId as any).toString());
@@ -23,20 +24,20 @@ export const getUserHandler = catchErrors(async (req: AuthenticatedRequest, res:
 
 /**
  * Get suggested users
- * @route GET /user/suggestions
+ * @route GET /users/suggestions
  */
 export const getSuggestedUsersHandler = catchErrors(
   async (req: AuthenticatedRequest, res: Response) => {
-    console.log("Getting suggested users for user:", req.userId);
+    console.log("GET /users/suggestions", "Getting suggested users for user:", req.userId);
     const suggestions = await UserService.getSuggestedUsers((req.userId as any).toString());
-    console.log("Found suggestions:", suggestions.length);
+    console.log("GET /users/suggestions", "Found suggestions:", suggestions.length);
     return ResponseUtil.success(res, suggestions);
   }
 );
 
 /**
  * Get user profile by username
- * @route GET /user/:username
+ * @route GET /users/:username
  */
 export const getUserByUsernameHandler = catchErrors(
   async (req: AuthenticatedRequest, res: Response) => {
@@ -53,64 +54,61 @@ export const getUserByUsernameHandler = catchErrors(
  * Get user profile by userId
  * @route GET /user/id/:userId
  */
-export const getUserByIdHandler = catchErrors(
-  async (req: AuthenticatedRequest, res: Response) => {
-    const { userId } = getUserByUserIdSchema.parse(req.params);
-    const userProfile = await UserService.getUserByUserId(
-      userId,
-      (req.userId as any).toString()
-    );
-    return ResponseUtil.success(res, userProfile);
-  }
-);
+export const getUserByIdHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const { userId } = getUserByUserIdSchema.parse(req.params);
+  const userProfile = await UserService.getUserByUserId(userId, (req.userId as any).toString());
+  return ResponseUtil.success(res, userProfile);
+});
 
 /**
  * Follow a user
- * @route POST /user/:userId/follow
+ * @route POST /users/:userId/follow
  */
 export const followUserHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
   const { userId: userToFollowId } = followUserSchema.parse(req.params);
   const result = await UserService.followUser(userToFollowId, (req.userId as any).toString());
+  console.log("POST /users/:userId/follow", req.userId, "follow", userToFollowId);
   return ResponseUtil.success(res, result);
 });
 
 /**
  * Unfollow a user
- * @route DELETE /user/:userId/follow
+ * @route DELETE /users/:userId/follow
  */
 export const unfollowUserHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
   const { userId: userToUnfollowId } = followUserSchema.parse(req.params);
   const result = await UserService.unfollowUser(userToUnfollowId, (req.userId as any).toString());
+  console.log("DELETE /users/:userId/follow", req.userId, "unfollow", userToUnfollowId);
   return ResponseUtil.success(res, result);
 });
 
 /**
  * Get user's followers
- * @route GET /user/:username/followers
+ * @route GET /users/:username/followers
  */
 export const getFollowersHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
-  const { username } = getUserByUsernameSchema.parse(req.params);
+  const { userId } = getUserByUserIdSchema.parse(req.params);
   const { page = 1, limit = 20 } = req.query as any;
 
-  const result = await UserService.getUserFollowers(username, Number(page), Number(limit));
+  const result = await UserService.getUserFollowers(userId, Number(page), Number(limit));
   return ResponseUtil.paginated(res, result.data, result.pagination);
 });
 
 /**
  * Get user's following
- * @route GET /user/:username/following
+ * @route GET /users/:username/following
  */
 export const getFollowingHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
-  const { username } = getUserByUsernameSchema.parse(req.params);
+  const { userId } = getUserByUserIdSchema.parse(req.params);
   const { page = 1, limit = 20 } = req.query as any;
 
-  const result = await UserService.getUserFollowing(username, Number(page), Number(limit));
+  const result = await UserService.getUserFollowing(userId, Number(page), Number(limit));
   return ResponseUtil.paginated(res, result.data, result.pagination);
 });
 
 /**
  * Update user profile
- * @route PATCH /user/me
+ * @route PATCH /users/me
  */
 export const updateProfileHandler = catchErrors(
   async (req: AuthenticatedRequest, res: Response) => {
@@ -125,7 +123,7 @@ export const updateProfileHandler = catchErrors(
 
 /**
  * Search users
- * @route GET /user/search
+ * @route GET /users/search
  */
 export const searchUsersHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
   const { q: query, page = 1, limit = 20 } = searchUsersSchema.parse(req.query);
@@ -134,6 +132,7 @@ export const searchUsersHandler = catchErrors(async (req: AuthenticatedRequest, 
     query,
     page: Number(page),
     limit: Number(limit),
+    userId: (req.userId as any).toString()
   });
 
   return ResponseUtil.paginated(res, result.data, result.pagination);
@@ -141,12 +140,12 @@ export const searchUsersHandler = catchErrors(async (req: AuthenticatedRequest, 
 
 /**
  * Get user's posts
- * @route GET /user/:username/posts
+ * @route GET /users/:username/posts
  */
 export const getUserPostsHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
-  const { username } = getUserByUsernameSchema.parse(req.params);
+  const { userId } = getUserByUserIdSchema.parse(req.params);
   const { page = 1, limit = 12 } = req.query as any;
 
-  const result = await UserService.getUserPosts(username, Number(page), Number(limit));
+  const result = await UserService.getUserPosts(userId, Number(page), Number(limit));
   return ResponseUtil.paginated(res, result.data, result.pagination);
 });

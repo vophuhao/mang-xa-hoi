@@ -72,7 +72,7 @@ export interface UserProfile {
   id: string;
   email: string;
   username: string;
-  fullName?: string;
+  userId?: string;
   bio?: string;
   avatarUrl?: string;
   verified: boolean;
@@ -85,7 +85,7 @@ export interface UserProfile {
 
 export interface UpdateUserData {
   username?: string;
-  fullName?: string;
+  userId?: string;
   bio?: string;
   avatarUrl?: string;
 }

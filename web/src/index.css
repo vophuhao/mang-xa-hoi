@@ -222,37 +222,12 @@ input:-webkit-autofill {
 }
 
 /* Scrollbar hide utility */
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+@utility scrollbar-hide {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
 }
 .scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-
-
-/* Ẩn scrollbar cross-browser */
-.scrollbar-hide::-webkit-scrollbar {
-  display: none; /* Chrome, Safari */
-}
-.scrollbar-hide {
-  -ms-overflow-style: none; /* IE, Edge */
-  scrollbar-width: none; /* Firefox */
-}
-
-/* Giữ chỗ cho scrollbar để không bị lệch giữa Chrome và Edge */
-.scrollbar-stable {
-  scrollbar-gutter: stable both-edges;
-}
-@keyframes marquee {
-  0% { transform: translateX(100%); }
-  100% { transform: translateX(-100%); }
-}
-
-.animate-marquee {
-  display: inline-block;
-  min-width: 100%;
-  animation: marquee 10s linear infinite;
+  display: none !important;
 }
 
 /* SearchPanel styles - Instagram style, hỗ trợ sáng/tối */
@@ -530,4 +505,42 @@ input:-webkit-autofill {
 }
 .hashtag-post-item:hover .hashtag-post-overlay {
   opacity: 1;
+}
+
+/* Ẩn scrollbar cross-browser */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE, Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+/* Giữ chỗ cho scrollbar để không bị lệch giữa Chrome và Edge */
+.scrollbar-stable {
+  scrollbar-gutter: stable both-edges;
+}
+@keyframes marquee {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+.animate-marquee {
+  display: inline-block;
+  min-width: 100%;
+  animation: marquee 10s linear infinite;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-in-out;
 }

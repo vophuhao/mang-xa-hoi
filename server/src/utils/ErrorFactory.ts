@@ -79,6 +79,10 @@ export class ErrorFactory {
     const message = `External ${service} service error`;
     return AppError.internal(message, AppErrorCode.EXTERNAL_SERVICE_ERROR, details);
   }
+  static conflict(message = "Conflict occurred") {
+    return AppError.conflict(message, AppErrorCode.CONFLICT);
+  }
+
 }
 
 export default ErrorFactory;

@@ -44,19 +44,28 @@ const likeSchema = new mongoose.Schema<LikeDocument>(
 );
 
 // Compound indexes to prevent duplicate likes
+// Use partialFilterExpression to only apply uniqueness when the field exists
 likeSchema.index(
   { user: 1, post: 1 },
-  { unique: true, partialFilterExpression: { post: { $exists: true } } }
+  {
+    unique: true,
+    partialFilterExpression: { post: { $exists: true } },
+  }
 );
 likeSchema.index(
   { user: 1, comment: 1 },
-  { unique: true, partialFilterExpression: { comment: { $exists: true } } }
+  {
+    unique: true,
+    partialFilterExpression: { comment: { $exists: true } },
+  }
 );
 likeSchema.index(
   { user: 1, story: 1 },
-  { unique: true, partialFilterExpression: { story: { $exists: true } } }
+  {
+    unique: true,
+    partialFilterExpression: { story: { $exists: true } },
+  }
 );
-
 
 // General indexes for queries
 likeSchema.index({ post: 1, createdAt: -1 });

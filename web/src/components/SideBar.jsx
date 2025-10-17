@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   Bell,
@@ -12,7 +12,7 @@ import {
   MessageCircle,
   Moon,
   PlusSquare,
-  Search, // icon ba gạch (lucide-react)
+  Search,
   Settings,
   Sun,
   SwitchCamera,
@@ -24,6 +24,7 @@ import { toast } from "react-toastify";
 
 import logo_pixyy from "@/assets/images/logo_pixyy.png";
 import useTheme from "@/hooks/useTheme";
+import { USER_QUERY_KEYS } from "@/hooks/useUser";
 import { logout } from "@/lib/api";
 import CreatePostModal from "@/modals/CreatePostModal";
 
@@ -33,6 +34,8 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const { theme, changeTheme } = useTheme();
+  const queryClient = useQueryClient();
+  const currentUser = queryClient.getQueryData(USER_QUERY_KEYS.currentUser).data;
 
   const navItems = [
     { id: "home", label: "Trang chủ", icon: <Home size={24} /> },
@@ -48,6 +51,7 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
   const { mutate: handleLogout } = useMutation({
     mutationFn: logout,
     onSuccess: () => {
+      queryClient.clear();
       navigate("/login");
     },
     onError: () => {
@@ -56,8 +60,7 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
   });
 
   const handleThemeToggle = () => {
-    const nextTheme =
-      theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
+    const nextTheme = theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
     changeTheme(nextTheme);
   };
 
@@ -69,7 +72,6 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
     if (item.closeOnClick) {
       setShowMore(false);
     }
-    
   };
 
   const getThemeIcon = () => {
@@ -97,7 +99,7 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
       id: "saved",
       label: "Đã lưu",
       icon: <Bookmark size={20} />,
-      action: () => console.log("Saved clicked"),
+      action: () => navigate("/saved"),
       closeOnClick: true,
     },
     {
@@ -138,11 +140,10 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
       setShowMore(!showMore);
       return;
     }
-     if (item.id === "post") {
+    if (item.id === "post") {
       setShowPostModal(true);
       return;
     }
-
 
     // Remove the early return for active menu items to allow toggling
     // if (activeMenu === item.id) return;
@@ -178,56 +179,71 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
 
   return (
     <div
-      className={`${isCollapsed ? "w-18" : "w-64"} relative flex h-full flex-col border-r border-gray-200 bg-white transition-all duration-300 ease-in-out dark:border-gray-800 dark:bg-black`}
+      className={`${isCollapsed ? "w-18" : "w-55"} relative flex h-full flex-col border-r border-gray-200 bg-white transition-all duration-300 ease-in-out dark:border-gray-800 dark:bg-black`}
     >
       {/* Logo */}
-      <div className="flex items-center px-6 py-8">
-        <span
-          className={`font-pacifico overflow-hidden pb-3 text-4xl font-normal tracking-tight whitespace-nowrap text-black transition-all duration-300 ease-in-out dark:text-white ${isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"} `}
-        >
-          Pixyy
-        </span>
+      <div
+        className={`relative flex items-center py-8 ${isCollapsed ? "justify-center px-3" : "px-6"}`}
+      >
+        <button onClick={() => onMenuClick("home")} className="transition-opacity hover:opacity-80">
+          <span
+            className={`font-pacifico overflow-hidden pb-3 text-4xl font-normal tracking-tight whitespace-nowrap text-black dark:text-white ${isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"} `}
+          >
+            Pixyy
+          </span>
+        </button>
         {isCollapsed && (
-          <img
-            src={logo_pixyy}
-            alt="Pixyy Logo"
-            className="absolute h-7 w-auto"
-          />
+          <button
+            onClick={() => onMenuClick("home")}
+            className="absolute inset-0 flex items-center justify-center transition-opacity hover:opacity-80"
+          >
+            <img src={logo_pixyy} alt="Pixyy Logo" className="h-7 w-auto" />
+          </button>
         )}
       </div>
 
       {/* Nav items */}
       <div className="flex flex-1 flex-col space-y-2 px-3">
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => handleClick(item)}
-            className={`group flex items-center rounded-lg px-3 py-3 transition-all duration-200 ease-in-out ${
-              activeMenu === item.id
-                ? "bg-gray-100 dark:bg-gray-800"
-                : "hover:bg-gray-50 dark:hover:bg-gray-800"
-            }`}
-          >
-            <span
-              className={`flex-shrink-0 transition-colors duration-200 ${
+        {navItems.map((item) => {
+          // Nếu là profile và có currentUser.avatarUrl thì dùng <img>, ngược lại dùng icon mặc định
+          const icon =
+            item.id === "profile" && currentUser?.avatarUrl ? (
+              <img
+                src={currentUser.avatarUrl}
+                alt={currentUser.username}
+                className="h-6 w-6 rounded-full object-cover"
+              />
+            ) : (
+              item.icon
+            );
+
+          return (
+            <button
+              key={item.id}
+              onClick={() => handleClick(item)}
+              className={`group flex items-center rounded-lg px-3 py-3 transition-all duration-200 ease-in-out ${
                 activeMenu === item.id
-                  ? "text-black dark:text-white"
-                  : "text-black dark:text-white"
+                  ? "bg-gray-100 dark:bg-gray-800"
+                  : "hover:bg-gray-50 dark:hover:bg-gray-800"
               }`}
             >
-              {item.icon}
-            </span>
-            <span
-              className={`ml-4 overflow-hidden text-base font-normal whitespace-nowrap transition-all duration-300 ease-in-out ${isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"} ${
-                activeMenu === item.id
-                  ? "font-semibold text-black dark:text-white"
-                  : "text-black dark:text-white"
-              }`}
-            >
-              {item.label}
-            </span>
-          </button>
-        ))}
+              <span className="flex-shrink-0 text-black transition-colors duration-200 dark:text-white">
+                {icon}
+              </span>
+              <span
+                className={`ml-4 overflow-hidden text-base font-normal whitespace-nowrap transition-all duration-300 ease-in-out ${
+                  isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+                } ${
+                  activeMenu === item.id
+                    ? "font-semibold text-black dark:text-white"
+                    : "text-black dark:text-white"
+                }`}
+              >
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Nút Xem thêm (dưới cùng) */}
@@ -243,9 +259,7 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
           <Menu
             size={24}
             className={`flex-shrink-0 transition-colors duration-200 ${
-              activeMenu === "more"
-                ? "text-black dark:text-white"
-                : "text-black dark:text-white"
+              activeMenu === "more" ? "text-black dark:text-white" : "text-black dark:text-white"
             }`}
           />
           <span
@@ -283,11 +297,7 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
         </div>
       </div>
 
-      <CreatePostModal
-        isOpen={showPostModal}
-        onClose={() => setShowPostModal(false)}/>
-
+      <CreatePostModal isOpen={showPostModal} onClose={() => setShowPostModal(false)} />
     </div>
-    
   );
 }

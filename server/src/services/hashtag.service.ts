@@ -152,7 +152,7 @@ class HashtagService {
         tags: { $in: [hashtag._id] },
         isHidden: false,
       })
-        .populate("user", "username fullName avatarUrl isVerified")
+        .populate("user", "username userId avatarUrl isVerified")
         .populate("tags", "name")
         .sort({ createdAt: -1 })
         .skip(skip)

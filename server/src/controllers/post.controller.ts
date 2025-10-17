@@ -8,6 +8,7 @@ import {
   createPostSchema,
   getFeedPostsSchema,
   getPostByIdSchema,
+  getUserByUserIdSchema,
   likePostSchema,
 } from "@/validators";
 
@@ -72,7 +73,6 @@ export const getPostByIdHandler = catchErrors(async (req: AuthenticatedRequest, 
  */
 export const likePostHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
   const { postId } = likePostSchema.parse(req.params);
-  console.log
   const result = await PostService.togglePostLike(postId, (req.userId as any).toString());
   return ResponseUtil.success(res, result);
 });
@@ -118,17 +118,36 @@ export const getTrendingPostsHandler = catchErrors(
   async (req: AuthenticatedRequest, res: Response) => {
     const { page = 1, limit = 10 } = req.query as any;
 
-    const posts = await PostService.getTrendingPosts(Number(page), Number(limit));
+    const posts = await PostService.getTrendingPosts(
+      Number(page),
+      Number(limit),
+      req.userId?.toString()
+    );
 
     return ResponseUtil.success(res, posts);
   }
 );
 
 export const getReelsFeedHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const userId  = req.userId;
+ 
   const page = parseInt((req.query.page as string) || "1", 10);
   const limit = parseInt((req.query.limit as string) || "10", 10);
 
-  const reels = await PostService.getReelsFeed(page, limit);
+  const reels = await PostService.getReelsFeed(page, limit, (userId as any).toString());
 
   return ResponseUtil.success(res, reels);
+});
+
+// controllers/post.controller.ts
+export const increasePostViewHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+
+  if (!id) {
+    throw new Error("Post ID is missing");
+  }
+
+  const views = await PostService.incrementViewCount(id);
+
+  return ResponseUtil.success(res, { viewCount: views }, "View count increased");
 });
