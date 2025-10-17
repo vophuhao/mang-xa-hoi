@@ -16,10 +16,10 @@ import store from "@/store";
 
 import Explore from "./components/Explore";
 import Feed from "./components/Feed";
-import Reel from "./components/Reel";
-
 import HashtagPanel from "./components/HashtagPanel";
-import ProfilePanel from "./components/ProfilePanel";import Layout from "./pages/Layout";
+import ProfilePanel from "./components/ProfilePanel";
+import Reel from "./components/Reel";
+import Layout from "./pages/Layout";
 import Messages from "./pages/Messages";
 
 function App() {
