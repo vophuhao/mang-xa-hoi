@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useRef, useState } from "react";
 
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
@@ -14,18 +14,30 @@ import { registerUser, resetRegistered } from "../store/slices/authSlice";
 const Register = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { isLoading, error, isRegistered } = useSelector((state) => state.auth);
+  const { isLoading, error: authError, isRegistered } = useSelector(
+    (state) => state.auth
+  );
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const passwordRef = useRef(null);
 
   const handleConfirm = () => {
     dispatch(resetRegistered());
     navigate("/login", { replace: true });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (password.trim().length === 0) {
+      setError("Mật khẩu không hợp lệ, vui lòng nhập lại");
+      setPassword("");
+      passwordRef.current.focus();
+      return;
+    }
+    setError("");
     dispatch(registerUser({ email, username, password, confirmPassword }));
   };
 
@@ -63,9 +75,9 @@ const Register = () => {
             <Divider text="hoặc" />
 
             {/* Error Message */}
-            {error && <ErrorAlertWithAutoClose message={error} />}
+            {authError && <ErrorAlertWithAutoClose message={authError} />}
 
-            <div className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <FloatingInput
                 type="email"
                 id="email"
@@ -85,6 +97,7 @@ const Register = () => {
               />
 
               <FloatingInput
+                ref={passwordRef}
                 type="password"
                 id="password"
                 value={password}
@@ -104,6 +117,11 @@ const Register = () => {
                 required
                 showPasswordToggle
               />
+
+              {/* Error Message for Password */}
+              {error && (
+                <div className="text-red-500 text-sm mt-2">{error}</div>
+              )}
 
               {/* Register Button */}
               <button
@@ -139,7 +157,7 @@ const Register = () => {
                   </Link>
                 </span>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       </div>
