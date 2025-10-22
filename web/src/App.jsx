@@ -13,10 +13,6 @@ import ResetPassword from "@/pages/ResetPassword";
 import VerifyEmail from "@/pages/VerifyEmail";
 
 import Audio from "./components/Audio";
-
-import Feed from "./components/Feed";
-import Feed from "./components/Feed";
-
 import HashtagPanel from "./components/HashtagPanel";
 import ReelWeb from "./components/Reel";
 import CollectionAudio from "./pages/ColectionAudio";

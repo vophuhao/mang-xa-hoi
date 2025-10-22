@@ -15,6 +15,8 @@ import {
   uploadMedia
 } from "../lib/api";
 
+import SearchPanel from "./SearchPanel"; // thêm import
+
 export default function MessagePanel() {
   const { user } = useAuth();
   const userId = user?.data?._id;
@@ -432,6 +434,41 @@ export default function MessagePanel() {
 
   const groupedMessages = groupMessagesByDate(messages);
 
+  // thêm handler để mở conversation khi chọn user từ search
+  const openConversationFromSearch = async (user) => {
+    try {
+      // Tìm conversation đã có
+      const found = conversations.find(conv =>
+        String(conv.partner._id) === String(user._id) ||
+        String(conv.partner.userId) === String(user.userId)
+      );
+
+      if (found) {
+        setSelectedChat(found);
+        setPage(1);
+        isInitialLoad.current = true;
+        await fetchMessages(found.partner._id, 1);
+        return;
+      }
+
+      // Nếu chưa có conversation, tạo tạm object partner và mở
+      const tempConv = {
+        _id: `temp-${user._id}`,
+        partner: user,
+        lastMessage: null,
+        unreadCount: 0
+      };
+      setConversations(prev => [tempConv, ...prev]);
+      setSelectedChat(tempConv);
+      setPage(1);
+      isInitialLoad.current = true;
+      await fetchMessages(user._id, 1);
+    } catch (err) {
+      // silent
+      console.error("Open convo from search failed", err);
+    }
+  };
+
   return (
     <div className="flex h-full">
       {/* Danh sách hội thoại */}
@@ -446,18 +483,20 @@ export default function MessagePanel() {
             <SquarePen className="w-6 h-6 text-gray-700" />
           </button>
         </div>
-        {/* Search */}
+
+        {/* Replace old search input with reusable SearchPanel */}
         <div className="px-4 mb-10 bg-white">
-          <input
-            type="text"
-            placeholder="Tìm kiếm"
-            className="w-full px-3 py-3 rounded-sm  bg-gray-100 focus:outline-none text-sm"
+          <SearchPanel
+            onUserSelect={openConversationFromSearch}
+            placeholder="Tìm người để nhắn tin..."
+            overlay={true} // <-- overlay dropdown (không đẩy conversations)
           />
         </div>
+
         {/* Avatar user + tên */}
         <div className="flex flex-col  relative px-4 py-4">
           {/* Bong bóng chat */}
-          <div className="z-50 absolute -top-6 bg-white text-gray-700 text-xs px-3 py-3 rounded-2xl shadow-md">
+          <div className="z-10 absolute -top-6 bg-white text-gray-700 text-xs px-3 py-3 rounded-2xl shadow-md">
             Ghi chú...
             {/* Đuôi nhọn của bubble */}
             <div className="absolute left-1/2 -bottom-1 w-2 h-2 bg-white rotate-45 transform -translate-x-1/2 shadow-md"></div>

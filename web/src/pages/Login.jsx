@@ -18,7 +18,7 @@ const Login = () => {
   const location = useLocation();
   const dispatch = useDispatch();
   const { isLoading, error } = useSelector((state) => state.auth);
-  const redirectUrl = location.state?.redirectUrl || "";
+  const redirectUrl = location.state?.redirectUrl || "/";
 
   const handleSubmit = async () => {
     try {
