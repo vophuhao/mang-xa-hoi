@@ -23,6 +23,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
 import logo_pixyy from "@/assets/images/logo_pixyy.png";
+import useNotifications from "@/hooks/useNotifications";
 import useTheme from "@/hooks/useTheme";
 import { USER_QUERY_KEYS } from "@/hooks/useUser";
 import { logout } from "@/lib/api";
@@ -36,6 +37,7 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
   const { theme, changeTheme } = useTheme();
   const queryClient = useQueryClient();
   const currentUser = queryClient.getQueryData(USER_QUERY_KEYS.currentUser).data;
+  const { unreadCount = 0 } = useNotifications();
 
   const navItems = [
     { id: "home", label: "Trang chủ", icon: <Home size={24} /> },
@@ -221,7 +223,7 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
             <button
               key={item.id}
               onClick={() => handleClick(item)}
-              className={`group flex items-center rounded-lg px-3 py-3 transition-all duration-200 ease-in-out ${
+              className={`group relative flex items-center rounded-lg px-3 py-3 transition-all duration-200 ease-in-out ${
                 activeMenu === item.id
                   ? "bg-gray-100 dark:bg-gray-800"
                   : "hover:bg-gray-50 dark:hover:bg-gray-800"
@@ -230,6 +232,14 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
               <span className="flex-shrink-0 text-black transition-colors duration-200 dark:text-white">
                 {icon}
               </span>
+
+              {/* Notification badge */}
+              {item.id === "notifications" && unreadCount > 0 && (
+                <span className="absolute top-2 left-7 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+
               <span
                 className={`ml-4 overflow-hidden text-base font-normal whitespace-nowrap transition-all duration-300 ease-in-out ${
                   isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"

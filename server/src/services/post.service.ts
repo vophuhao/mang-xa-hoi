@@ -6,11 +6,12 @@ import NotificationModel from "@/models/notification.model";
 import PostModel from "@/models/post.model";
 import SavedPostModel from "@/models/savedPost.model";
 import UserModel from "@/models/user.model";
+import { getNotificationHandler } from "@/socket";
 import ErrorFactory from "@/utils/ErrorFactory";
 import { getAudioByIdSchema } from "@/validators/audio.validator";
 import mongoose from "mongoose";
+import NotificationService from "./notification.service";
 import { UserBlockService } from "./userBlock.service";
-import { disable } from "colors";
 export type CreateNewPost = {
   user: mongoose.Types.ObjectId;
   caption?: string;
@@ -176,7 +177,7 @@ export class PostService {
     const userIds = [userId, ...followingIds];
 
     const [posts, total] = await Promise.all([
-      PostModel.find({      
+      PostModel.find({
         isHidden: false,
         user: { $nin: excludedUserIds.map(id => new mongoose.Types.ObjectId(id)) },
       })
@@ -252,14 +253,27 @@ export class PostService {
       likeCount = updatedPost!.likeCount;
       isLiked = true;
 
+      // Create notification and emit real-time event
       if (post.user && post.user.toString() !== userId) {
-        await NotificationModel.create({
-          recipient: post.user,
-          sender: userId,
-          type: "like",
-          post: postId,
-          message: "liked your post",
+        const notification = await NotificationService.createLikeNotification({
+          postId,
+          postOwnerId: post.user.toString(),
+          likerId: userId,
         });
+
+        // Emit Socket.IO event
+        if (notification) {
+          try {
+            const notificationHandler = getNotificationHandler();
+            notificationHandler.emitNotification(post.user.toString(), notification);
+
+            // Update unread count
+            const { unreadCount } = await NotificationService.getUnreadCount(post.user.toString());
+            notificationHandler.emitUnreadCountUpdate(post.user.toString(), unreadCount);
+          } catch (error) {
+            console.error("Failed to emit notification:", error);
+          }
+        }
       }
     }
 
@@ -370,7 +384,7 @@ export class PostService {
   static async getTrendingPosts(page: number = 1, limit: number = 10, userId?: string) {
     const skip = (page - 1) * limit;
 
-     const excludedUserIds = await UserBlockService.getExcludedUserIds((userId as any).toString());
+    const excludedUserIds = await UserBlockService.getExcludedUserIds((userId as any).toString());
     // First try to get posts from last 7 days with high engagement
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
@@ -429,16 +443,18 @@ export class PostService {
   /**
    * Get trending posts
    */
-  static async getReelsFeed(page: number, limit: number,userId: string) {
+  static async getReelsFeed(page: number, limit: number, userId: string) {
     const skip = (page - 1) * limit;
     const excludedUserIds = await UserBlockService.getExcludedUserIds((userId as any).toString());
 
     const reels = await PostModel.aggregate([
-      { $match:
-        { type: "reel",
+      {
+        $match: {
+          type: "reel",
           isHidden: false,
           user: { $nin: excludedUserIds.map(id => new mongoose.Types.ObjectId(id)) },
-        } },
+        },
+      },
       {
         $addFields: {
           score: {

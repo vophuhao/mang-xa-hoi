@@ -1,8 +1,7 @@
 import DirectMessageModel from "@/models/directMessage.model";
-import UserModel from "@/models/user.model";
 import PostModel from "@/models/post.model";
 import StoryModel from "@/models/story.model";
-import NotificationModel from "@/models/notification.model";
+import UserModel from "@/models/user.model";
 import ErrorFactory from "@/utils/ErrorFactory";
 import mongoose from "mongoose";
 
@@ -15,10 +14,12 @@ export type SendMessageData = {
   mediaType?: "image" | "video" | "audio" | undefined;
   sharedPost?: string | undefined;
   sharedStory?: string | undefined;
-  location?: {
-    name: string;
-    coordinates: [number, number];
-  } | undefined; 
+  location?:
+    | {
+        name: string;
+        coordinates: [number, number];
+      }
+    | undefined;
   replyTo?: string | undefined;
 };
 
@@ -46,7 +47,7 @@ export class DirectMessageService {
     // Validate users exist
     const [sender, recipient] = await Promise.all([
       UserModel.findById(data.senderId),
-      UserModel.findById(data.recipientId)
+      UserModel.findById(data.recipientId),
     ]);
 
     if (!sender) {
@@ -109,24 +110,24 @@ export class DirectMessageService {
       location: data.location,
       replyTo: data.replyTo,
       isDelivered: true,
-      deliveredAt: new Date()
+      deliveredAt: new Date(),
     });
 
     // Create notification for recipient
-    await NotificationModel.create({
-      recipient: data.recipientId,
-      sender: data.senderId,
-      type: "direct_message",
-      message: "sent you a message",
-      directMessage: message._id // Reference to message
-    });
+    // await NotificationModel.create({
+    //   recipient: data.recipientId,
+    //   sender: data.senderId,
+    //   type: "direct_message",
+    //   message: "đã gửi tin nhắn cho bạn",
+    //   directMessage: message._id, // Reference to message
+    // });
 
     return message.populate([
       { path: "sender", select: "username userId avatarUrl isVerified" },
       { path: "recipient", select: "username userId avatarUrl isVerified" },
       { path: "replyTo" },
       { path: "sharedPost", populate: { path: "user", select: "username avatarUrl" } },
-      { path: "sharedStory", populate: { path: "user", select: "username avatarUrl" } }
+      { path: "sharedStory", populate: { path: "user", select: "username avatarUrl" } },
     ]);
   }
 
@@ -139,7 +140,7 @@ export class DirectMessageService {
     // Validate users exist
     const [user, partner] = await Promise.all([
       UserModel.findById(userId),
-      UserModel.findById(partnerId)
+      UserModel.findById(partnerId),
     ]);
 
     if (!user) {
@@ -154,26 +155,26 @@ export class DirectMessageService {
       DirectMessageModel.find({
         $or: [
           { sender: userId, recipient: partnerId },
-          { sender: partnerId, recipient: userId }
-        ]
+          { sender: partnerId, recipient: userId },
+        ],
       })
-      .populate([
-        { path: "sender", select: "username userId avatarUrl isVerified" },
-        { path: "recipient", select: "username userId avatarUrl isVerified" },
-        { path: "replyTo" },
-        { path: "sharedPost", populate: { path: "user", select: "username avatarUrl" } },
-        { path: "sharedStory", populate: { path: "user", select: "username avatarUrl" } }
-      ])
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit),
-      
+        .populate([
+          { path: "sender", select: "username userId avatarUrl isVerified" },
+          { path: "recipient", select: "username userId avatarUrl isVerified" },
+          { path: "replyTo" },
+          { path: "sharedPost", populate: { path: "user", select: "username avatarUrl" } },
+          { path: "sharedStory", populate: { path: "user", select: "username avatarUrl" } },
+        ])
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+
       DirectMessageModel.countDocuments({
         $or: [
           { sender: userId, recipient: partnerId },
-          { sender: partnerId, recipient: userId }
-        ]
-      })
+          { sender: partnerId, recipient: userId },
+        ],
+      }),
     ]);
 
     return {
@@ -194,30 +195,32 @@ export class DirectMessageService {
    */
   static async markAsRead(messageId: string, userId: string) {
     const message = await DirectMessageModel.findById(messageId);
-    
+
     if (!message) {
       throw ErrorFactory.resourceNotFound("Message");
     }
 
     if (message.recipient.toString() !== userId) {
-      throw ErrorFactory.insufficientPermissions("You can only mark your received messages as read");
+      throw ErrorFactory.insufficientPermissions(
+        "You can only mark your received messages as read"
+      );
     }
 
     if (message.isRead) {
       return {
         message: "Message already marked as read",
-        data: message
+        data: message,
       };
     }
 
     message.isRead = true;
     message.readAt = new Date();
-    
+
     await message.save();
 
     return {
       message: "Message marked as read",
-      data: message
+      data: message,
     };
   }
 
@@ -235,17 +238,17 @@ export class DirectMessageService {
       {
         sender: partnerId,
         recipient: userId,
-        isRead: false
+        isRead: false,
       },
       {
         isRead: true,
-        readAt: new Date()
+        readAt: new Date(),
       }
     );
 
     return {
       message: "All messages marked as read",
-      modifiedCount: result.modifiedCount
+      modifiedCount: result.modifiedCount,
     };
   }
 
@@ -254,34 +257,35 @@ export class DirectMessageService {
    */
   static async reactToMessage({ messageId, userId, emoji }: ReactToMessageParams) {
     const message = await DirectMessageModel.findById(messageId);
-    
+
     if (!message) {
       throw ErrorFactory.resourceNotFound("Message");
     }
 
     // Check if user is participant in conversation
-    const isParticipant = message.sender.toString() === userId || message.recipient.toString() === userId;
+    const isParticipant =
+      message.sender.toString() === userId || message.recipient.toString() === userId;
     if (!isParticipant) {
-      throw ErrorFactory.insufficientPermissions("You can only react to messages in your conversations");
+      throw ErrorFactory.insufficientPermissions(
+        "You can only react to messages in your conversations"
+      );
     }
 
     // Remove existing reaction from this user
-    message.reactions = message.reactions.filter(
-      reaction => reaction.user.toString() !== userId
-    );
+    message.reactions = message.reactions.filter(reaction => reaction.user.toString() !== userId);
 
     // Add new reaction
     message.reactions.push({
       user: new mongoose.Types.ObjectId(userId),
       emoji,
-      createdAt: new Date()
+      createdAt: new Date(),
     });
 
     await message.save();
 
     return {
       message: "Reaction added",
-      data: message
+      data: message,
     };
   }
 
@@ -290,26 +294,27 @@ export class DirectMessageService {
    */
   static async removeReaction(messageId: string, userId: string) {
     const message = await DirectMessageModel.findById(messageId);
-    
+
     if (!message) {
       throw ErrorFactory.resourceNotFound("Message");
     }
 
     // Check if user is participant in conversation
-    const isParticipant = message.sender.toString() === userId || message.recipient.toString() === userId;
+    const isParticipant =
+      message.sender.toString() === userId || message.recipient.toString() === userId;
     if (!isParticipant) {
-      throw ErrorFactory.insufficientPermissions("You can only remove reactions from messages in your conversations");
+      throw ErrorFactory.insufficientPermissions(
+        "You can only remove reactions from messages in your conversations"
+      );
     }
 
     const initialLength = message.reactions.length;
-    message.reactions = message.reactions.filter(
-      reaction => reaction.user.toString() !== userId
-    );
+    message.reactions = message.reactions.filter(reaction => reaction.user.toString() !== userId);
 
     if (message.reactions.length === initialLength) {
       return {
         message: "No reaction found to remove",
-        data: message
+        data: message,
       };
     }
 
@@ -317,7 +322,7 @@ export class DirectMessageService {
 
     return {
       message: "Reaction removed",
-      data: message
+      data: message,
     };
   }
 
@@ -332,12 +337,12 @@ export class DirectMessageService {
         $match: {
           $or: [
             { sender: new mongoose.Types.ObjectId(userId) },
-            { recipient: new mongoose.Types.ObjectId(userId) }
-          ]
-        }
+            { recipient: new mongoose.Types.ObjectId(userId) },
+          ],
+        },
       },
       {
-        $sort: { createdAt: -1 }
+        $sort: { createdAt: -1 },
       },
       {
         $group: {
@@ -345,8 +350,8 @@ export class DirectMessageService {
             $cond: [
               { $eq: ["$sender", new mongoose.Types.ObjectId(userId)] },
               "$recipient",
-              "$sender"
-            ]
+              "$sender",
+            ],
           },
           lastMessage: { $first: "$$ROOT" },
           unreadCount: {
@@ -355,26 +360,26 @@ export class DirectMessageService {
                 {
                   $and: [
                     { $eq: ["$recipient", new mongoose.Types.ObjectId(userId)] },
-                    { $eq: ["$isRead", false] }
-                  ]
+                    { $eq: ["$isRead", false] },
+                  ],
                 },
                 1,
-                0
-              ]
-            }
-          }
-        }
+                0,
+              ],
+            },
+          },
+        },
       },
       {
         $lookup: {
           from: "users",
           localField: "_id",
           foreignField: "_id",
-          as: "partner"
-        }
+          as: "partner",
+        },
       },
       {
-        $unwind: "$partner"
+        $unwind: "$partner",
       },
       {
         $project: {
@@ -383,21 +388,21 @@ export class DirectMessageService {
             username: 1,
             userId: 1,
             avatarUrl: 1,
-            isVerified: 1
+            isVerified: 1,
           },
           lastMessage: 1,
-          unreadCount: 1
-        }
+          unreadCount: 1,
+        },
       },
       {
-        $sort: { "lastMessage.createdAt": -1 }
+        $sort: { "lastMessage.createdAt": -1 },
       },
       {
-        $skip: skip
+        $skip: skip,
       },
       {
-        $limit: limit
-      }
+        $limit: limit,
+      },
     ]);
 
     const total = await DirectMessageModel.aggregate([
@@ -405,9 +410,9 @@ export class DirectMessageService {
         $match: {
           $or: [
             { sender: new mongoose.Types.ObjectId(userId) },
-            { recipient: new mongoose.Types.ObjectId(userId) }
-          ]
-        }
+            { recipient: new mongoose.Types.ObjectId(userId) },
+          ],
+        },
       },
       {
         $group: {
@@ -415,14 +420,14 @@ export class DirectMessageService {
             $cond: [
               { $eq: ["$sender", new mongoose.Types.ObjectId(userId)] },
               "$recipient",
-              "$sender"
-            ]
-          }
-        }
+              "$sender",
+            ],
+          },
+        },
       },
       {
-        $count: "total"
-      }
+        $count: "total",
+      },
     ]);
 
     const totalCount = total[0]?.total || 0;
@@ -464,23 +469,25 @@ export class DirectMessageService {
    * Get message by ID
    */
   static async getMessageById(messageId: string, userId: string) {
-    const message = await DirectMessageModel.findById(messageId)
-      .populate([
-        { path: "sender", select: "username userId avatarUrl isVerified" },
-        { path: "recipient", select: "username userId avatarUrl isVerified" },
-        { path: "replyTo" },
-        { path: "sharedPost", populate: { path: "user", select: "username avatarUrl" } },
-        { path: "sharedStory", populate: { path: "user", select: "username avatarUrl" } }
-      ]);
+    const message = await DirectMessageModel.findById(messageId).populate([
+      { path: "sender", select: "username userId avatarUrl isVerified" },
+      { path: "recipient", select: "username userId avatarUrl isVerified" },
+      { path: "replyTo" },
+      { path: "sharedPost", populate: { path: "user", select: "username avatarUrl" } },
+      { path: "sharedStory", populate: { path: "user", select: "username avatarUrl" } },
+    ]);
 
     if (!message) {
       throw ErrorFactory.resourceNotFound("Message");
     }
 
     // Check if user is participant in conversation
-    const isParticipant = message.sender._id.toString() === userId || message.recipient._id.toString() === userId;
+    const isParticipant =
+      message.sender._id.toString() === userId || message.recipient._id.toString() === userId;
     if (!isParticipant) {
-      throw ErrorFactory.insufficientPermissions("You can only view messages in your conversations");
+      throw ErrorFactory.insufficientPermissions(
+        "You can only view messages in your conversations"
+      );
     }
 
     return message;

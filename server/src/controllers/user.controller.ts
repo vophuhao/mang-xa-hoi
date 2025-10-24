@@ -11,7 +11,6 @@ import {
   searchUsersSchema,
   updateProfileSchema,
 } from "@/validators/user.validator";
-import { get } from "node:http";
 
 /**
  * Get current user profile
@@ -132,7 +131,7 @@ export const searchUsersHandler = catchErrors(async (req: AuthenticatedRequest, 
     query,
     page: Number(page),
     limit: Number(limit),
-    userId: (req.userId as any).toString()
+    userId: (req.userId as any).toString(),
   });
 
   return ResponseUtil.paginated(res, result.data, result.pagination);
@@ -146,6 +145,11 @@ export const getUserPostsHandler = catchErrors(async (req: AuthenticatedRequest,
   const { userId } = getUserByUserIdSchema.parse(req.params);
   const { page = 1, limit = 12 } = req.query as any;
 
-  const result = await UserService.getUserPosts(userId, Number(page), Number(limit));
+  const result = await UserService.getUserPosts(
+    userId,
+    Number(page),
+    Number(limit),
+    req.userId ? (req.userId as any).toString() : undefined
+  );
   return ResponseUtil.paginated(res, result.data, result.pagination);
 });

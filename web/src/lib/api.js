@@ -189,7 +189,6 @@ export const updateAudio = async (id, data) => API.put(`/audio/update/${id}`, da
 
 export const deleteAudio = async (id) => API.delete(`/audio/delete/${id}`);
 
-
 export const getPostsByHashtag = async (name, page = 1, limit = 30) =>
   API.get(`/hashtags/${name}/posts`, { params: { page, limit } });
 
@@ -234,11 +233,25 @@ export const removePostFromCollection = async (collectionId, postId) =>
 export const movePostToCollection = async (fromCollectionId, postId, toCollectionId) =>
   API.put(`/collections/${fromCollectionId}/posts/${postId}/move/${toCollectionId}`);
 
+export const toggleBlockUser = async (userId) => API.post(`/block/user/${userId}`);
 
+export const getBlockedUsers = async () => API.get(`/block/user/blocked`);
 
+// =============== NOTIFICATION API ===============
+// Get notifications with pagination
+export const getNotifications = async ({ page = 1, limit = 10, unreadOnly = false } = {}) =>
+  API.get(`/notifications?page=${page}&limit=${limit}&unreadOnly=${unreadOnly}`);
 
-export const toggleBlockUser = async (userId) => 
-  API.post(`/block/user/${userId}`);
+// Get unread notification count
+export const getUnreadNotificationCount = async () => API.get("/notifications/unread-count");
 
-export const getBlockedUsers = async () =>
-  API.get(`/block/user/blocked`);
+// Mark notification as read
+export const markNotificationAsRead = async (notificationId) =>
+  API.patch(`/notifications/${notificationId}/read`);
+
+// Mark all notifications as read
+export const markAllNotificationsAsRead = async () => API.patch("/notifications/read-all");
+
+// Delete a notification
+export const deleteNotification = async (notificationId) =>
+  API.delete(`/notifications/${notificationId}`);

@@ -2,7 +2,9 @@ import CommentModel from "@/models/comment.model";
 import LikeModel from "@/models/like.model";
 import NotificationModel from "@/models/notification.model";
 import PostModel from "@/models/post.model";
+import { getNotificationHandler } from "@/socket";
 import ErrorFactory from "@/utils/ErrorFactory";
+import NotificationService from "./notification.service";
 
 export interface CreateCommentParams {
   content: string;
@@ -62,14 +64,26 @@ export class CommentService {
 
     // Create notification for post owner (if not self-commenting)
     if (post.user.toString() !== userId) {
-      await NotificationModel.create({
-        recipient: post.user,
-        sender: userId,
-        type: "comment",
-        post: postId,
-        comment: comment._id,
-        message: "commented on your post",
+      const notification = await NotificationService.createCommentNotification({
+        postId,
+        postOwnerId: post.user.toString(),
+        commenterId: userId,
+        commentId: (comment._id as any).toString(),
       });
+
+      // Emit Socket.IO event
+      if (notification) {
+        try {
+          const notificationHandler = getNotificationHandler();
+          notificationHandler.emitNotification(post.user.toString(), notification);
+
+          // Update unread count
+          const { unreadCount } = await NotificationService.getUnreadCount(post.user.toString());
+          notificationHandler.emitUnreadCountUpdate(post.user.toString(), unreadCount);
+        } catch (error) {
+          console.error("Failed to emit notification:", error);
+        }
+      }
     }
 
     // If it's a reply, create notification for parent comment author
@@ -81,14 +95,31 @@ export class CommentService {
 
         // Create notification if not replying to own comment
         if (parentComment.user._id.toString() !== userId) {
-          await NotificationModel.create({
-            recipient: parentComment.user._id,
-            sender: userId,
-            type: "reply",
-            post: postId,
-            comment: comment._id,
-            message: "replied to your comment",
+          const notification = await NotificationService.createReplyNotification({
+            postId,
+            parentCommentOwnerId: parentComment.user._id.toString(),
+            replierId: userId,
+            commentId: (comment._id as any).toString(),
           });
+
+          // Emit Socket.IO event
+          if (notification) {
+            try {
+              const notificationHandler = getNotificationHandler();
+              notificationHandler.emitNotification(parentComment.user._id.toString(), notification);
+
+              // Update unread count
+              const { unreadCount } = await NotificationService.getUnreadCount(
+                parentComment.user._id.toString()
+              );
+              notificationHandler.emitUnreadCountUpdate(
+                parentComment.user._id.toString(),
+                unreadCount
+              );
+            } catch (error) {
+              console.error("Failed to emit notification:", error);
+            }
+          }
         }
       }
     }
