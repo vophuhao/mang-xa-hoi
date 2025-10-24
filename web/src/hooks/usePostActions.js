@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 
 import { USER_QUERY_KEYS } from "@/hooks/useUser";
+import { deletePost } from "@/lib/api";
 
 /**
  * Custom hook for post-related actions
@@ -34,11 +35,31 @@ export const usePostActions = (post, callbacks = {}) => {
   };
 
   const handlePostDelete = (postId) => {
-    if (confirm("Bạn có chắc chắn muốn xóa bài viết này?")) {
-      console.log("Delete post:", postId);
-      setShowPostOptions(false);
-      // TODO: Implement delete post functionality
-    }
+    return deletePost(postId)
+      .then(() => {
+        toast.success("Đã xóa bài viết", {
+          position: "bottom-center",
+          autoClose: 2500,
+          hideProgressBar: true,
+          closeOnClick: true,
+          pauseOnHover: false,
+          draggable: false,
+        });
+      })
+      .catch((error) => {
+        console.error("Failed to delete post:", error);
+        toast.error("Không thể xóa bài viết", {
+          position: "bottom-center",
+          autoClose: 2500,
+          hideProgressBar: true,
+          closeOnClick: true,
+          pauseOnHover: false,
+          draggable: false,
+        });
+      })
+      .finally(() => {
+        setShowPostOptions(false);
+      });
   };
 
   const handlePostReport = (post) => {

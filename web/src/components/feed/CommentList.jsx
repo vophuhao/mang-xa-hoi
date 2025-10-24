@@ -21,16 +21,6 @@ const CommentList = ({ postId, currentUserId, post, onUsernameClick, onReplyStat
   // Server returns { success, data: [...], pagination } format
   const comments = commentsData?.pages?.flatMap((page) => page.data || []) || [];
 
-  console.log("Infinite comments debug:", {
-    commentsData,
-    pages: commentsData?.pages,
-    comments,
-    hasNextPage,
-    isLoading,
-  });
-
-  console.log("hasNextPage value:", hasNextPage);
-  console.log("typeof hasNextPage:", typeof hasNextPage);
 
   // Create a fake comment object for post caption
   const createCaptionComment = (post) => {
@@ -86,7 +76,7 @@ const CommentList = ({ postId, currentUserId, post, onUsernameClick, onReplyStat
 
   const handleReport = (comment) => {
     // TODO: Implement report functionality
-    console.log("Report comment:", comment._id);
+   
     alert(`Đã báo cáo bình luận của ${comment.user.username}`);
   };
 

@@ -88,7 +88,7 @@ export default function Audio() {
     // Khi nhạc kết thúc → reset lại icon
     const handleEnded = () => setIsPlaying(false);
 
-    console.log("Reels state:", reels); // Kiểm tra state reels
+
     return (
         <div className="max-w-5xl mx-auto p-6 font-sans">
             {/* Header */}

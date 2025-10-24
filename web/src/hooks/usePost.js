@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { getFeedPosts, getPostById, getTrendingPosts, likePost } from "@/lib/api";
+import { getFeedPosts, getPostById, getTrendingPosts, likePost, updatePost } from "@/lib/api";
 
 export const POST_QUERY_KEYS = {
   feed: (page) => ["posts", "feed", page],
@@ -85,6 +85,22 @@ export const usePostActions = () => {
     isLiking: likeMutation.isLoading,
     likeError: likeMutation.error,
   };
+};
+export const useUpdatePost = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ postId, data }) => {
+      return await updatePost(postId, data);
+    },
+    onSuccess: (res) => {
+      // ✅ Cập nhật lại cache React Query nếu có
+      queryClient.invalidateQueries(["posts"]); // hoặc key cụ thể nếu bạn dùng    
+    },
+    onError: (err) => {
+      console.error("Update post failed:", err);
+    },
+  });
 };
 
 export default usePostActions;

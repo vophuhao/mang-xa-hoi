@@ -176,7 +176,7 @@ export class PostService {
     const userIds = [userId, ...followingIds];
 
     const [posts, total] = await Promise.all([
-      PostModel.find({      
+      PostModel.find({
         isHidden: false,
         user: { $nin: excludedUserIds.map(id => new mongoose.Types.ObjectId(id)) },
       })
@@ -306,63 +306,78 @@ export class PostService {
   /**
    * Update post
    */
-  static async updatePost(
-    postId: string,
-    userId: string,
-    updateData: { caption?: string; commentsDisabled?: boolean }
-  ) {
-    const post = await PostModel.findById(postId);
-
-    if (!post) {
-      throw ErrorFactory.resourceNotFound("Post");
-    }
-
-    // Check if user owns the post
-    if (post.user.toString() !== userId) {
-      throw ErrorFactory.insufficientPermissions("You can only edit your own posts");
-    }
-
-    if (updateData.caption !== undefined) {
-      post.caption = updateData.caption;
-
-      const hashtagMatches = updateData.caption.match(/#\w+/g);
-
-      if (hashtagMatches) {
-        const hashtagNames = [...new Set(hashtagMatches.map(tag => tag.slice(1)))];
-
-        // Ép kiểu rõ ràng cho Promise.all
-        const hashtagIds: mongoose.Types.ObjectId[] = await Promise.all(
-          hashtagNames.map(async name => {
-            const hashtag = await HashtagModel.incrementPostCount(name);
-            if (!hashtag) throw new Error("Hashtag creation failed"); // tránh null
-            return hashtag._id as mongoose.Types.ObjectId;
-          })
-        );
-
-        post.tags = hashtagIds;
-      }
-    }
-    // Update allowed fields
-    // if (updateData.caption !== undefined) {
-    //   post.caption = updateData.caption;
-
-    //   // Re-extract hashtags from new caption
-    //   const hashtagMatches = updateData.caption.match(/#\w+/g);
-    //   if (hashtagMatches) {
-    //     const newHashtags = hashtagMatches.map(tag => tag.slice(1));
-    //     post.tags = [...new Set(newHashtags)];
-    //   }
-    // }
-
-    if (updateData.commentsDisabled !== undefined) {
-      post.commentsDisabled = updateData.commentsDisabled;
-    }
-
-    await post.save();
-    await post.populate("user", "username userId avatarUrl isVerified");
-
-    return post;
+static async updatePost(
+  postId: string,
+  userId: string,
+  updateData: {
+    caption?: string;
+    likesHidden?: boolean;
+    commentsDisabled?: boolean;
   }
+) {
+  const post = await PostModel.findById(postId);
+  if (!post) {
+    throw ErrorFactory.resourceNotFound("Post");
+  }
+
+  // ✅ Kiểm tra quyền sở hữu bài viết
+  if (post.user.toString() !== userId) {
+    throw ErrorFactory.insufficientPermissions("You can only edit your own posts");
+  }
+
+  // ✅ Cập nhật caption + xử lý hashtag
+  if (updateData.caption !== undefined) {
+    post.caption = updateData.caption;
+
+    // Tìm các hashtag trong caption (vd: #travel #food)
+    const hashtagMatches = updateData.caption.match(/#\w+/g);
+
+    if (hashtagMatches && hashtagMatches.length > 0) {
+      // Lấy danh sách tên hashtag, loại bỏ trùng lặp
+      const hashtagNames = [...new Set(hashtagMatches.map(tag => tag.slice(1).toLowerCase()))];
+
+      // Tìm hoặc tạo mới hashtag trong DB
+      const hashtagIds: mongoose.Types.ObjectId[] = await Promise.all(
+        hashtagNames.map(async (name) => {
+          let hashtag = await HashtagModel.findOne({ name });
+
+          if (!hashtag) {
+            // Nếu chưa có hashtag → tạo mới với postCount = 1
+            hashtag = await HashtagModel.create({ name, postCount: 1 });
+          } else {
+            // Nếu có rồi → tăng postCount
+            hashtag.postCount += 1;
+            await hashtag.save();
+          }
+
+          return hashtag._id as mongoose.Types.ObjectId;
+        })
+      );
+
+      post.tags = hashtagIds;
+    } else {
+      // Nếu caption không có hashtag thì xóa tags
+      post.tags = [];
+    }
+  }
+
+  // ✅ Cập nhật trạng thái ẩn/hiện like
+  if (updateData.likesHidden !== undefined) {
+    post.likesHidden = updateData.likesHidden;
+  }
+
+  // ✅ Cập nhật trạng thái bật/tắt comment
+  if (updateData.commentsDisabled !== undefined) {
+    post.commentsDisabled = updateData.commentsDisabled;
+  }
+  // Lưu thay đổi
+  await post.save();
+
+  await post.populate("user", "username userId avatarUrl isVerified");
+
+  return post;
+}
+
 
   /**
    * Get trending posts
@@ -370,7 +385,7 @@ export class PostService {
   static async getTrendingPosts(page: number = 1, limit: number = 10, userId?: string) {
     const skip = (page - 1) * limit;
 
-     const excludedUserIds = await UserBlockService.getExcludedUserIds((userId as any).toString());
+    const excludedUserIds = await UserBlockService.getExcludedUserIds((userId as any).toString());
     // First try to get posts from last 7 days with high engagement
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
@@ -429,16 +444,19 @@ export class PostService {
   /**
    * Get trending posts
    */
-  static async getReelsFeed(page: number, limit: number,userId: string) {
+  static async getReelsFeed(page: number, limit: number, userId: string) {
     const skip = (page - 1) * limit;
-    const excludedUserIds = await UserBlockService.getExcludedUserIds((userId as any).toString());
+    const excludedUserIds = await UserBlockService.getExcludedUserIds(userId.toString());
 
+    // B1: Lấy reels cơ bản bằng aggregate
     const reels = await PostModel.aggregate([
-      { $match:
-        { type: "reel",
+      {
+        $match: {
+          type: "reel",
           isHidden: false,
           user: { $nin: excludedUserIds.map(id => new mongoose.Types.ObjectId(id)) },
-        } },
+        },
+      },
       {
         $addFields: {
           score: {
@@ -458,7 +476,7 @@ export class PostService {
           },
         },
       },
-      // Thông tin user
+      // Lấy thông tin user bài đăng
       {
         $lookup: {
           from: "users",
@@ -469,33 +487,7 @@ export class PostService {
       },
       { $unwind: "$userInfo" },
 
-      // Thông tin comment
-      {
-        $lookup: {
-          from: "comments",
-          localField: "_id",
-          foreignField: "post",
-          as: "commentsInfo",
-        },
-      },
-      {
-        $lookup: {
-          from: "users",
-          localField: "commentsInfo.user",
-          foreignField: "_id",
-          as: "commentUsers",
-        },
-      },
-
-      // Thông tin likes
-      {
-        $lookup: {
-          from: "likes",
-          localField: "_id",
-          foreignField: "post",
-          as: "likeUsers",
-        },
-      },
+      // Lấy thông tin audio
       {
         $lookup: {
           from: "audios",
@@ -542,7 +534,7 @@ export class PostService {
           viewCount: 1,
           createdAt: 1,
           updatedAt: 1,
-          audioId: 1, // lấy id audio gốc
+          audioId: 1,
           "audioInfo._id": 1,
           "audioInfo.title": 1,
           "audioInfo.artist": 1,
@@ -555,38 +547,47 @@ export class PostService {
           "user._id": "$userInfo._id",
           "user.userId": "$userInfo.userId",
           "user.avatar": "$userInfo.avatarUrl",
-          comments: {
-            $map: {
-              input: "$commentsInfo",
-              as: "c",
-              in: {
-                _id: "$$c._id",
-                content: "$$c.content",
-                user: {
-                  $arrayElemAt: [
-                    {
-                      $filter: {
-                        input: "$commentUsers",
-                        cond: { $eq: ["$$this._id", "$$c.user"] },
-                      },
-                    },
-                    0,
-                  ],
-                },
-              },
-            },
-          },
-          likedUsers: "$likeUsers.user",
         },
       },
-
       { $sort: { score: -1, createdAt: -1 } },
       { $skip: skip },
       { $limit: limit },
     ]);
 
-    return reels;
+    // B2: Lấy danh sách ID reels
+    const reelIds = reels.map(r => r._id);
+
+    // B3: Lấy danh sách user đã like hoặc save
+    const [userLikes, userSaves] = await Promise.all([
+      LikeModel.find({ user: userId, post: { $in: reelIds } }).select("post"),
+      SavedPostModel.find({ user: userId, post: { $in: reelIds } }).select("post"),
+    ]);
+
+    const likedReelIds = new Set(
+      userLikes
+        .map(l => l.post)
+        .filter((id): id is mongoose.Types.ObjectId => !!id) // ✅ đảm bảo id có giá trị
+        .map(id => id.toString())
+    );
+
+    const savedReelIds = new Set(
+      userSaves
+        .map(s => s.post)
+        .filter((id): id is mongoose.Types.ObjectId => !!id)
+        .map(id => id.toString())
+    );
+
+
+    // B4: Thêm cờ isLiked / isSaved vào mỗi reel
+    const reelsWithUserContext = reels.map(r => ({
+      ...r,
+      isLiked: likedReelIds.has(r._id.toString()),
+      isSaved: savedReelIds.has(r._id.toString()),
+    }));
+
+    return reelsWithUserContext;
   }
+
 
   static async incrementViewCount(postId: string) {
     const post = await PostModel.findById(postId);
