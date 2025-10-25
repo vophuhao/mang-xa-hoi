@@ -19,6 +19,11 @@ export const usePostActions = (post, callbacks = {}) => {
   // Modal states
   const [showPostOptions, setShowPostOptions] = useState(false);
 
+  // Share modal states
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [sharePostState, setSharePostState] = useState(null);
+  const [shareCallback, setShareCallback] = useState(null);
+
   // Post options handlers
   const handleOptionsClick = () => {
     setShowPostOptions(true);
@@ -121,11 +126,18 @@ export const usePostActions = (post, callbacks = {}) => {
     }
   };
 
+  // open share modal (Instagram style)
   const handleShare = (post, onShareClick) => {
     setShowPostOptions(false);
-    if (onShareClick) {
-      onShareClick(post);
-    }
+    setSharePostState(post);
+    setShareCallback(() => onShareClick || null);
+    setShowShareModal(true);
+  };
+
+  const handleCloseShare = () => {
+    setShowShareModal(false);
+    setSharePostState(null);
+    setShareCallback(null);
   };
 
   // User interaction handlers
@@ -146,6 +158,10 @@ export const usePostActions = (post, callbacks = {}) => {
     handlePostReport,
     handleCopyLink,
     handleShare,
+    showShareModal,
+    sharePostState,
+    shareCallback,
+    handleCloseShare,
     handleUserClick,
   };
 };

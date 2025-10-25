@@ -93,7 +93,11 @@ export default function ConversationList({
                   </div>
                   <span className="text-sm truncate text-gray-500">
                     {(conversation.lastMessage?.sender?._id || conversation.lastMessage?.sender) === user?.data?._id ? "Bạn: " : ""}
-                    {conversation.lastMessage ? (conversation.lastMessage.content || (conversation.lastMessage.messageType === "media" ? "📷 Media" : "Tin nhắn")) : "Không có tin nhắn"}
+                    {conversation.lastMessage
+                      ? (conversation.lastMessage.messageType === "post_share"
+                          ? "Đã chia sẻ bài viết"
+                          : (conversation.lastMessage.content || (conversation.lastMessage.messageType === "media" ? "📷 Media" : "Tin nhắn")))
+                      : "Không có tin nhắn"}
                   </span>
                 </div>
               </div>
