@@ -3,10 +3,8 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, Play, Pause, MoreVertical } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
-import { getAudioByUser , deleteAudio} from "@/lib/api"; // ✅ cần có 2 API này
+import { getAudioByUser, deleteAudio } from "@/lib/api";
 import EditAudioModal from "@/modals/EditAudioModal";
-
-
 
 const CollectionAudio = () => {
   const navigate = useNavigate();
@@ -16,14 +14,16 @@ const CollectionAudio = () => {
   const [playingId, setPlayingId] = useState(null);
   const [activeTab, setActiveTab] = useState("my");
 
-  // menu + modal state
   const [menuOpen, setMenuOpen] = useState(null);
   const [editAudio, setEditAudio] = useState(null);
+
+  // ✅ Thêm state popup xác nhận
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [selectedAudio, setSelectedAudio] = useState(null);
 
   const allAudios = location.state?.audios || [];
   const currentList = activeTab === "saved" ? allAudios : myAudios;
 
-  // 🔹 Lấy danh sách audio của user
   useEffect(() => {
     const fetchMyAudios = async () => {
       const res = await getAudioByUser();
@@ -32,7 +32,6 @@ const CollectionAudio = () => {
     fetchMyAudios();
   }, []);
 
-  // 🔹 Cleanup khi rời trang → dừng nhạc
   useEffect(() => {
     return () => {
       if (audioObj) audioObj.pause();
@@ -41,7 +40,6 @@ const CollectionAudio = () => {
 
   const handleBack = () => navigate(-1);
 
-  // 🔹 Phát / dừng nhạc
   const handlePlay = (audio) => {
     if (playingId === audio._id && audioObj) {
       audioObj.pause();
@@ -61,17 +59,32 @@ const CollectionAudio = () => {
     };
   };
 
-  // 🔹 Xử lý xóa audio
-  const handleDelete = async (audioId) => {
-    if (!window.confirm("Bạn có chắc muốn xóa âm thanh này?")) return;
-    const res = await deleteAudio(audioId);
+  // ✅ Khi click “Xóa” trong menu → mở popup xác nhận
+  const handleAskDelete = (audio) => {
+    setSelectedAudio(audio);
+    setShowConfirm(true);
+    setMenuOpen(null);
+  };
+
+  // ✅ Xác nhận xóa
+  const handleConfirmDelete = async () => {
+    if (!selectedAudio) return;
+    const res = await deleteAudio(selectedAudio._id);
     if (res.success) {
-      setMyAudios((prev) => prev.filter((a) => a._id !== audioId));
+      setMyAudios((prev) => prev.filter((a) => a._id !== selectedAudio._id));
     }
+    setShowConfirm(false);
+    setSelectedAudio(null);
+  };
+
+  // ✅ Hủy popup
+  const handleCancel = () => {
+    setShowConfirm(false);
+    setSelectedAudio(null);
   };
 
   return (
-    <div className="px-6 py-6">
+    <div className="px-6 py-6 relative">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <button
@@ -149,40 +162,38 @@ const CollectionAudio = () => {
                   )}
                 </button>
 
-               {
-                activeTab === "my" && (
-                   <div className="relative">
-                  <button
-                    onClick={() =>
-                      setMenuOpen(menuOpen === audio._id ? null : audio._id)
-                    }
-                    className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
-                  >
-                    <MoreVertical className="h-5 w-5 text-gray-700 dark:text-gray-300" />
-                  </button>
+                {activeTab === "my" && (
+                  <div className="relative">
+                    <button
+                      onClick={() =>
+                        setMenuOpen(menuOpen === audio._id ? null : audio._id)
+                      }
+                      className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
+                    >
+                      <MoreVertical className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                    </button>
 
-                  {menuOpen === audio._id && (
-                    <div className="absolute right-0 mt-2 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-20">
-                      <button
-                        onClick={() => {
-                          setEditAudio(audio);
-                          setMenuOpen(null);
-                        }}
-                        className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
-                      >
-                        Chỉnh sửa
-                      </button>
-                      <button
-                        onClick={() => handleDelete(audio._id)}
-                        className="block w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      >
-                        Xóa
-                      </button>
-                    </div>
-                  )}
-                </div>
+                    {menuOpen === audio._id && (
+                      <div className="absolute right-0 mt-2 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-20">
+                        <button
+                          onClick={() => {
+                            setEditAudio(audio);
+                            setMenuOpen(null);
+                          }}
+                          className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          Chỉnh sửa
+                        </button>
+                        <button
+                          onClick={() => handleAskDelete(audio)}
+                          className="block w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          Xóa
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
-               
               </div>
             </div>
           ))
@@ -207,6 +218,32 @@ const CollectionAudio = () => {
             setEditAudio(null);
           }}
         />
+      )}
+
+      {/* 🔹 Popup xác nhận xóa */}
+      {showConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-xl p-6 w-[280px] text-center shadow-xl">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+              Xóa âm thanh này?
+            </h3>
+         
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={handleCancel}
+                className="px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 rounded-md bg-red-500 text-white hover:bg-red-600"
+              >
+                Xóa
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

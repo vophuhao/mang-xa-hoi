@@ -306,77 +306,77 @@ export class PostService {
   /**
    * Update post
    */
-static async updatePost(
-  postId: string,
-  userId: string,
-  updateData: {
-    caption?: string;
-    likesHidden?: boolean;
-    commentsDisabled?: boolean;
-  }
-) {
-  const post = await PostModel.findById(postId);
-  if (!post) {
-    throw ErrorFactory.resourceNotFound("Post");
-  }
-
-  // ✅ Kiểm tra quyền sở hữu bài viết
-  if (post.user.toString() !== userId) {
-    throw ErrorFactory.insufficientPermissions("You can only edit your own posts");
-  }
-
-  // ✅ Cập nhật caption + xử lý hashtag
-  if (updateData.caption !== undefined) {
-    post.caption = updateData.caption;
-
-    // Tìm các hashtag trong caption (vd: #travel #food)
-    const hashtagMatches = updateData.caption.match(/#\w+/g);
-
-    if (hashtagMatches && hashtagMatches.length > 0) {
-      // Lấy danh sách tên hashtag, loại bỏ trùng lặp
-      const hashtagNames = [...new Set(hashtagMatches.map(tag => tag.slice(1).toLowerCase()))];
-
-      // Tìm hoặc tạo mới hashtag trong DB
-      const hashtagIds: mongoose.Types.ObjectId[] = await Promise.all(
-        hashtagNames.map(async (name) => {
-          let hashtag = await HashtagModel.findOne({ name });
-
-          if (!hashtag) {
-            // Nếu chưa có hashtag → tạo mới với postCount = 1
-            hashtag = await HashtagModel.create({ name, postCount: 1 });
-          } else {
-            // Nếu có rồi → tăng postCount
-            hashtag.postCount += 1;
-            await hashtag.save();
-          }
-
-          return hashtag._id as mongoose.Types.ObjectId;
-        })
-      );
-
-      post.tags = hashtagIds;
-    } else {
-      // Nếu caption không có hashtag thì xóa tags
-      post.tags = [];
+  static async updatePost(
+    postId: string,
+    userId: string,
+    updateData: {
+      caption?: string;
+      likesHidden?: boolean;
+      commentsDisabled?: boolean;
     }
+  ) {
+    const post = await PostModel.findById(postId);
+    if (!post) {
+      throw ErrorFactory.resourceNotFound("Post");
+    }
+
+    // ✅ Kiểm tra quyền sở hữu bài viết
+    if (post.user.toString() !== userId) {
+      throw ErrorFactory.insufficientPermissions("You can only edit your own posts");
+    }
+
+    // ✅ Cập nhật caption + xử lý hashtag
+    if (updateData.caption !== undefined) {
+      post.caption = updateData.caption;
+
+      // Tìm các hashtag trong caption (vd: #travel #food)
+      const hashtagMatches = updateData.caption.match(/#\w+/g);
+
+      if (hashtagMatches && hashtagMatches.length > 0) {
+        // Lấy danh sách tên hashtag, loại bỏ trùng lặp
+        const hashtagNames = [...new Set(hashtagMatches.map(tag => tag.slice(1).toLowerCase()))];
+
+        // Tìm hoặc tạo mới hashtag trong DB
+        const hashtagIds: mongoose.Types.ObjectId[] = await Promise.all(
+          hashtagNames.map(async (name) => {
+            let hashtag = await HashtagModel.findOne({ name });
+
+            if (!hashtag) {
+              // Nếu chưa có hashtag → tạo mới với postCount = 1
+              hashtag = await HashtagModel.create({ name, postCount: 1 });
+            } else {
+              // Nếu có rồi → tăng postCount
+              hashtag.postCount += 1;
+              await hashtag.save();
+            }
+
+            return hashtag._id as mongoose.Types.ObjectId;
+          })
+        );
+
+        post.tags = hashtagIds;
+      } else {
+        // Nếu caption không có hashtag thì xóa tags
+        post.tags = [];
+      }
+    }
+
+    // ✅ Cập nhật trạng thái ẩn/hiện like
+    if (updateData.likesHidden !== undefined) {
+      post.likesHidden = updateData.likesHidden;
+    }
+
+    // ✅ Cập nhật trạng thái bật/tắt comment
+    if (updateData.commentsDisabled !== undefined) {
+      post.commentsDisabled = updateData.commentsDisabled;
+    }
+    // Lưu thay đổi
+    await post.save();
+
+    await post.populate("user", "username userId avatarUrl isVerified");
+
+    return post;
   }
-
-  // ✅ Cập nhật trạng thái ẩn/hiện like
-  if (updateData.likesHidden !== undefined) {
-    post.likesHidden = updateData.likesHidden;
-  }
-
-  // ✅ Cập nhật trạng thái bật/tắt comment
-  if (updateData.commentsDisabled !== undefined) {
-    post.commentsDisabled = updateData.commentsDisabled;
-  }
-  // Lưu thay đổi
-  await post.save();
-
-  await post.populate("user", "username userId avatarUrl isVerified");
-
-  return post;
-}
 
 
   /**
@@ -587,6 +587,133 @@ static async updatePost(
 
     return reelsWithUserContext;
   }
+
+  static async getReelById(reelId : string , userId : string) {
+    const excludedUserIds = await UserBlockService.getExcludedUserIds(userId.toString());
+
+    // B1: Aggregate để lấy reel cụ thể + thông tin user, audio, audioUser
+    const result = await PostModel.aggregate([
+      {
+        $match: {
+          _id: new mongoose.Types.ObjectId(reelId),
+          type: "reel",
+          isHidden: false,
+          user: { $nin: excludedUserIds.map(id => new mongoose.Types.ObjectId(id)) },
+        },
+      },
+      {
+        $addFields: {
+          score: {
+            $add: [
+              { $multiply: ["$likeCount", 3] },
+              { $multiply: ["$commentCount", 5] },
+              { $multiply: ["$shareCount", 4] },
+              { $multiply: ["$viewCount", 0] },
+              {
+                $cond: [
+                  { $gte: ["$createdAt", new Date(Date.now() - 1000 * 60 * 60 * 24)] },
+                  1000,
+                  0,
+                ],
+              },
+            ],
+          },
+        },
+      },
+      // Lấy thông tin user bài đăng
+      {
+        $lookup: {
+          from: "users",
+          localField: "user",
+          foreignField: "_id",
+          as: "userInfo",
+        },
+      },
+      { $unwind: "$userInfo" },
+
+      // Lấy thông tin audio
+      {
+        $lookup: {
+          from: "audios",
+          localField: "audioId",
+          foreignField: "_id",
+          as: "audioInfo",
+        },
+      },
+      {
+        $unwind: {
+          path: "$audioInfo",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      // Lấy thông tin user của audio
+      {
+        $lookup: {
+          from: "users",
+          localField: "audioInfo.user",
+          foreignField: "_id",
+          as: "audioUser",
+        },
+      },
+      {
+        $unwind: {
+          path: "$audioUser",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          caption: 1,
+          mediaUrls: 1,
+          likeCount: 1,
+          commentCount: 1,
+          shareCount: 1,
+          commentsDisabled: 1,
+          likesHidden: 1,
+          isHidden: 1,
+          location: 1,
+          tags: 1,
+          mentions: 1,
+          viewCount: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          audioId: 1,
+          "audioInfo._id": 1,
+          "audioInfo.title": 1,
+          "audioInfo.artist": 1,
+          "audioInfo.deezerId": 1,
+          "audioInfo.fileUrl": 1,
+          "audioInfo.cover": 1,
+          "audioUser._id": 1,
+          "audioUser.userId": 1,
+          "audioUser.avatarUrl": 1,
+          "user._id": "$userInfo._id",
+          "user.userId": "$userInfo.userId",
+          "user.avatar": "$userInfo.avatarUrl",
+        },
+      },
+    ]);
+
+    if (!result || result.length === 0) {
+      throw ErrorFactory.resourceNotFound("Reel");
+    }
+
+    const reel = result[0];
+
+    // B2: Kiểm tra like / save
+    const [liked, saved] = await Promise.all([
+      LikeModel.exists({ user: userId, post: reel._id }).then(Boolean),
+      SavedPostModel.exists({ user: userId, post: reel._id }).then(Boolean),
+    ]);
+
+    // B3: Trả về cùng format như getReelsFeed
+    return {
+      ...reel,
+      isLiked: liked,
+      isSaved: saved,
+    };
+  }
+
 
 
   static async incrementViewCount(postId: string) {

@@ -65,21 +65,21 @@ export const usePostActions = (post, callbacks = {}) => {
   const handlePostReport = (post) => {
     console.log("Report post:", post._id);
     setShowPostOptions(false);
-    alert(`Đã báo cáo bài viết của ${post.user.username}`);
+    alert(`Đã báo cáo bài viết của ${post.user.userId}`);
     // TODO: Implement report post functionality
   };
 
   const handleCopyLink = async (post) => {
     try {
       // Create Instagram-style URL: /username/p/postId
-      const username = post?.user?.username || "user";
+      const userId = post?.user?.userId || "user";
       const postId = post?._id;
 
       if (!postId) {
         throw new Error("Post ID not found");
       }
 
-      const url = `${window.location.origin}/${username}/p/${postId}`;
+      const url = `${window.location.origin}/${userId}/p/${postId}`;
 
       // Use modern clipboard API with fallback
       if (navigator.clipboard && navigator.clipboard.writeText) {

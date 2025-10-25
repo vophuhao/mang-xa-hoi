@@ -3,13 +3,13 @@ import { useState, useRef, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, MessageCircle, Send, Bookmark, Volume2, VolumeX, Play, MoreHorizontal } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 
 import SaveToCollectionModal from "@/components/collection/SaveToCollectionModal";
 import useAuth from "@/hooks/useAuth";
 import { USER_QUERY_KEYS, useUser, useUserFollowing } from "@/hooks/useUser";
-import { getReelsFeed, increasePostView, likePost, unsavePost } from "@/lib/api";
+import { getPostById, getReelById, getReelsFeed, increasePostView, likePost, unsavePost } from "@/lib/api";
 import { navigate } from "@/lib/navigation";
 import CommentModal from "@/modals/CommentReelModal";
 
@@ -18,6 +18,7 @@ import MoreOptionsMenu from "./MoreOptionsMenu";
 
 
 export default function ReelWeb() {
+  const { id } = useParams();
   const [reels, setReels] = useState([]);
   const [likedMap, setLikedMap] = useState({});
   const [isMutedAll, setIsMutedAll] = useState(true);
@@ -32,7 +33,7 @@ export default function ReelWeb() {
   const viewedSet = useRef(new Set());
   const [openMenu, setOpenMenu] = useState(null); // null hoặc {x, y}
   const [reelId, setReelId] = useState(null);
-
+  const hasFetchedSingleReel = useRef(false);
   const { toggleFollow } = useUser();
   const [showComments, setShowComments] = useState(false);
   const [selectedReel, setSelectedReel] = useState(null);
@@ -40,7 +41,7 @@ export default function ReelWeb() {
   const [savedMap, setSavedMap] = useState({});
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [selectedReelId, setSelectedReelId] = useState(null);
-
+  const [initialFetchDone, setInitialFetchDone] = useState(false);
   const navigate = useNavigate();
 
   const { data: followingData } = useUserFollowing(user?.data?.userId, 1);
@@ -96,7 +97,7 @@ export default function ReelWeb() {
 
 
   useEffect(() => {
-    const viewTimers = {}; // 👈 Xóa phần ": Record<string, NodeJS.Timeout>"
+    const viewTimers = {};
 
     videoRefs.current.forEach((video) => {
       if (!video) return;
@@ -110,7 +111,7 @@ export default function ReelWeb() {
           try {
             await increasePostView(reelId);
             viewedSet.current.add(reelId);
-            
+
           } catch (err) {
             console.error("❌ Lỗi khi tăng view:", err);
           }
@@ -138,11 +139,40 @@ export default function ReelWeb() {
   }, [reels]);
 
 
-  // Fetch reels
   useEffect(() => {
     if (!user?.data?._id) return;
-    fetchReels(1);
-  }, [user?.data?._id]);
+
+    // 🧩 Nếu có id (vào từ link chia sẻ)
+    if (id && !initialFetchDone) {
+      fetchSingleReel(id).then(() => {
+        fetchReels(1);
+        setInitialFetchDone(true);
+      });
+      return;
+    }
+
+    // 🧩 Nếu không có id (vào từ menu Reel)
+    if (!id && !initialFetchDone) {
+      fetchReels(1);
+      setInitialFetchDone(true);
+    }
+  }, [user?.data?._id, id]);
+
+
+
+  const fetchSingleReel = async (reelId) => {
+    try {
+      const res = await getReelById(reelId);
+      if (res.success) {
+        setReels([res.data]); // đưa video này lên đầu danh sách
+
+      }
+    } catch (err) {
+      console.error("Lỗi khi lấy reel theo id:", err);
+    }
+  };
+
+
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -162,11 +192,14 @@ export default function ReelWeb() {
             fetchReels(next);
             return next;
           });
+
         }
 
         // Auto play/pause như cũ
         if (!userClickedMap.current[reelId]) {
           if (entry.isIntersecting) {
+            const reelId = video.dataset.reelId;
+            navigate(`/reels/${reelId}`, { replace: true });
             video.play();
             setIsPlayingMap(prev => ({ ...prev, [reelId]: true }));
             // pause video khác
@@ -196,15 +229,15 @@ export default function ReelWeb() {
   const fetchReels = async (pageNum) => {
     try {
       setLoading(true);
-      const res = await getReelsFeed(pageNum, 20); // luôn lấy 3 video
+      const res = await getReelsFeed(pageNum, 20);
       if (res.success) {
         const newSaved = {};
         res.data.forEach(r => {
-          newSaved[r._id] = r.isSaved || false; // backend có field isSaved?
+          newSaved[r._id] = r.isSaved || false;
         });
         setSavedMap(prev => ({ ...prev, ...newSaved }));
 
-        setReels(prev => [...prev, ...res.data]); // nối thêm video vào danh sách cũ
+        setReels(prev => [...prev, ...res.data]);
         const newLiked = {};
         res.data.forEach(r => {
           newLiked[r._id] = r.isLiked || false;
@@ -349,41 +382,48 @@ export default function ReelWeb() {
   };
 
   useEffect(() => {
-  const handleKeyDown = (e) => {
-    if (!videoRefs.current.length) return;
+    const handleKeyDown = (e) => {
+      if (!videoRefs.current.length) return;
 
-    // Tìm index video đang phát (hoặc gần nhất)
-    const currentIndex = videoRefs.current.findIndex(
-      (v) => v && !v.paused
+      // Tìm index video đang phát (hoặc gần nhất)
+      const currentIndex = videoRefs.current.findIndex(
+        (v) => v && !v.paused
+      );
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        const nextIndex = Math.min(currentIndex + 1, videoRefs.current.length - 1);
+        const nextVideo = videoRefs.current[nextIndex];
+        if (nextVideo) {
+          nextVideo.scrollIntoView({ behavior: "smooth", block: "center" });
+          nextVideo.play();
+        }
+      }
+
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        const prevIndex = Math.max(currentIndex - 1, 0);
+        const prevVideo = videoRefs.current[prevIndex];
+        if (prevVideo) {
+          prevVideo.scrollIntoView({ behavior: "smooth", block: "center" });
+          prevVideo.play();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [reels]);
+
+  if (loading && reels.length === 0) {
+    return (
+      <div className="h-screen flex items-center justify-center text-white">
+        Đang tải video...
+      </div>
     );
-
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      const nextIndex = Math.min(currentIndex + 1, videoRefs.current.length - 1);
-      const nextVideo = videoRefs.current[nextIndex];
-      if (nextVideo) {
-        nextVideo.scrollIntoView({ behavior: "smooth", block: "center" });
-        nextVideo.play();
-      }
-    }
-
-    if (e.key === "ArrowUp") {
-      e.preventDefault();
-      const prevIndex = Math.max(currentIndex - 1, 0);
-      const prevVideo = videoRefs.current[prevIndex];
-      if (prevVideo) {
-        prevVideo.scrollIntoView({ behavior: "smooth", block: "center" });
-        prevVideo.play();
-      }
-    }
-  };
-
-  window.addEventListener("keydown", handleKeyDown);
-  return () => window.removeEventListener("keydown", handleKeyDown);
-}, [reels]);
-
-
+  }
   return (
+
     <div className="h-screen w-full flex justify-center text-white">
       <div
         ref={containerRef}
@@ -392,7 +432,9 @@ export default function ReelWeb() {
         <div className="flex flex-col items-center w-full">
           {reels.map((reel, index) => (
 
-            <div key={reel._id} className="flex snap-center items-center justify-center my-2 w-full">
+            <div key={reel._id}
+
+              className="flex snap-center items-center justify-center my-2 w-full">
               <div
 
                 className="relative w-full sm:w-[350px] md:w-[420px] sm:h-[650px] md:h-[750px] overflow-hidden shadow-lg cursor-pointer"
