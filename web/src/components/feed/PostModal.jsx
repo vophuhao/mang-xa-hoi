@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 
 import { X } from "lucide-react";
 
+import { useUpdatePost } from "@/hooks/usePost";
 import { usePostActions } from "@/hooks/usePostActions";
+import { updatePost } from "@/lib/api";
+import EditPostModal from "@/modals/EditPostModal";
 
 import CommentInput from "./CommentInput";
 import CommentList from "./CommentList";
@@ -10,6 +13,7 @@ import PostActions from "./PostActions";
 import PostHeader from "./PostHeader";
 import PostMedia from "./PostMedia";
 import PostOptionsModal from "./PostOptionsModal";
+
 
 const PostModal = ({ post, isOpen, onClose, onUsernameClick, onShareClick, hideActions = [] }) => {
   const [replyState, setReplyState] = useState(null);
@@ -36,6 +40,32 @@ const PostModal = ({ post, isOpen, onClose, onUsernameClick, onShareClick, hideA
   // }
 
   // Close modal on Escape key
+  const [isOpenEditModal, setIsOpenEditModal] = useState(false);
+ const { mutate: mutateUpdatePost, isPending } = useUpdatePost();
+
+  const handleOpenEdit = () => {
+
+    setIsOpenEditModal(true); // mở modal edit
+
+  };
+
+  const handleSaveEdit = (updatedPost) => {
+    const data = {
+      caption: updatedPost.caption,
+      likesHidden: updatedPost.likesHidden,
+      commentsDisabled: updatedPost.commentsDisabled,
+    };
+
+    mutateUpdatePost(
+      { postId: updatedPost._id, data },
+      {
+        onSuccess: (res) => {
+          console.log("✅ Updated:", res);
+          setIsOpenEditModal(false);
+        },
+      }
+    );
+  };
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === "Escape") {
@@ -73,6 +103,7 @@ const PostModal = ({ post, isOpen, onClose, onUsernameClick, onShareClick, hideA
   const handleReplyCancel = () => {
     setReplyState(null);
   };
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -170,14 +201,25 @@ const PostModal = ({ post, isOpen, onClose, onUsernameClick, onShareClick, hideA
       <PostOptionsModal
         isOpen={showPostOptions}
         onClose={handleCloseOptions}
+        closeModal={onClose}
         post={post}
         currentUserId={currentUser?._id}
-        onEdit={handlePostEdit}
+        onEdit={handleOpenEdit}
         onDelete={handlePostDelete}
         onReport={handlePostReport}
         onCopyLink={handleCopyLink}
         onShare={handleShare}
       />
+      {isOpenEditModal && (
+        <EditPostModal
+          isOpen={isOpenEditModal}
+          onClose={() => setIsOpenEditModal(false)}
+          post={post}
+          onSave={handleSaveEdit}
+        />
+      )}
+
+
     </div>
   );
 };

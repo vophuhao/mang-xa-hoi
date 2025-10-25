@@ -375,7 +375,7 @@ export class UserService {
         user: user._id,
         isHidden: false,
       })
-        .select("_id caption mediaUrls mediaType likeCount commentCount createdAt location")
+        .select("_id caption mediaUrls mediaType likeCount commentCount createdAt location likesHidden commentsDisabled commentCount")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),

@@ -45,6 +45,7 @@ function App() {
             <Route index element={<Feed />} />
             <Route path="explore" element={<Explore />} />
             <Route path="reels" element={<ReelWeb />} />
+            <Route path="reels/:id" element={<ReelWeb />} />
             <Route path="direct/inbox" element={<DirectInbox />} />
             <Route path="collections/:id" element={<CollectionDetail />} />
             <Route path=":username" element={<Profile />} />

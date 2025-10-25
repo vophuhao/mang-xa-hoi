@@ -3,18 +3,22 @@ import { useState, useRef, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, MessageCircle, Send, Bookmark, Volume2, VolumeX, Play, MoreHorizontal } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
 
+import SaveToCollectionModal from "@/components/collection/SaveToCollectionModal";
 import useAuth from "@/hooks/useAuth";
 import { USER_QUERY_KEYS, useUser, useUserFollowing } from "@/hooks/useUser";
-import { getReelsFeed, increasePostView, likePost } from "@/lib/api";
+import { getPostById, getReelById, getReelsFeed, increasePostView, likePost, unsavePost } from "@/lib/api";
 import { navigate } from "@/lib/navigation";
 import CommentModal from "@/modals/CommentReelModal";
+
 
 import MoreOptionsMenu from "./MoreOptionsMenu";
 
 
 export default function ReelWeb() {
+  const { id } = useParams();
   const [reels, setReels] = useState([]);
   const [likedMap, setLikedMap] = useState({});
   const [isMutedAll, setIsMutedAll] = useState(true);
@@ -29,12 +33,15 @@ export default function ReelWeb() {
   const viewedSet = useRef(new Set());
   const [openMenu, setOpenMenu] = useState(null); // null hoặc {x, y}
   const [reelId, setReelId] = useState(null);
-
+  const hasFetchedSingleReel = useRef(false);
   const { toggleFollow } = useUser();
   const [showComments, setShowComments] = useState(false);
   const [selectedReel, setSelectedReel] = useState(null);
   const queryClient = useQueryClient();
-
+  const [savedMap, setSavedMap] = useState({});
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [selectedReelId, setSelectedReelId] = useState(null);
+  const [initialFetchDone, setInitialFetchDone] = useState(false);
   const navigate = useNavigate();
 
   const { data: followingData } = useUserFollowing(user?.data?.userId, 1);
@@ -56,10 +63,41 @@ export default function ReelWeb() {
     navigate(`/audio/${audioInfo._id}`);
   };
 
+  const handleSave = async (reelId) => {
+    const isSaved = savedMap[reelId];
+
+    if (isSaved) {
+      // Nếu đã lưu → unsave
+      try {
+        setSavedMap(prev => ({ ...prev, [reelId]: false })); // optimistic update
+        await unsavePost(reelId);
+        queryClient.invalidateQueries({ queryKey: ["savedPosts"] });
+        queryClient.invalidateQueries({ queryKey: ["collections"] });
+        toast.success("Đã bỏ lưu video");
+      } catch (error) {
+        console.error("Unsave failed:", error);
+        setSavedMap(prev => ({ ...prev, [reelId]: true })); // revert
+        toast.error("Không thể bỏ lưu video");
+      }
+    } else {
+      // Nếu chưa lưu → mở modal chọn collection
+      setSelectedReelId(reelId);
+      setShowSaveModal(true);
+    }
+  };
+
+  const handleSaveSuccess = () => {
+    setShowSaveModal(false);
+    setSavedMap(prev => ({ ...prev, [selectedReelId]: true }));
+    queryClient.invalidateQueries({ queryKey: ["savedPosts"] });
+    queryClient.invalidateQueries({ queryKey: ["collections"] });
+  };
+
+  const handleSaveClose = () => setShowSaveModal(false);
 
 
   useEffect(() => {
-    const viewTimers = {}; // 👈 Xóa phần ": Record<string, NodeJS.Timeout>"
+    const viewTimers = {};
 
     videoRefs.current.forEach((video) => {
       if (!video) return;
@@ -73,7 +111,7 @@ export default function ReelWeb() {
           try {
             await increasePostView(reelId);
             viewedSet.current.add(reelId);
-            console.log(`✅ View increased for ${reelId}`);
+
           } catch (err) {
             console.error("❌ Lỗi khi tăng view:", err);
           }
@@ -101,11 +139,40 @@ export default function ReelWeb() {
   }, [reels]);
 
 
-  // Fetch reels
   useEffect(() => {
     if (!user?.data?._id) return;
-    fetchReels(1);
-  }, [user?.data?._id]);
+
+    // 🧩 Nếu có id (vào từ link chia sẻ)
+    if (id && !initialFetchDone) {
+      fetchSingleReel(id).then(() => {
+        fetchReels(1);
+        setInitialFetchDone(true);
+      });
+      return;
+    }
+
+    // 🧩 Nếu không có id (vào từ menu Reel)
+    if (!id && !initialFetchDone) {
+      fetchReels(1);
+      setInitialFetchDone(true);
+    }
+  }, [user?.data?._id, id]);
+
+
+
+  const fetchSingleReel = async (reelId) => {
+    try {
+      const res = await getReelById(reelId);
+      if (res.success) {
+        setReels([res.data]); // đưa video này lên đầu danh sách
+
+      }
+    } catch (err) {
+      console.error("Lỗi khi lấy reel theo id:", err);
+    }
+  };
+
+
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -125,11 +192,14 @@ export default function ReelWeb() {
             fetchReels(next);
             return next;
           });
+
         }
 
         // Auto play/pause như cũ
         if (!userClickedMap.current[reelId]) {
           if (entry.isIntersecting) {
+            const reelId = video.dataset.reelId;
+            navigate(`/reels/${reelId}`, { replace: true });
             video.play();
             setIsPlayingMap(prev => ({ ...prev, [reelId]: true }));
             // pause video khác
@@ -159,14 +229,21 @@ export default function ReelWeb() {
   const fetchReels = async (pageNum) => {
     try {
       setLoading(true);
-      const res = await getReelsFeed(pageNum, 20); // luôn lấy 3 video
+      const res = await getReelsFeed(pageNum, 20);
       if (res.success) {
-        setReels(prev => [...prev, ...res.data]); // nối thêm video vào danh sách cũ
+        const newSaved = {};
+        res.data.forEach(r => {
+          newSaved[r._id] = r.isSaved || false;
+        });
+        setSavedMap(prev => ({ ...prev, ...newSaved }));
+
+        setReels(prev => [...prev, ...res.data]);
         const newLiked = {};
         res.data.forEach(r => {
-          newLiked[r._id] = r.likedUsers?.includes(user.data._id) || false;
+          newLiked[r._id] = r.isLiked || false;
         });
         setLikedMap(prev => ({ ...prev, ...newLiked }));
+
       }
     } catch (err) {
       console.error("Lỗi khi load reels:", err);
@@ -262,33 +339,91 @@ export default function ReelWeb() {
   const toggleMuteAll = () => setIsMutedAll(prev => !prev);
 
   // Toggle like
-  const handleLike = (reelId) => async () => {
+  const handleLike = async (reelId) => {
     const isLiked = likedMap[reelId] || false;
+
+    // Cập nhật UI trước (optimistic)
     setLikedMap(prev => ({ ...prev, [reelId]: !isLiked }));
     setReels(prev =>
       prev.map(r =>
         r._id === reelId
-          ? { ...r, likeCount: Math.max(0, r.likeCount + (isLiked ? -1 : 1)) }
+          ? { ...r, likeCount: r.likeCount + (isLiked ? -1 : 1) }
           : r
       )
     );
 
     try {
       const res = await likePost(reelId);
-      if (!res.success) throw new Error("Like failed");
-    } catch {
+
+      // Nếu backend trả về trạng thái mới, đồng bộ lại
+      if (res?.data?.isLiked !== undefined) {
+        setLikedMap(prev => ({ ...prev, [reelId]: res.data.isLiked }));
+        setReels(prev =>
+          prev.map(r =>
+            r._id === reelId
+              ? { ...r, likeCount: res.data.likeCount ?? r.likeCount }
+              : r
+          )
+        );
+      }
+    } catch (error) {
+      console.error("❌ Lỗi khi like:", error);
+
+      // Hoàn tác nếu lỗi
       setLikedMap(prev => ({ ...prev, [reelId]: isLiked }));
       setReels(prev =>
         prev.map(r =>
           r._id === reelId
-            ? { ...r, likeCount: Math.max(0, r.likeCount + (isLiked ? 1 : -1)) }
+            ? { ...r, likeCount: r.likeCount + (isLiked ? 1 : -1) }
             : r
         )
       );
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!videoRefs.current.length) return;
+
+      // Tìm index video đang phát (hoặc gần nhất)
+      const currentIndex = videoRefs.current.findIndex(
+        (v) => v && !v.paused
+      );
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        const nextIndex = Math.min(currentIndex + 1, videoRefs.current.length - 1);
+        const nextVideo = videoRefs.current[nextIndex];
+        if (nextVideo) {
+          nextVideo.scrollIntoView({ behavior: "smooth", block: "center" });
+          nextVideo.play();
+        }
+      }
+
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        const prevIndex = Math.max(currentIndex - 1, 0);
+        const prevVideo = videoRefs.current[prevIndex];
+        if (prevVideo) {
+          prevVideo.scrollIntoView({ behavior: "smooth", block: "center" });
+          prevVideo.play();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [reels]);
+
+  if (loading && reels.length === 0) {
+    return (
+      <div className="h-screen flex items-center justify-center text-white">
+        Đang tải video...
+      </div>
+    );
+  }
   return (
+
     <div className="h-screen w-full flex justify-center text-white">
       <div
         ref={containerRef}
@@ -297,7 +432,9 @@ export default function ReelWeb() {
         <div className="flex flex-col items-center w-full">
           {reels.map((reel, index) => (
 
-            <div key={reel._id} className="flex snap-center items-center justify-center my-2 w-full">
+            <div key={reel._id}
+
+              className="flex snap-center items-center justify-center my-2 w-full">
               <div
 
                 className="relative w-full sm:w-[350px] md:w-[420px] sm:h-[650px] md:h-[750px] overflow-hidden shadow-lg cursor-pointer"
@@ -358,10 +495,13 @@ export default function ReelWeb() {
                 setReelId={setReelId}
                 user={user}
                 onOpenComments={() => {
-                  setSelectedReel(reel); // lưu reel hiện tại
-                  setShowComments(true); // mở modal
+                  setSelectedReel(reel);
+                  setShowComments(true);
                 }}
+                handleSave={handleSave}
+                savedMap={savedMap}
               />
+
 
             </div>
 
@@ -387,6 +527,15 @@ export default function ReelWeb() {
           currentUserId={user.data._id}
         />
       )}
+      {showSaveModal && (
+        <SaveToCollectionModal
+          isOpen={showSaveModal}
+          postId={selectedReelId}
+          onClose={handleSaveClose}
+          onSuccess={handleSaveSuccess}
+        />
+      )}
+
 
 
     </div>
@@ -399,10 +548,9 @@ function InfoOverlay({ reel, handleAudioClick, user, handleFollowClick, isFollow
     <div className={`absolute left-4 flex flex-col space-y-2 ${reel.caption ? "bottom-4" : "bottom-10"}`}>
       <div className="flex items-center space-x-2">
         <img src={reel.user?.avatar} alt="avatar" className="w-8 h-8 rounded-full" onClick={() => navigate(`/${reel.user?.userId}`)} />
-
         <div>
           <span onClick={() => navigate(`/${reel.user?.userId}`)} className="font-semibold text-[13px] text-white">{reel.user?.userId || "user"}</span>
-          {reel.audioUser?.avatarUrl || reel.audioInfo?.coverUrl ? (
+          {reel.audioUser?.avatarUrl || reel.audioInfo?.coverl ? (
             <div onClick={handleAudioClick(reel.audioInfo)} className="flex items-center space-x-1 text-[13px] text-gray-200 w-[180px] overflow-hidden">
               <span className="mr-1">🎵</span>
               <div className="relative w-full overflow-hidden">
@@ -430,36 +578,35 @@ function InfoOverlay({ reel, handleAudioClick, user, handleFollowClick, isFollow
   );
 }
 
-function ActionButtons({ reel, handleLike, likedMap, handleAudioClick, setOpenMenu, setReelId, onOpenComments }) {
+function ActionButtons({ reel, handleLike, likedMap, handleAudioClick,
+  setOpenMenu, setReelId, onOpenComments, handleSave, savedMap }) {
 
   return (
     <div className="flex flex-col mt-100 ml-5 items-center justify-center space-y-6">
       {/* Like button */}
-      <div className="flex flex-col items-center space-y-1 ">
+      <div className="flex flex-col items-center space-y-1">
         <button
-          onClick={() => {
-            if (!reel.likesHidden) handleLike(reel._id);
-          }}
           disabled={reel.likesHidden}
-          className={`cursor-pointer transition-colors duration-200 
-    ${reel.likesHidden ? "cursor-not-allowed" : ""}
-  `}
+          onClick={() => handleLike(reel._id)}
+          className="cursor-pointer transition-colors duration-200"
         >
           <Heart
             size={25}
-            className={`transition-colors duration-200 
-      ${likedMap[reel._id]
-                ? "fill-red-500 text-red-500"
-                : "text-black dark:text-white"}
-    `}
+            className={`transition-colors duration-200 ${likedMap[reel._id]
+              ? "fill-red-500 text-red-500"
+              : "text-black dark:text-white"
+              }`}
           />
         </button>
-
-        {!reel.likesHidden && (
-          <span className="text-xs text-black dark:text-white">{reel.likeCount}</span>
-        )}
+        {
+          !reel.likesHidden ? (
+            <span className="text-xs text-black dark:text-white">
+              {reel.likeCount ?? 0}
+            </span>
+          ) : null}
 
       </div>
+
 
       {/* Comment button */}
       <div className="flex flex-col items-center space-y-1 "
@@ -480,9 +627,16 @@ function ActionButtons({ reel, handleLike, likedMap, handleAudioClick, setOpenMe
         <Send size={25} className="text-black dark:text-white cursor-pointer" />
       </button>
 
-      <button className="mt-2">
-        <Bookmark size={25} className="text-black dark:text-white cursor-pointer" />
+      <button
+        className="mt-2"
+        onClick={() => handleSave(reel._id)}
+      >
+        <Bookmark
+          size={25}
+          className={`text-black dark:text-white cursor-pointer ${savedMap[reel._id] ? "fill-current" : ""}`}
+        />
       </button>
+
 
       <button
         className=" relative z-20 dark:text-white  cursor-pointer"
@@ -496,17 +650,16 @@ function ActionButtons({ reel, handleLike, likedMap, handleAudioClick, setOpenMe
       </button>
 
 
-
-      {reel.audioUser?.avatarUrl || reel.audioInfo?.cover ? (
+      {reel.audioUser?.avatarUrl || reel.audioInfo?.coverl ? (
         <div className="mt-4 cursor-pointer" onClick={handleAudioClick(reel.audioInfo)}>
           <img
             src={reel.audioInfo?.cover || reel.audioUser?.avatarUrl}
             alt="avatar"
             className="w-8 h-8 rounded-sm object-cover hover:opacity-80 transition"
           />
-
         </div>
       ) : null}
+      {/* 👇 Thêm click chuyển trang âm thanh */}
 
     </div>
 

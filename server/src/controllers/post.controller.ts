@@ -139,6 +139,15 @@ export const getReelsFeedHandler = catchErrors(async (req: AuthenticatedRequest,
   return ResponseUtil.success(res, reels);
 });
 
+export const getReelByIdHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const userId  = req.userId;
+
+  const reel = await PostService.getReelById(id as any, userId.toString());
+
+  return ResponseUtil.success(res, reel);
+});
+
 // controllers/post.controller.ts
 export const increasePostViewHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;

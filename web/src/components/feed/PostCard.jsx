@@ -29,6 +29,7 @@ const PostCard = ({ post, onUsernameClick, onTagClick, onShareClick }) => {
     handleUserClick,
   } = usePostActions(post, { onUsernameClick });
 
+
   const pausePostVideos = useCallback(() => {
     if (postMediaRef.current) {
       const videos = postMediaRef.current.querySelectorAll("video");

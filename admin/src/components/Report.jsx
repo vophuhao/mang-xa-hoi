@@ -151,7 +151,7 @@ export default function Report() {
   const handleClick = async (postId, key) => {
     try {
       const res = await resolveReport(postId, key);
-      console.log("Kết quả xử lý:", res.data);
+      
       toast.success("Xử lý báo cáo thành công");
       onclose();
       fetchReports();
