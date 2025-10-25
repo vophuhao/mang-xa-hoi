@@ -9,6 +9,7 @@ export interface NotificationDocument extends mongoose.Document {
     | "reply"
     | "follow"
     | "mention"
+    | "message"
     | "story_view"
     | "direct_message"
     | "post_share";
@@ -27,6 +28,12 @@ export interface NotificationDocument extends mongoose.Document {
   // Grouping (for "user1, user2 and 3 others liked your post")
   groupKey?: string;
   isGrouped: boolean;
+
+  // Additional metadata (e.g., message count for grouped notifications)
+  metadata?: {
+    messageCount?: number;
+    [key: string]: any;
+  };
 
   createdAt: Date;
   updatedAt: Date;
@@ -53,6 +60,7 @@ const notificationSchema = new mongoose.Schema<NotificationDocument>(
         "reply",
         "follow",
         "mention",
+        "message",
         "story_view",
         "direct_message",
         "post_share",
@@ -79,6 +87,12 @@ const notificationSchema = new mongoose.Schema<NotificationDocument>(
     // Grouping
     groupKey: { type: String },
     isGrouped: { type: Boolean, default: false },
+
+    // Additional metadata
+    metadata: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
   },
   { timestamps: true }
 );

@@ -1,17 +1,20 @@
-import { Server } from "socket.io";
-import { Server as HttpServer } from "http";
-import { socketAuthMiddleware } from "./middleware/socketAuth";
-import { MessageHandler } from "./handlers/messageHandler";
-import { TypingHandler } from "./handlers/typingHandler";
 import { APP_ORIGIN } from "@/constants/env";
+import { Server as HttpServer } from "http";
+import { Server } from "socket.io";
+import { MessageHandler } from "./handlers/messageHandler";
+import { NotificationHandler } from "./handlers/notificationHandler";
+import { TypingHandler } from "./handlers/typingHandler";
+import { socketAuthMiddleware } from "./middleware/socketAuth";
+
+let notificationHandler: NotificationHandler;
 
 export function initializeSocket(httpServer: HttpServer) {
   const io = new Server(httpServer, {
     cors: {
       origin: APP_ORIGIN, // Có thể thay bằng APP_ORIGIN trong production
       credentials: true,
-      methods: ["GET", "POST"]
-    }
+      methods: ["GET", "POST"],
+    },
   });
 
   // Apply authentication middleware
@@ -20,8 +23,9 @@ export function initializeSocket(httpServer: HttpServer) {
   // Initialize handlers
   const messageHandler = new MessageHandler(io);
   const typingHandler = new TypingHandler();
+  notificationHandler = new NotificationHandler(io);
 
-  io.on("connection", (socket) => {
+  io.on("connection", socket => {
     console.log(`User ${socket.userId} connected to socket`);
 
     // Join user to their personal room
@@ -56,4 +60,12 @@ export function initializeSocket(httpServer: HttpServer) {
   });
 
   return io;
+}
+
+// Export notification handler for use in services
+export function getNotificationHandler(): NotificationHandler {
+  if (!notificationHandler) {
+    throw new Error("Socket.IO not initialized");
+  }
+  return notificationHandler;
 }

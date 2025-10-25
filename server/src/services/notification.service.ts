@@ -1,3 +1,4 @@
+import FollowModel from "@/models/follow.model";
 import NotificationModel from "@/models/notification.model";
 import ErrorFactory from "@/utils/ErrorFactory";
 
@@ -39,8 +40,25 @@ export class NotificationService {
       NotificationModel.countDocuments({ recipient: userId, isRead: false }),
     ]);
 
+    // Add isFollowing field to each notification's sender
+    const senderIds = notifications.map((n: any) => n.sender?._id).filter(Boolean);
+    const followingRelations = await FollowModel.find({
+      follower: userId,
+      following: { $in: senderIds },
+    }).select("following");
+
+    const followingSet = new Set(followingRelations.map((f: any) => f.following.toString()));
+
+    const notificationsWithFollowStatus = notifications.map((notification: any) => {
+      const notifObj = notification.toObject();
+      if (notifObj.sender) {
+        notifObj.sender.isFollowing = followingSet.has(notifObj.sender._id.toString());
+      }
+      return notifObj;
+    });
+
     return {
-      data: notifications,
+      data: notificationsWithFollowStatus,
       unreadCount,
       pagination: {
         page,
@@ -202,6 +220,249 @@ export class NotificationService {
     await notification.populate("sender", "username userId avatarUrl isVerified");
 
     return notification;
+  }
+
+  /**
+   * Create notification for post like
+   */
+  static async createLikeNotification({
+    postId,
+    postOwnerId,
+    likerId,
+  }: {
+    postId: string;
+    postOwnerId: string;
+    likerId: string;
+  }) {
+    return this.createNotification({
+      recipient: postOwnerId,
+      sender: likerId,
+      type: "like",
+      message: "đã thích bài đăng của bạn",
+      post: postId,
+    });
+  }
+
+  /**
+   * Create notification for comment
+   */
+  static async createCommentNotification({
+    postId,
+    postOwnerId,
+    commenterId,
+    commentId,
+  }: {
+    postId: string;
+    postOwnerId: string;
+    commenterId: string;
+    commentId: string;
+  }) {
+    return this.createNotification({
+      recipient: postOwnerId,
+      sender: commenterId,
+      type: "comment",
+      message: "đã bình luận về bài đăng của bạn",
+      post: postId,
+      comment: commentId,
+    });
+  }
+
+  /**
+   * Create notification for comment reply
+   */
+  static async createReplyNotification({
+    postId,
+    parentCommentOwnerId,
+    replierId,
+    commentId,
+  }: {
+    postId: string;
+    parentCommentOwnerId: string;
+    replierId: string;
+    commentId: string;
+  }) {
+    return this.createNotification({
+      recipient: parentCommentOwnerId,
+      sender: replierId,
+      type: "reply",
+      message: "đã trả lời bình luận của bạn",
+      post: postId,
+      comment: commentId,
+    });
+  }
+
+  /**
+   * Create notification for follow
+   */
+  static async createFollowNotification({
+    followedUserId,
+    followerId,
+  }: {
+    followedUserId: string;
+    followerId: string;
+  }) {
+    return this.createNotification({
+      recipient: followedUserId,
+      sender: followerId,
+      type: "follow",
+      message: "đã bắt đầu theo dõi bạn",
+    });
+  }
+
+  /**
+   * Create notification for mention in post/comment
+   */
+  static async createMentionNotification({
+    mentionedUserId,
+    mentionerId,
+    postId,
+    commentId,
+  }: {
+    mentionedUserId: string;
+    mentionerId: string;
+    postId?: string;
+    commentId?: string;
+  }) {
+    const notificationData: {
+      recipient: string;
+      sender: string;
+      type: string;
+      message: string;
+      post?: string;
+      comment?: string;
+    } = {
+      recipient: mentionedUserId,
+      sender: mentionerId,
+      type: "mention",
+      message: commentId ? "mentioned you in a comment" : "mentioned you in a post",
+    };
+
+    if (postId) notificationData.post = postId;
+    if (commentId) notificationData.comment = commentId;
+
+    return this.createNotification(notificationData);
+  }
+
+  /**
+   * Create notification for story view
+   */
+  static async createStoryViewNotification({
+    storyOwnerId,
+    viewerId,
+    storyId,
+  }: {
+    storyOwnerId: string;
+    viewerId: string;
+    storyId: string;
+  }) {
+    return this.createNotification({
+      recipient: storyOwnerId,
+      sender: viewerId,
+      type: "story_view",
+      message: "viewed your story",
+      story: storyId,
+    });
+  }
+
+  /**
+   * Create notification for post share
+   */
+  static async createShareNotification({
+    postId,
+    postOwnerId,
+    sharerId,
+  }: {
+    postId: string;
+    postOwnerId: string;
+    sharerId: string;
+  }) {
+    return this.createNotification({
+      recipient: postOwnerId,
+      sender: sharerId,
+      type: "post_share",
+      message: "shared your post",
+      post: postId,
+    });
+  }
+
+  /**
+   * Create or update notification for direct message
+   * Groups multiple messages from same sender into one notification
+   */
+  static async createMessageNotification({
+    recipientId,
+    senderId,
+    messageCount = 1,
+  }: {
+    recipientId: string;
+    senderId: string;
+    messageCount?: number;
+  }) {
+    // Don't create notification for self-messages
+    if (recipientId === senderId) {
+      return null;
+    }
+
+    // Find existing unread message notification from this sender
+    const existingNotification = await NotificationModel.findOne({
+      recipient: recipientId,
+      sender: senderId,
+      type: "message",
+      isRead: false,
+    });
+
+    if (existingNotification) {
+      // Update existing notification - increment message count
+      const currentCount = existingNotification.metadata?.messageCount || 1;
+      const newCount = currentCount + messageCount;
+
+      existingNotification.message = `đã gửi ${newCount} tin nhắn cho bạn`;
+      existingNotification.metadata = { messageCount: newCount };
+      existingNotification.createdAt = new Date(); // Update timestamp to move to top
+
+      await existingNotification.save();
+      return existingNotification;
+    }
+
+    // Create new notification
+    return this.createNotification({
+      recipient: recipientId,
+      sender: senderId,
+      type: "message",
+      message: messageCount === 1 ? "sent you a message" : `sent you ${messageCount} messages`,
+    });
+  }
+
+  /**
+   * Get grouped notifications (e.g., "user1, user2 and 3 others liked your post")
+   */
+  static async getGroupedNotifications(userId: string) {
+    const notifications = await NotificationModel.aggregate([
+      {
+        $match: {
+          recipient: userId,
+        },
+      },
+      {
+        $group: {
+          _id: {
+            type: "$type",
+            post: "$post",
+            comment: "$comment",
+            story: "$story",
+          },
+          notifications: { $push: "$$ROOT" },
+          count: { $sum: 1 },
+          latestDate: { $max: "$createdAt" },
+          isRead: { $min: "$isRead" }, // false if any is unread
+        },
+      },
+      {
+        $sort: { latestDate: -1 },
+      },
+    ]);
+
+    return notifications;
   }
 }
 

@@ -6,11 +6,12 @@ import NotificationModel from "@/models/notification.model";
 import PostModel from "@/models/post.model";
 import SavedPostModel from "@/models/savedPost.model";
 import UserModel from "@/models/user.model";
+import { getNotificationHandler } from "@/socket";
 import ErrorFactory from "@/utils/ErrorFactory";
 import { getAudioByIdSchema } from "@/validators/audio.validator";
 import mongoose from "mongoose";
+import NotificationService from "./notification.service";
 import { UserBlockService } from "./userBlock.service";
-import { disable } from "colors";
 export type CreateNewPost = {
   user: mongoose.Types.ObjectId;
   caption?: string;
@@ -252,14 +253,27 @@ export class PostService {
       likeCount = updatedPost!.likeCount;
       isLiked = true;
 
+      // Create notification and emit real-time event
       if (post.user && post.user.toString() !== userId) {
-        await NotificationModel.create({
-          recipient: post.user,
-          sender: userId,
-          type: "like",
-          post: postId,
-          message: "liked your post",
+        const notification = await NotificationService.createLikeNotification({
+          postId,
+          postOwnerId: post.user.toString(),
+          likerId: userId,
         });
+
+        // Emit Socket.IO event
+        if (notification) {
+          try {
+            const notificationHandler = getNotificationHandler();
+            notificationHandler.emitNotification(post.user.toString(), notification);
+
+            // Update unread count
+            const { unreadCount } = await NotificationService.getUnreadCount(post.user.toString());
+            notificationHandler.emitUnreadCountUpdate(post.user.toString(), unreadCount);
+          } catch (error) {
+            console.error("Failed to emit notification:", error);
+          }
+        }
       }
     }
 
