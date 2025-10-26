@@ -10,6 +10,7 @@ import { useFeedPosts } from "@/hooks/usePost";
 import { USER_QUERY_KEYS, useUser } from "@/hooks/useUser";
 import { isPanelMenu } from "@/store/slices/layoutSlice";
 
+
 const Feed = () => {
   const { activeMenu, isMobile } = useSelector((state) => state.layout);
   const queryClient = useQueryClient();
@@ -49,7 +50,7 @@ const Feed = () => {
       setPage((prev) => prev + 1);
     }
   };
-
+ 
   const hasNextPage = feedData?.pagination?.hasNext || false;
 
   return (

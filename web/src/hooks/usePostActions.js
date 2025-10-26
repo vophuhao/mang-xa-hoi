@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 
 import { USER_QUERY_KEYS } from "@/hooks/useUser";
+import { deletePost } from "@/lib/api";
 
 /**
  * Custom hook for post-related actions
@@ -17,6 +18,11 @@ export const usePostActions = (post, callbacks = {}) => {
 
   // Modal states
   const [showPostOptions, setShowPostOptions] = useState(false);
+
+  // Share modal states
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [sharePostState, setSharePostState] = useState(null);
+  const [shareCallback, setShareCallback] = useState(null);
 
   // Post options handlers
   const handleOptionsClick = () => {
@@ -34,31 +40,51 @@ export const usePostActions = (post, callbacks = {}) => {
   };
 
   const handlePostDelete = (postId) => {
-    if (confirm("Bạn có chắc chắn muốn xóa bài viết này?")) {
-      console.log("Delete post:", postId);
-      setShowPostOptions(false);
-      // TODO: Implement delete post functionality
-    }
+    return deletePost(postId)
+      .then(() => {
+        toast.success("Đã xóa bài viết", {
+          position: "bottom-center",
+          autoClose: 2500,
+          hideProgressBar: true,
+          closeOnClick: true,
+          pauseOnHover: false,
+          draggable: false,
+        });
+      })
+      .catch((error) => {
+        console.error("Failed to delete post:", error);
+        toast.error("Không thể xóa bài viết", {
+          position: "bottom-center",
+          autoClose: 2500,
+          hideProgressBar: true,
+          closeOnClick: true,
+          pauseOnHover: false,
+          draggable: false,
+        });
+      })
+      .finally(() => {
+        setShowPostOptions(false);
+      });
   };
 
   const handlePostReport = (post) => {
     console.log("Report post:", post._id);
     setShowPostOptions(false);
-    alert(`Đã báo cáo bài viết của ${post.user.username}`);
+    alert(`Đã báo cáo bài viết của ${post.user.userId}`);
     // TODO: Implement report post functionality
   };
 
   const handleCopyLink = async (post) => {
     try {
       // Create Instagram-style URL: /username/p/postId
-      const username = post?.user?.username || "user";
+      const userId = post?.user?.userId || "user";
       const postId = post?._id;
 
       if (!postId) {
         throw new Error("Post ID not found");
       }
 
-      const url = `${window.location.origin}/${username}/p/${postId}`;
+      const url = `${window.location.origin}/${userId}/p/${postId}`;
 
       // Use modern clipboard API with fallback
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -100,11 +126,18 @@ export const usePostActions = (post, callbacks = {}) => {
     }
   };
 
+  // open share modal (Instagram style)
   const handleShare = (post, onShareClick) => {
     setShowPostOptions(false);
-    if (onShareClick) {
-      onShareClick(post);
-    }
+    setSharePostState(post);
+    setShareCallback(() => onShareClick || null);
+    setShowShareModal(true);
+  };
+
+  const handleCloseShare = () => {
+    setShowShareModal(false);
+    setSharePostState(null);
+    setShareCallback(null);
   };
 
   // User interaction handlers
@@ -125,6 +158,10 @@ export const usePostActions = (post, callbacks = {}) => {
     handlePostReport,
     handleCopyLink,
     handleShare,
+    showShareModal,
+    sharePostState,
+    shareCallback,
+    handleCloseShare,
     handleUserClick,
   };
 };

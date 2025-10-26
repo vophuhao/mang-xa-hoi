@@ -110,45 +110,29 @@ const CollectionsGrid = ({ onCollectionClick }) => {
             onClick={handleClick}
             className="relative aspect-square w-full overflow-hidden rounded-lg bg-gray-100 transition hover:opacity-90 dark:bg-gray-800"
           >
-            {/* Lưới 4 ô nhỏ */}
-            <div className="grid grid-cols-2 grid-rows-2 h-full w-full">
-              {firstFour.length > 0 ? (
-                firstFour.map((audio, index) => (
-                  <div key={index} className="relative">
-                    {audio.cover || audio.fileUrl ? (
-                      <img
-                        src={audio.cover || audio.fileUrl}
-                        alt={audio.title}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600">
-                        <span className="text-lg font-bold text-white">
-                          {audio.title?.charAt(0).toUpperCase() || "A"}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ))
-              ) : (
-                // Không có audio nào → gradient mặc định
-                <div className="col-span-2 row-span-2 flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600">
-                  <span className="text-2xl font-bold text-white">A</span>
-                </div>
-              )}
-            </div>
+            {/* ✅ Ảnh đại diện album */}
+            {audios.length > 0 && (audios[0].cover || audios[0].fileUrl) ? (
+              <img
+                src={audios[0].cover || audios[0].fileUrl}
+                alt={audios[0].title}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600">
+                <span className="text-3xl font-bold text-white">A</span>
+              </div>
+            )}
 
-            {/* Nền mờ và chữ */}
+            {/* ✅ Overlay gradient và text */}
             <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/60 to-transparent">
               <div className="w-full p-3 text-white">
                 <h3 className="text-base font-semibold">Âm thanh</h3>
-                <p className="text-xs opacity-90">
-                  {audios.length} bài
-                </p>
+                <p className="text-xs opacity-90">{audios.length} bài</p>
               </div>
             </div>
           </button>
         </div>
+
 
         {/* Collection Cards */}
         {collections.map((collection) => (
@@ -159,11 +143,20 @@ const CollectionsGrid = ({ onCollectionClick }) => {
             >
               {/* Background gradient + chữ cái đầu */}
               {collection.coverImage ? (
-                <img
-                  src={collection.coverImage}
-                  alt={collection.name}
-                  className="h-full w-full object-cover"
-                />
+                collection.coverImage.endsWith(".mp4") ? (
+                  <video
+                    src={collection.coverImage}
+                   className="h-full w-full object-cover"
+                    
+                    
+                  />
+                ) : (
+                  <img
+                    src={collection.coverImage}
+                    alt={collection.name}
+                    className="h-full w-full object-cover"
+                  />
+                )
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600">
                   <span className="text-2xl font-bold text-white">

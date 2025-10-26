@@ -66,7 +66,7 @@ export default function MusicPicker({ audioList, selected, onSelect, hasOriginal
       console.error("Search error:", err);
     }
   };
-  console.log("list audio:", list);
+
   return (
     <div className=" mt-5">
 

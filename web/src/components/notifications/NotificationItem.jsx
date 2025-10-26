@@ -139,9 +139,8 @@ const NotificationItem = ({
   return (
     <>
       <div
-        className={`flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 ${
-          !notification.isRead ? "bg-blue-50 dark:bg-blue-900/20" : ""
-        }`}
+        className={`flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 ${!notification.isRead ? "bg-blue-50 dark:bg-blue-900/20" : ""
+          }`}
         onClick={handleNotificationClick}
       >
         {/* Avatar */}
@@ -164,11 +163,20 @@ const NotificationItem = ({
         {/* Post thumbnail if available */}
         {notification.post?.mediaUrls?.[0] && (
           <div className="flex-shrink-0">
-            <img
-              src={notification.post.mediaUrls[0]}
-              alt="Post"
-              className="h-11 w-11 rounded object-cover"
-            />
+            {notification.post.mediaUrls[0].endsWith(".mp4") ? (
+              <video
+                src={notification.post.mediaUrls[0]}
+                className="h-11 w-11 rounded object-cover"
+              />
+            ) : (
+              <img
+                src={notification.post.mediaUrls[0]}
+                alt={notification.post.mediaUrls[0]}
+                className="h-11 w-11 rounded object-cove"
+              />
+            )}
+
+          
           </div>
         )}
 
@@ -196,11 +204,10 @@ const NotificationItem = ({
               }
             }}
             disabled={followMutation.isPending || unfollowMutation.isPending}
-            className={`flex-shrink-0 rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors disabled:opacity-50 ${
-              isFollowing
+            className={`flex-shrink-0 rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors disabled:opacity-50 ${isFollowing
                 ? "border border-gray-300 bg-white text-gray-900 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
                 : "bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
-            }`}
+              }`}
           >
             {followMutation.isPending || unfollowMutation.isPending
               ? "..."

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 import PostCard from "./PostCard";
 
+
 const FeedList = ({ posts, isLoading, error, onLoadMore, hasNextPage }) => {
   const navigate = useNavigate();
 

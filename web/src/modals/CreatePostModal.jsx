@@ -70,6 +70,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
   const [muteOriginal, setMuteOriginal] = useState(false);
   const [musicObj, setMusicObj] = useState(null);
   const musicPickerAudioRef = useRef(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
 
   const handlePlayVideo = () => {
@@ -474,18 +475,41 @@ export default function CreatePostModal({ isOpen, onClose }) {
   };
 
   const handleImageUpload = (e) => {
+    const MAX_IMAGE_SIZE_MB = 30; // Giới hạn ảnh
+    const MAX_VIDEO_SIZE_MB = 100; // Giới hạn video
+
     const files = Array.from(e.target.files);
+
     files.forEach((file) => {
+      // Kiểm tra dung lượng
+      if (file.type.startsWith("image/") && file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+        toast.error(`Ảnh "${file.name}" vượt quá ${MAX_IMAGE_SIZE_MB}MB`);
+        return;
+      }
+
+      if (file.type.startsWith("video/") && file.size > MAX_VIDEO_SIZE_MB * 1024 * 1024) {
+        toast.error(`Video "${file.name}" vượt quá ${MAX_VIDEO_SIZE_MB}MB`);
+        return;
+      }
+
+      // Kiểm tra định dạng hợp lệ
+      if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+        toast.error(`"${file.name}" không phải là định dạng ảnh hoặc video hợp lệ`);
+        return;
+      }
+
+      // Đọc file để hiển thị preview
       const reader = new FileReader();
       reader.onload = () => {
         setImages((prev) => [
           ...prev,
-          { src: reader.result, type: file.type, file } // Lưu file ở đây
+          { src: reader.result, type: file.type, file },
         ]);
       };
       reader.readAsDataURL(file);
     });
   };
+
 
 
   const extractMentions = (caption) => {
@@ -528,7 +552,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
       if (selectedMusic?.fileUrl) {
         audioUrl = selectedMusic.fileUrl;
       }
-      let audioOriginal ;
+      let audioOriginal;
       const onlyOneVideo = images.length === 1 && images[0].type && images[0].type.startsWith("video");
       // Nếu chưa chọn nhạc nền, và có video gốc, và không mute, thì tạo audio mới từ video
       if (onlyOneVideo && hasOriginalAudio === true && muteOriginal === false && !audioId) {
@@ -631,345 +655,217 @@ export default function CreatePostModal({ isOpen, onClose }) {
   };
 
   const handleClickStep = async () => {
+    try {
+      setIsProcessing(true); // 🔹 Bắt đầu loading
 
-    if (step === 1 && images[currentIndex]?.type.startsWith("video") && images.length === 1) {
-      const formData = new FormData();
-      images.forEach((img) => formData.append("video", img.file));
-      const res = await checkVideoHasAudio(formData)
-      setHasOriginalAudio(res.hasAudio);
-    }
-
-    if (step === 1 &&  (!images[currentIndex].type.startsWith("video") || images.length > 1)) {
-      const formData = new FormData();
-      images.forEach((img) => formData.append("files", img.file));
-      const res = await analyzeMedia(formData)
-      setHashtagSug(res.hashtags)
-      setStep(3);
-      return;
-    }
-    if (
-      step === 2 &&
-      images[currentIndex]?.type.startsWith("video") &&
-      trimRange[1] - trimRange[0] >= 1
-    ) {
-      setIsTrimming(true);
-      try {
-        // Gửi lên backend để cắt
+      if (step === 1 && images[currentIndex]?.type.startsWith("video") && images.length === 1) {
         const formData = new FormData();
-        formData.append("video", images[currentIndex].file);
-        formData.append("start", trimRange[0].toString()); // ép kiểu string
-        formData.append("end", trimRange[1].toString());
-        const res = await trimVideo(formData); // res là object của axios
-        const blob = res; // axios trả về blob ở res.data
+        images.forEach((img) => formData.append("video", img.file));
+        const res = await checkVideoHasAudio(formData);
+        setHasOriginalAudio(res.hasAudio);
+      }
 
-        const trimmedUrl = URL.createObjectURL(blob);
-        const trimmedFile = new File([blob], images[currentIndex].file.name, { type: blob.type });
-
-        const newImages = images.map((img, idx) =>
-          idx === currentIndex
-            ? { ...img, file: trimmedFile, src: trimmedUrl }
-            : img
-        );
-        setImages(newImages);
-        // dùng newImages luôn thay vì images cũ
-        const analyzeForm = new FormData();
-        newImages.forEach((img) => analyzeForm.append("files", img.file));
-
-        const analyzeRes = await analyzeMedia(analyzeForm);
-        setHashtagSug(analyzeRes.hashtags);
-
-      } catch (err) {
-        console.error(err);
-        setIsTrimming(false);
+      if (step === 1 && (!images[currentIndex].type.startsWith("video") || images.length > 1)) {
+        const formData = new FormData();
+        images.forEach((img) => formData.append("files", img.file));
+        const res = await analyzeMedia(formData);
+        setHashtagSug(res.hashtags);
+        setStep(3);
         return;
       }
-      setIsTrimming(false);
-    }
 
-    if (step === 2) {
-      // Tắt nhạc đang phát ở MusicPicker nếu có
-      if (musicPickerAudioRef.current) {
-        musicPickerAudioRef.current.pause();
-        musicPickerAudioRef.current = null;
+      if (
+        step === 2 &&
+        images[currentIndex]?.type.startsWith("video") &&
+        trimRange[1] - trimRange[0] >= 1
+      ) {
+        setIsTrimming(true);
+        try {
+          const formData = new FormData();
+          formData.append("video", images[currentIndex].file);
+          formData.append("start", trimRange[0].toString());
+          formData.append("end", trimRange[1].toString());
+          const res = await trimVideo(formData);
+          const blob = res;
+
+          const trimmedUrl = URL.createObjectURL(blob);
+          const trimmedFile = new File([blob], images[currentIndex].file.name, { type: blob.type });
+
+          const newImages = images.map((img, idx) =>
+            idx === currentIndex ? { ...img, file: trimmedFile, src: trimmedUrl } : img
+          );
+          setImages(newImages);
+
+          const analyzeForm = new FormData();
+          newImages.forEach((img) => analyzeForm.append("files", img.file));
+          const analyzeRes = await analyzeMedia(analyzeForm);
+          setHashtagSug(analyzeRes.hashtags);
+        } catch (err) {
+          console.error(err);
+          setIsTrimming(false);
+          return;
+        }
+        setIsTrimming(false);
       }
-      handleStopAll();
+
+      if (step === 2) {
+        if (musicPickerAudioRef.current) {
+          musicPickerAudioRef.current.pause();
+          musicPickerAudioRef.current = null;
+        }
+        handleStopAll();
+      }
+
+      setStep(step + 1);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsProcessing(false); // 🔹 Tắt loading
     }
-    setStep(step + 1);
   };
+
+
   return (
-    <div
-      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
-      onClick={handleOverlayClick}
-    >
-      {/* ❌ Nút đóng */}
-      <button
-        onClick={handleCloseClick}
-        className="absolute top-4 right-4 p-2 rounded-full cursor-pointer"
-      >
-        <X size={22} color="white" />
-      </button>
+
+    <>
+      {isProcessing && (
+        <div className="fixed inset-0 z-100 bg-black/50 flex items-center justify-center">
+          <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-white ml-3 text-lg font-medium">Đang xử lý...</p>
+        </div>
+      )}
 
       <div
-        className={`bg-white rounded-2xl flex flex-col shadow-xl overflow-hidden transition-all duration-300
+        className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+        onClick={handleOverlayClick}
+      >
+        {/* ❌ Nút đóng */}
+        <button
+          onClick={handleCloseClick}
+          className="absolute top-4 right-4 p-2 rounded-full cursor-pointer"
+        >
+          <X size={22} color="white" />
+        </button>
+
+        <div
+          className={`bg-white rounded-2xl flex flex-col shadow-xl overflow-hidden transition-all duration-300
     w-[95%] h-[90vh] max-h-[600px]  // 👈 mặc định cho mobile
     ${step === 1 || step === 4
-            ? "sm:w-[550px] sm:h-[650px]"
-            : "sm:w-[900px] sm:h-[650px]"}  
+              ? "sm:w-[550px] sm:h-[650px]"
+              : "sm:w-[900px] sm:h-[650px]"}  
   `}
-      >
-        {/* Header */}
-        <div className="relative flex justify-center items-center border-b border-gray-200 px-4 py-2">
-          {/* 🔙 Back button ở bước 2 */}
-          {step === 2 && (
-            <button
-              onClick={() => handleReturn()}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-700"
-            >
-              <ArrowLeft size={20} />
-            </button>
-          )}
+        >
+          {/* Header */}
+          <div className="relative flex justify-center items-center border-b border-gray-200 px-4 py-2">
+            {/* 🔙 Back button ở bước 2 */}
+            {step === 2 && (
+              <button
+                onClick={() => handleReturn()}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-700"
+              >
+                <ArrowLeft size={20} />
+              </button>
+            )}
 
 
-          <h2 className="font-semibold">
-            {step === 1 && "Tạo bài viết mới"}
-            {step === 2 && "Tạo bài viết mới"}
-            {step === 3 && "Chia sẻ bài viết"}
-            {step === 4 && "Chia sẻ bài viết"}
-          </h2>
+            <h2 className="font-semibold">
+              {step === 1 && "Tạo bài viết mới"}
+              {step === 2 && "Tạo bài viết mới"}
+              {step === 3 && "Chia sẻ bài viết"}
+              {step === 4 && "Chia sẻ bài viết"}
+            </h2>
 
-          {/* 👉 nút Tiếp / Chia sẻ */}
-          {step === 1 && images.length > 0 && (
-            <button
-              onClick={handleClickStep}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-600 font-semibold cursor-pointer"
-            >
-              Tiếp
-            </button>
-          )}
-          {step === 2 && images.length > 0 && (
-            <button
-              onClick={handleClickStep}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-600 font-semibold cursor-pointer"
-              disabled={isTrimming}
-            >
-              Tiếp
-            </button>
-          )}
-          {step === 3 && (
-            <button
-              onClick={handlePost}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-600 font-semibold cursor-pointer"
-            >
-              Chia sẻ
-            </button>
-          )}
+            {/* 👉 nút Tiếp / Chia sẻ */}
+            {step === 1 && images.length > 0 && (
+              <button
+                onClick={handleClickStep}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-600 font-semibold cursor-pointer"
+              >
+                Tiếp
+              </button>
+            )}
+            {step === 2 && images.length > 0 && (
+              <button
+                onClick={handleClickStep}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-600 font-semibold cursor-pointer"
+                disabled={isTrimming}
+              >
+                Tiếp
+              </button>
+            )}
+            {step === 3 && (
+              <button
+                onClick={handlePost}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-600 font-semibold cursor-pointer"
+              >
+                Chia sẻ
+              </button>
+            )}
 
-        </div>
+          </div>
 
-        {/* Content */}
-        <div className="flex-1 flex">
-          {/* Bước 1: Chọn ảnh */}
-          {step === 1 && (
-            <div className="flex-1 flex flex-col items-center justify-center text-center relative">
-              {images.length === 0 ? (
-                <div className="flex flex-col items-center space-y-4">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-16 h-16 text-gray-500"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={1.5}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3 16.5v-9A2.25 2.25 0 0 1 5.25 5.25h13.5A2.25 2.25 0 0 1 21 7.5v9a2.25 2.25 0 0 1-2.25 2.25h-13.5A2.25 2.25 0 0 1 3 16.5z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M9 10.5l3 3 3-3"
-                    />
-                  </svg>
-
-                  <p className="text-lg font-medium text-gray-700">
-                    Kéo ảnh và video vào đây
-                  </p>
-
-                  <label className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-1 rounded-lg cursor-pointer font-semibold">
-                    <input
-                      type="file"
-                      accept="image/*,video/*"
-                      multiple
-                      className="hidden"
-                      onChange={handleImageUpload}
-                    />
-                    Chọn từ máy tính
-                  </label>
-                </div>
-              ) : (
-                <>
-                  <div className="flex-1 flex items-center justify-center bg-gray-50 relative overflow-y-auto max-h-[650px]">
-                    {images[currentIndex].type.startsWith("video") ? (
-                      <video
-                        src={images[currentIndex].src}
-                        controls
-                        className="w-full h-full object-cover cursor-pointer"
-                        onClick={handleImageClick}
+          {/* Content */}
+          <div className="flex-1 flex">
+            {/* Bước 1: Chọn ảnh */}
+            {step === 1 && (
+              <div className="flex-1 flex flex-col items-center justify-center text-center relative">
+                {images.length === 0 ? (
+                  <div className="flex flex-col items-center space-y-4">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-16 h-16 text-gray-500"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={1.5}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3 16.5v-9A2.25 2.25 0 0 1 5.25 5.25h13.5A2.25 2.25 0 0 1 21 7.5v9a2.25 2.25 0 0 1-2.25 2.25h-13.5A2.25 2.25 0 0 1 3 16.5z"
                       />
-                    ) : (
-                      <img
-                        src={images[currentIndex].src}
-                        alt="preview"
-                        className="w-full h-full object-cover cursor-pointer"
-                        onClick={handleImageClick}
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M9 10.5l3 3 3-3"
                       />
-                    )}
+                    </svg>
+
+                    <p className="text-lg font-medium text-gray-700">
+                      Kéo ảnh và video vào đây
+                    </p>
+
+                    <label className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-1 rounded-lg cursor-pointer font-semibold">
+                      <input
+                        type="file"
+                        accept="image/*,video/*"
+                        multiple
+                        className="hidden"
+                        onChange={handleImageUpload}
+                      />
+                      Chọn từ máy tính
+                    </label>
                   </div>
-                  {/* Nút prev/next */}
-                  {images.length > 1 && (
-                    <>
-                      <button
-                        onClick={prevImage}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 p-2 rounded-full"
-                      >
-                        <ChevronLeft size={17} color="white" />
-                      </button>
-                      <button
-                        onClick={nextImage}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 p-2 rounded-full"
-                      >
-                        <ChevronRight size={17} color="white" />
-                      </button>
-                    </>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-          {/* Bước 3: Caption + mentions */}
-          {step === 3 && (
-            <div className="flex-1 flex">
-              {/* Left: Image */}
-              <div className="flex-1 flex items-center justify-center bg-gray-50 relative overflow-y-auto max-h-[650px]">
-                {images.length > 0 && (
+                ) : (
                   <>
-                    {images[currentIndex].type.startsWith("video") ? (
-                      <video
-                        src={images[currentIndex].src}
-                        controls
-                        muted={muteOriginal}
-                        onPlay={handlePlayVideo}
-                        onPause={handlePauseVideo}
-                        onEnded={handlePauseVideo}
-                        className="h-full object-cover cursor-pointer"
-                        onClick={handleImageClick}
-                      />
-
-                    ) : (
-                      <img
-                        src={images[currentIndex].src}
-                        alt="preview"
-                        className="w-full h-full object-cover cursor-pointer"
-                        onClick={handleImageClick}
-                      />
-                    )}
-
-                    {/* Popup tag bạn bè */}
-                    {popup && (
-                      <div
-                        ref={popupRef}
-                        className="absolute bg-white rounded-lg shadow-lg border-rounded border-gray-200 w-83 z-50 h-55"
-                        style={{ top: popup.y, left: popup.x }}
-                      >
-                        {/* Mũi nhọn */}
-                        <div className="absolute -top-2 left-4 w-4 h-4 bg-white border-l border-t border-gray-200 rotate-45"></div>
-                        <div className="p-3">
-                          <div className="flex items-center gap-2 mb-2">
-                            <p className="text-sm font-semibold">Thẻ:</p>
-                            <div className="relative flex-1">
-                              <input
-                                type="text"
-                                placeholder="Tìm kiếm"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="bg-gray-50 w-full border border-gray-300 rounded-lg px-3 py-1.5 pr-8 text-sm focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                              />
-                              {search && (
-                                <button
-                                  onClick={() => setSearch("")}
-                                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                >
-                                  ✕
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          {search && (
-                            <div className="max-h-40 overflow-y-auto divide-y divide-gray-100">
-                              {suggestions.map((f) => (
-                                <div
-                                  key={f.id}
-                                  onClick={() => handleSelect(f)}
-                                  className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
-                                >
-                                  <img
-                                    src={f.avatarUrl}
-                                    alt=""
-                                    className="w-8 h-8 rounded-full"
-                                  />
-                                  <div className="flex flex-col leading-tight">
-                                    <span className="text-sm font-medium">{f.username}</span>
-                                    <span className="text-xs text-gray-500">{f.userId}</span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    {/* Render tag trên ảnh */}
-                    {mentionsRen.map((tag, i) => (
-                      <Draggable
-                        key={i}
-                        bounds="parent" // chỉ kéo trong ảnh
-                        position={{ x: tag.x, y: tag.y }}
-                        onStop={(e, data) => {
-                          // cập nhật vị trí tag khi kéo xong
-                          setMentionsRen((prev) => {
-                            const newTags = [...prev];
-                            newTags[i] = { ...newTags[i], x: data.x, y: data.y };
-                            return newTags;
-                          });
-                        }}
-                      >
-                        <div className="absolute flex items-center bg-black/70 font-bold text-white text-xs px-3 py-1.5 rounded cursor-pointer">
-                          {/* Tên người dùng */}
-                          <span>{tag.userId}</span>
-
-                          {/* Nút xóa */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation(); // tránh trigger drag
-                              const userIdToRemove = tag.userId;
-                              // Xóa khỏi mentionsCap (object)
-                              setMentionsMedia(prev => prev.filter(id => id !== userIdToRemove));
-                              // Xóa khỏi mentionsRen (mảng)
-                              setMentionsRen(prev => prev.filter(m => m.userId !== userIdToRemove));
-                            }}
-                            className="ml-3 text-white font-bold text-[10px] cursor-pointer"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      </Draggable>
-                    ))}
-
-                    {/* Nút điều hướng ảnh */}
+                    <div className="flex-1 flex items-center justify-center bg-gray-50 relative overflow-y-auto max-h-[650px]">
+                      {images[currentIndex].type.startsWith("video") ? (
+                        <video
+                          src={images[currentIndex].src}
+                          controls
+                          className="w-full h-full object-cover cursor-pointer"
+                          onClick={handleImageClick}
+                        />
+                      ) : (
+                        <img
+                          src={images[currentIndex].src}
+                          alt="preview"
+                          className="w-full h-full object-cover cursor-pointer"
+                          onClick={handleImageClick}
+                        />
+                      )}
+                    </div>
+                    {/* Nút prev/next */}
                     {images.length > 1 && (
                       <>
                         <button
@@ -989,369 +885,513 @@ export default function CreatePostModal({ isOpen, onClose }) {
                   </>
                 )}
               </div>
+            )}
+            {/* Bước 3: Caption + mentions */}
+            {step === 3 && (
+              <div className="flex-1 flex">
+                {/* Left: Image */}
+                <div className="flex-1 flex items-center justify-center bg-gray-50 relative overflow-y-auto max-h-[650px]">
+                  {images.length > 0 && (
+                    <>
+                      {images[currentIndex].type.startsWith("video") ? (
+                        <video
+                          src={images[currentIndex].src}
+                          controls
+                          muted={muteOriginal}
+                          onPlay={handlePlayVideo}
+                          onPause={handlePauseVideo}
+                          onEnded={handlePauseVideo}
+                          className="h-full object-cover cursor-pointer"
+                          onClick={handleImageClick}
+                        />
 
-              {/* Right: Caption + mentions */}
-              <div className="w-[320px] flex flex-col ">
-                <div className="p-4 flex-1 space-y-4">
-                  <div className="flex items-center">
-                    <img
-                      src={user.data.avatarUrl}
-                      alt="avatar"
-                      className="w-7 h-7 rounded-full object-cover border"
-                    />
-                    <span className="ml-2 font-medium">{user.data.userId}</span>
-                  </div>
-                  <textarea maxLength={220}
-                    className="w-full h-35 resize-none p-2 text-sm outline-none border-none focus:outline-none focus:ring-0 focus:border-none"
-                    placeholder=""
-                    value={caption}
-                    ref={textareaRef}
-                    onChange={handleChange}
-                  />
-                  <div className="flex items-center justify-between ">
-                    {/* emoji button */}
-                    <div className="relative">
-                      <button
-                        ref={buttonRef}
-                        type="button"
-                        onClick={() => setShowPicker((prev) => !prev)}
-                        className="p-1"
-                      >
-                        <span className="text-xl">😊</span>
-                      </button>
+                      ) : (
+                        <img
+                          src={images[currentIndex].src}
+                          alt="preview"
+                          className="w-full h-full object-cover cursor-pointer"
+                          onClick={handleImageClick}
+                        />
+                      )}
 
-                      {showPicker && (
-                        <div className="absolute top-8 -left-15 z-10">
-                          <div
-                            ref={pickerRef}
-                            className="scale-90 origin-top-left"
-                            onMouseDown={(e) => e.preventDefault()} // quan trọng: ngăn picker mất focus
-                          >
-                            <Picker
-                              data={data}
-                              onEmojiSelect={addEmoji}
-                              theme="light"
-                              previewPosition="none"
-                              navPosition="none"
-                            />
+                      {/* Popup tag bạn bè */}
+                      {popup && (
+                        <div
+                          ref={popupRef}
+                          className="absolute bg-white rounded-lg shadow-lg border-rounded border-gray-200 w-83 z-50 h-55"
+                          style={{ top: popup.y, left: popup.x }}
+                        >
+                          {/* Mũi nhọn */}
+                          <div className="absolute -top-2 left-4 w-4 h-4 bg-white border-l border-t border-gray-200 rotate-45"></div>
+                          <div className="p-3">
+                            <div className="flex items-center gap-2 mb-2">
+                              <p className="text-sm font-semibold">Thẻ:</p>
+                              <div className="relative flex-1">
+                                <input
+                                  type="text"
+                                  placeholder="Tìm kiếm"
+                                  value={search}
+                                  onChange={(e) => setSearch(e.target.value)}
+                                  className="bg-gray-50 w-full border border-gray-300 rounded-lg px-3 py-1.5 pr-8 text-sm focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                                />
+                                {search && (
+                                  <button
+                                    onClick={() => setSearch("")}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                  >
+                                    ✕
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {search && (
+                              <div className="max-h-40 overflow-y-auto divide-y divide-gray-100">
+                                {suggestions.map((f) => (
+                                  <div
+                                    key={f.id}
+                                    onClick={() => handleSelect(f)}
+                                    className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
+                                  >
+                                    <img
+                                      src={f.avatarUrl}
+                                      alt=""
+                                      className="w-8 h-8 rounded-full"
+                                    />
+                                    <div className="flex flex-col leading-tight">
+                                      <span className="text-sm font-medium">{f.username}</span>
+                                      <span className="text-xs text-gray-500">{f.userId}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+
+                            )}
                           </div>
                         </div>
                       )}
+                      {/* Render tag trên ảnh */}
+                      {mentionsRen.map((tag, i) => (
+                        <Draggable
+                          key={i}
+                          bounds="parent" // chỉ kéo trong ảnh
+                          position={{ x: tag.x, y: tag.y }}
+                          onStop={(e, data) => {
+                            // cập nhật vị trí tag khi kéo xong
+                            setMentionsRen((prev) => {
+                              const newTags = [...prev];
+                              newTags[i] = { ...newTags[i], x: data.x, y: data.y };
+                              return newTags;
+                            });
+                          }}
+                        >
+                          <div className="absolute flex items-center bg-black/70 font-bold text-white text-xs px-3 py-1.5 rounded cursor-pointer">
+                            {/* Tên người dùng */}
+                            <span>{tag.userId}</span>
 
-
-                    </div>
-                    {/* counter */}
-                    <span className="text-xs text-gray-500">
-                      {caption.length}/{maxLength}
-                    </span>
-                  </div>
-                  <div className="mb-5 border-t -ml-4 border-gray-300"></div>
-
-                  <div className="space-y-6 w-full relative">
-                    {/* UI list overlay */}
-                    {(suggestions.length > 0 || tags.length > 0) && (
-                      <div className="absolute left-0 right-0 top-0 z-50 bg-white shadow-md -ml-4 -mt-5 max-h-60 h-auto overflow-y-auto">
-                        {trigger === "user" &&
-                          suggestions.map((u) => (
-                            <div
-                              key={u._id}
-                              onClick={() => handleSelectMentions(u)}
-                              className="flex items-center gap-2 p-3 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
-                            >
-                              <img src={u.avatarUrl} alt="" className="w-6 h-6 rounded-full" />
-                              <div className="flex flex-col leading-tight">
-                                <span className="text-sm font-medium">{u.username}</span>
-                                <span className="text-xs text-gray-500">{u.userId}</span>
-                              </div>
-
-                            </div>
-                          ))}
-
-                        {trigger === "hashtag" && (
-                          <>
-                            {/* Hashtags từ DB */}
-                            {tags
-                              .filter((h) => h && typeof h === "object" && h._id) // thêm check h
-                              .map((h) => (
-                                <div
-                                  key={h._id}
-                                  onClick={() => handleSelectHashtag(h)}
-                                  className="p-2 text-sm hover:bg-gray-100 cursor-pointer border-b border-gray-200 flex flex-col"
-                                >
-                                  <span className="font-bold">#{h.name}</span>
-                                  <span className="text-sm text-gray-500">{h.postCount} bài viết</span>
-                                </div>
-                              ))}
-
-                            {/* Hashtags gợi ý sẵn (string) */}
-                            {tags
-                              .filter((h) => typeof h === "string")
-                              .map((h, index) => (
-                                <div
-                                  key={index}
-                                  onClick={() => handleSelectHashtagSug(h)}
-                                  className="p-2 text-sm hover:bg-gray-100 cursor-pointer border-b border-gray-200 flex flex-col"
-                                >
-                                  <span className="">#{h}</span>
-                                  <span className="text-sm text-gray-500">Gợi ý</span>
-                                </div>
-                              ))}
-                          </>
-                        )}
-
-                      </div>
-                    )}
-
-                    {/* 2 option luôn nằm trong container */}
-                    <div className="space-y-6 w-full mt-4 relative z-0">
-                      {/* Ẩn lượt thích */}
-                      <div className="flex items-start justify-between">
-                        <div className="mr-3">
-                          <p className="text-sm font-medium">Ẩn lượt thích và lượt xem trên bài viết này</p>
-                          <p className="text-xs text-gray-600">
-                            Chỉ bạn mới nhìn thấy tổng số lượt thích và lượt xem bài viết này.
-                          </p>
-                        </div>
-                        <Toggle
-                          checked={hideLikes}
-                          onChange={() => setHideLikes(!hideLikes)}
-                        />
-                      </div>
-
-                      {/* Tắt bình luận */}
-                      <div className="flex items-start justify-between">
-                        <div className="mr-3">
-                          <p className="text-sm font-medium">Tắt tính năng bình luận</p>
-                          <p className="text-xs text-gray-600">
-                            Về sau, bạn có thể thay đổi tuỳ chọn này bằng cách mở menu ... ở đầu bài viết.
-                          </p>
-                        </div>
-                        <Toggle
-                          checked={disableComments}
-                          onChange={() => setDisableComments(!disableComments)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-            </div>
-          )}
-          {step === 2 && (
-            <div className="flex-1 flex">
-              {/* Left: Image */}
-              <div className="flex-1 flex items-center justify-center bg-gray-50 relative overflow-y-auto max-h-[650px]">
-                {images.length > 0 && (
-                  <>
-                    {images[currentIndex].type.startsWith("video") ? (
-                      <video
-                        ref={videoPreviewRef}
-                        src={images[currentIndex].src}
-                        controls
-                        className=" h-full object-cover cursor-pointer"
-                        muted={muteOriginal}
-                        onClick={handleImageClick}
-                        onLoadedMetadata={e => {
-                          const duration = Math.floor(e.target.duration);
-                          setVideoDuration(duration);
-                          setTrimRange([0, duration]);
-                          setCurrentTime(0);
-                        }}
-                        onTimeUpdate={e => {
-                          const time = Math.floor(e.target.currentTime);
-                          setCurrentTime(time);
-
-                          // Nếu chạm thanh phải thì dừng video
-                          if (time >= trimRange[1]) {
-                            e.target.pause();
-                            e.target.currentTime = trimRange[1];
-                          }
-                          // Không cho chạy lùi về trước thanh trái
-                          if (time < trimRange[0]) {
-                            e.target.currentTime = trimRange[0];
-                            setCurrentTime(trimRange[0]);
-                          }
-                        }}
-                      />
-                    ) : (
-                      <img
-                        src={images[currentIndex].src}
-                        alt="preview"
-                        className="w-full h-full object-cover cursor-pointer"
-                        onClick={handleImageClick}
-                      />
-                    )}
-                  </>
-                )}
-              </div>
-
-              {/* trim video */}
-              <div className="w-[320px] flex flex-col ">
-                <div className="p-4 flex-1 space-y-4">
-                  {/* UI cắt video */}
-                  {/* Thanh thumbnails + slider IG style */}
-                  {images[currentIndex]?.type.startsWith("video") && videoDuration > 0 && (
-                    <div className="mb-4">
-                      <div className="font-semibold mb-2">Thu ngắn video</div>
-                      <div className="relative h-16 mb-2  overflow-hidden bg-gray-200 flex items-center video-trim-bar">
-                        {/* Thumbnails */}
-                        {thumbnails.length === 5
-                          ? thumbnails.map((thumb, i) => (
-                            <div
-                              key={i}
-                              className="flex-1 h-full border-r last:border-none border-white relative"
-                              style={{
-                                backgroundImage: `url(${thumb})`,
-                                backgroundSize: "cover",
-                                backgroundPosition: "center"
+                            {/* Nút xóa */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation(); // tránh trigger drag
+                                const userIdToRemove = tag.userId;
+                                // Xóa khỏi mentionsCap (object)
+                                setMentionsMedia(prev => prev.filter(id => id !== userIdToRemove));
+                                // Xóa khỏi mentionsRen (mảng)
+                                setMentionsRen(prev => prev.filter(m => m.userId !== userIdToRemove));
                               }}
-                            />
-                          ))
-                          : [...Array(5)].map((_, i) => (
-                            <div
-                              key={i}
-                              className="flex-1 h-full bg-gray-300 border-r last:border-none border-white"
-                            />
-                          ))}
-                        {/* Overlay vùng không chọn */}
-                        {!isDragging && (
-                          <div
-                            className="absolute top-0 z-40"
-                            style={{
-                              left:
-                                currentTime < trimRange[0]
-                                  ? `${(trimRange[0] / videoDuration) * 100}%`
-                                  : currentTime >= trimRange[1]
-                                    ? `${(trimRange[1] / videoDuration) * 100}%`
-                                    : `${((currentTime / videoDuration) * 100)}%`,
-                              height: "100%",
-                              width: "4px",
-                              background: "#ffffff",
-                              transition: "left 0.08s linear"
-                            }}
-                          />
-                        )}
-                        <div
-                          className="absolute top-0 left-0 h-full pointer-events-none transition-all"
-                          style={{
-                            width: `${(trimRange[0] / videoDuration) * 100}%`,
-                            background: "rgba(0,0,0,0.4)"
-                          }}
-                        />
-                        <div
-                          className="absolute top-0 right-0 h-full pointer-events-none transition-all"
-                          style={{
-                            width: `${((videoDuration - trimRange[1]) / videoDuration) * 100}%`,
-                            background: "rgba(0,0,0,0.4)"
-                          }}
-                        />
-                        {/* Thanh trắng trái */}
-                        <div
-                          className="absolute z-30 cursor-ew-resize"
-                          style={{
-                            left: `max(calc(${(trimRange[0] / videoDuration) * 100}% - 4px), -4px)`, // dịch nhẹ sang phải, không bị âm quá
-                            top: 0,
-                            height: "100%"
-                          }}
-                          onMouseDown={e => startDrag(e, 0)}
-                          onTouchStart={e => startDrag(e, 0)}
-                        >
-                          <div className="w-[8px] h-full bg-white rounded-full shadow border border-blue-400"></div>
-                        </div>
-                        {/* Thanh trắng phải */}
-                        <div
-                          className="absolute z-30 cursor-ew-resize"
-                          style={{
-                            left: `calc(${(trimRange[1] / videoDuration) * 100}% - 4px)`,
-                            top: 0,
-                            height: "100%"
-                          }}
-                          onMouseDown={e => startDrag(e, 1)}
-                          onTouchStart={e => startDrag(e, 1)}
-                        >
-                          <div className="w-[8px] h-full bg-white rounded-full shadow border border-blue-400"></div>
-                        </div>
+                              className="ml-3 text-white font-bold text-[10px] cursor-pointer"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </Draggable>
+                      ))}
 
-                      </div>
-                      {/* Số giây dưới mỗi thumbnail */}
-                      <div className="flex justify-between px-1 mt-1">
-                        {[0, 1, 2, 3, 4].map(i => (
-                          <span
-                            key={i}
-                            className="text-xs text-gray-600 font-semibold"
-                            style={{ width: "20%", textAlign: i === 0 ? "left" : i === 4 ? "right" : "center" }}
+                      {/* Nút điều hướng ảnh */}
+                      {images.length > 1 && (
+                        <>
+                          <button
+                            onClick={prevImage}
+                            className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 p-2 rounded-full"
                           >
-                            {Math.round((i * videoDuration) / 4)}s
-                          </span>
-                        ))}
-                      </div>
-                      {/* Slider ẩn, chỉ để điều khiển logic */}
-                      <Slider
-                        range
-                        min={0}
-                        max={videoDuration}
-                        value={trimRange}
-                        onChange={setTrimRange}
-                        step={1}
-                        allowCross={false}
-                        trackStyle={[{ background: "transparent", height: 0 }]}
-                        handleStyle={[{ opacity: 0, pointerEvents: "none" }, { opacity: 0, pointerEvents: "none" }]}
-                        railStyle={{ background: "transparent", height: 0 }}
-                      />
-                      <div className="flex justify-between text-xs mt-1 text-gray-600 font-medium">
-                        <span>{trimRange[0]}s</span>
-                        <span>{trimRange[1]}s</span>
-                      </div>
-                      <MusicPicker
-                        audioList={audioList}
-                        hasOriginalAudio={hasOriginalAudio}
-                        selected={selectedMusic}
-                        onSelect={setSelectedMusic}
-                        muteOriginal={muteOriginal} // có đang tắt không
-                        onToggleOriginal={() => setMuteOriginal(prev => !prev)}
-                        audioRef={musicPickerAudioRef}
-                      />
-                    </div>
-
-
+                            <ChevronLeft size={17} color="white" />
+                          </button>
+                          <button
+                            onClick={nextImage}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 p-2 rounded-full"
+                          >
+                            <ChevronRight size={17} color="white" />
+                          </button>
+                        </>
+                      )}
+                    </>
                   )}
                 </div>
-              </div>
-            </div>
-          )}
-          {step === 4 && (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center relative">
-              <div className="flex justify-center items-center">
-                {isPosting && (
-                  <div className="w-20 h-20 border-[4px] border-transparent  border-t-[#feda75] border-r-[#d62976] border-b-[#962fbf] border-l-[#4f5bd5] rounded-full animate-spin">
+
+                {/* Right: Caption + mentions */}
+                <div className="w-[320px] flex flex-col ">
+                  <div className="p-4 flex-1 space-y-4">
+                    <div className="flex items-center">
+                      <img
+                        src={user.data.avatarUrl}
+                        alt="avatar"
+                        className="w-7 h-7 rounded-full object-cover border"
+                      />
+                      <span className="ml-2 font-medium">{user.data.userId}</span>
+                    </div>
+                    <textarea maxLength={220}
+                      className="w-full h-35 resize-none p-2 text-sm outline-none border-none focus:outline-none focus:ring-0 focus:border-none"
+                      placeholder=""
+                      value={caption}
+                      ref={textareaRef}
+                      onChange={handleChange}
+                    />
+                    <div className="flex items-center justify-between ">
+                      {/* emoji button */}
+                      <div className="relative">
+                        <button
+                          ref={buttonRef}
+                          type="button"
+                          onClick={() => setShowPicker((prev) => !prev)}
+                          className="p-1"
+                        >
+                          <span className="text-xl">😊</span>
+                        </button>
+
+                        {showPicker && (
+                          <div className="absolute top-8 -left-15 z-10">
+                            <div
+                              ref={pickerRef}
+                              className="scale-90 origin-top-left"
+                              onMouseDown={(e) => e.preventDefault()} // quan trọng: ngăn picker mất focus
+                            >
+                              <Picker
+                                data={data}
+                                onEmojiSelect={addEmoji}
+                                theme="light"
+                                previewPosition="none"
+                                navPosition="none"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+
+                      </div>
+                      {/* counter */}
+                      <span className="text-xs text-gray-500">
+                        {caption.length}/{maxLength}
+                      </span>
+                    </div>
+                    <div className="mb-5 border-t -ml-4 border-gray-300"></div>
+
+                    <div className="space-y-6 w-full relative">
+                      {/* UI list overlay */}
+                      {(suggestions.length > 0 || tags.length > 0) && (
+                        <div className="absolute left-0 right-0 top-0 z-50 bg-white shadow-md -ml-4 -mt-5 max-h-60 h-auto overflow-y-auto">
+                          {trigger === "user" &&
+                            suggestions.map((u) => (
+                              <div
+                                key={u._id}
+                                onClick={() => handleSelectMentions(u)}
+                                className="flex items-center gap-2 p-3 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
+                              >
+                                <img src={u.avatarUrl} alt="" className="w-6 h-6 rounded-full" />
+                                <div className="flex flex-col leading-tight">
+                                  <span className="text-sm font-medium">{u.username}</span>
+                                  <span className="text-xs text-gray-500">{u.userId}</span>
+                                </div>
+
+                              </div>
+                            ))}
+
+                          {trigger === "hashtag" && (
+                            <>
+                              {/* Hashtags từ DB */}
+                              {tags
+                                .filter((h) => h && typeof h === "object" && h._id) // thêm check h
+                                .map((h) => (
+                                  <div
+                                    key={h._id}
+                                    onClick={() => handleSelectHashtag(h)}
+                                    className="p-2 text-sm hover:bg-gray-100 cursor-pointer border-b border-gray-200 flex flex-col"
+                                  >
+                                    <span className="font-bold">#{h.name}</span>
+                                    <span className="text-sm text-gray-500">{h.postCount} bài viết</span>
+                                  </div>
+                                ))}
+
+                              {/* Hashtags gợi ý sẵn (string) */}
+                              {tags
+                                .filter((h) => typeof h === "string")
+                                .map((h, index) => (
+                                  <div
+                                    key={index}
+                                    onClick={() => handleSelectHashtagSug(h)}
+                                    className="p-2 text-sm hover:bg-gray-100 cursor-pointer border-b border-gray-200 flex flex-col"
+                                  >
+                                    <span className="">#{h}</span>
+                                    <span className="text-sm text-gray-500">Gợi ý</span>
+                                  </div>
+                                ))}
+                            </>
+                          )}
+
+                        </div>
+                      )}
+
+                      {/* 2 option luôn nằm trong container */}
+                      <div className="space-y-6 w-full mt-4 relative z-0">
+                        {/* Ẩn lượt thích */}
+                        <div className="flex items-start justify-between">
+                          <div className="mr-3">
+                            <p className="text-sm font-medium">Ẩn lượt thích và lượt xem trên bài viết này</p>
+                            <p className="text-xs text-gray-600">
+                              Chỉ bạn mới nhìn thấy tổng số lượt thích và lượt xem bài viết này.
+                            </p>
+                          </div>
+                          <Toggle
+                            checked={hideLikes}
+                            onChange={() => setHideLikes(!hideLikes)}
+                          />
+                        </div>
+
+                        {/* Tắt bình luận */}
+                        <div className="flex items-start justify-between">
+                          <div className="mr-3">
+                            <p className="text-sm font-medium">Tắt tính năng bình luận</p>
+                            <p className="text-xs text-gray-600">
+                              Về sau, bạn có thể thay đổi tuỳ chọn này bằng cách mở menu ... ở đầu bài viết.
+                            </p>
+                          </div>
+                          <Toggle
+                            checked={disableComments}
+                            onChange={() => setDisableComments(!disableComments)}
+                          />
+                        </div>
+                      </div>
+                    </div>
 
                   </div>
-                )}
-
-                {postSuccess && (
-                  <img src="https://static.cdninstagram.com/rsrc.php/v4/yb/r/sHkePOqEDPz.gif"></img>
-                )}
+                </div>
               </div>
-              <h2 className="text-[20px] font-semibold text-[#262626] mt-8">
-                {postSuccess
-                  ? "Đã chia sẻ bài viết của bạn."
-                  : ""}
-              </h2>
-            </div>
-          )}
-        </div>
-      </div>
-      <ConfirmPopup
-        show={showConfirm}
-        onConfirm={() => {
-          setShowConfirm(false);
-          resetModal();
-        }}
-        onCancel={() => setShowConfirm(false)}
-      />
+            )}
+            {step === 2 && (
+              <div className="flex-1 flex">
+                {/* Left: Image */}
+                <div className="flex-1 flex items-center justify-center bg-gray-50 relative overflow-y-auto max-h-[650px]">
+                  {images.length > 0 && (
+                    <>
+                      {images[currentIndex].type.startsWith("video") ? (
+                        <video
+                          ref={videoPreviewRef}
+                          src={images[currentIndex].src}
+                          controls
+                          className=" h-full object-cover cursor-pointer"
+                          muted={muteOriginal}
+                          onClick={handleImageClick}
+                          onLoadedMetadata={e => {
+                            const duration = Math.floor(e.target.duration);
+                            setVideoDuration(duration);
+                            setTrimRange([0, duration]);
+                            setCurrentTime(0);
+                          }}
+                          onTimeUpdate={e => {
+                            const time = Math.floor(e.target.currentTime);
+                            setCurrentTime(time);
 
-    </div>
+                            // Nếu chạm thanh phải thì dừng video
+                            if (time >= trimRange[1]) {
+                              e.target.pause();
+                              e.target.currentTime = trimRange[1];
+                            }
+                            // Không cho chạy lùi về trước thanh trái
+                            if (time < trimRange[0]) {
+                              e.target.currentTime = trimRange[0];
+                              setCurrentTime(trimRange[0]);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <img
+                          src={images[currentIndex].src}
+                          alt="preview"
+                          className="w-full h-full object-cover cursor-pointer"
+                          onClick={handleImageClick}
+                        />
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* trim video */}
+                <div className="w-[320px] flex flex-col ">
+                  <div className="p-4 flex-1 space-y-4">
+                    {/* UI cắt video */}
+                    {/* Thanh thumbnails + slider IG style */}
+                    {images[currentIndex]?.type.startsWith("video") && videoDuration > 0 && (
+                      <div className="mb-4">
+                        <div className="font-semibold mb-2">Thu ngắn video</div>
+                        <div className="relative h-16 mb-2  overflow-hidden bg-gray-200 flex items-center video-trim-bar">
+                          {/* Thumbnails */}
+                          {thumbnails.length === 5
+                            ? thumbnails.map((thumb, i) => (
+                              <div
+                                key={i}
+                                className="flex-1 h-full border-r last:border-none border-white relative"
+                                style={{
+                                  backgroundImage: `url(${thumb})`,
+                                  backgroundSize: "cover",
+                                  backgroundPosition: "center"
+                                }}
+                              />
+                            ))
+                            : [...Array(5)].map((_, i) => (
+                              <div
+                                key={i}
+                                className="flex-1 h-full bg-gray-300 border-r last:border-none border-white"
+                              />
+                            ))}
+                          {/* Overlay vùng không chọn */}
+                          {!isDragging && (
+                            <div
+                              className="absolute top-0 z-40"
+                              style={{
+                                left:
+                                  currentTime < trimRange[0]
+                                    ? `${(trimRange[0] / videoDuration) * 100}%`
+                                    : currentTime >= trimRange[1]
+                                      ? `${(trimRange[1] / videoDuration) * 100}%`
+                                      : `${((currentTime / videoDuration) * 100)}%`,
+                                height: "100%",
+                                width: "4px",
+                                background: "#ffffff",
+                                transition: "left 0.08s linear"
+                              }}
+                            />
+                          )}
+                          <div
+                            className="absolute top-0 left-0 h-full pointer-events-none transition-all"
+                            style={{
+                              width: `${(trimRange[0] / videoDuration) * 100}%`,
+                              background: "rgba(0,0,0,0.4)"
+                            }}
+                          />
+                          <div
+                            className="absolute top-0 right-0 h-full pointer-events-none transition-all"
+                            style={{
+                              width: `${((videoDuration - trimRange[1]) / videoDuration) * 100}%`,
+                              background: "rgba(0,0,0,0.4)"
+                            }}
+                          />
+                          {/* Thanh trắng trái */}
+                          <div
+                            className="absolute z-30 cursor-ew-resize"
+                            style={{
+                              left: `max(calc(${(trimRange[0] / videoDuration) * 100}% - 4px), -4px)`, // dịch nhẹ sang phải, không bị âm quá
+                              top: 0,
+                              height: "100%"
+                            }}
+                            onMouseDown={e => startDrag(e, 0)}
+                            onTouchStart={e => startDrag(e, 0)}
+                          >
+                            <div className="w-[8px] h-full bg-white rounded-full shadow border border-blue-400"></div>
+                          </div>
+                          {/* Thanh trắng phải */}
+                          <div
+                            className="absolute z-30 cursor-ew-resize"
+                            style={{
+                              left: `calc(${(trimRange[1] / videoDuration) * 100}% - 4px)`,
+                              top: 0,
+                              height: "100%"
+                            }}
+                            onMouseDown={e => startDrag(e, 1)}
+                            onTouchStart={e => startDrag(e, 1)}
+                          >
+                            <div className="w-[8px] h-full bg-white rounded-full shadow border border-blue-400"></div>
+                          </div>
+
+                        </div>
+                        {/* Số giây dưới mỗi thumbnail */}
+                        <div className="flex justify-between px-1 mt-1">
+                          {[0, 1, 2, 3, 4].map(i => (
+                            <span
+                              key={i}
+                              className="text-xs text-gray-600 font-semibold"
+                              style={{ width: "20%", textAlign: i === 0 ? "left" : i === 4 ? "right" : "center" }}
+                            >
+                              {Math.round((i * videoDuration) / 4)}s
+                            </span>
+                          ))}
+                        </div>
+                        {/* Slider ẩn, chỉ để điều khiển logic */}
+                        <Slider
+                          range
+                          min={0}
+                          max={videoDuration}
+                          value={trimRange}
+                          onChange={setTrimRange}
+                          step={1}
+                          allowCross={false}
+                          trackStyle={[{ background: "transparent", height: 0 }]}
+                          handleStyle={[{ opacity: 0, pointerEvents: "none" }, { opacity: 0, pointerEvents: "none" }]}
+                          railStyle={{ background: "transparent", height: 0 }}
+                        />
+                        <div className="flex justify-between text-xs mt-1 text-gray-600 font-medium">
+                          <span>{trimRange[0]}s</span>
+                          <span>{trimRange[1]}s</span>
+                        </div>
+                        <MusicPicker
+                          audioList={audioList}
+                          hasOriginalAudio={hasOriginalAudio}
+                          selected={selectedMusic}
+                          onSelect={setSelectedMusic}
+                          muteOriginal={muteOriginal} // có đang tắt không
+                          onToggleOriginal={() => setMuteOriginal(prev => !prev)}
+                          audioRef={musicPickerAudioRef}
+                        />
+                      </div>
+
+
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+            {step === 4 && (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center relative">
+                <div className="flex justify-center items-center">
+                  {isPosting && (
+                    <div className="w-20 h-20 border-[4px] border-transparent  border-t-[#feda75] border-r-[#d62976] border-b-[#962fbf] border-l-[#4f5bd5] rounded-full animate-spin">
+
+                    </div>
+                  )}
+
+                  {postSuccess && (
+                    <img src="https://static.cdninstagram.com/rsrc.php/v4/yb/r/sHkePOqEDPz.gif"></img>
+                  )}
+                </div>
+                <h2 className="text-[20px] font-semibold text-[#262626] mt-8">
+                  {postSuccess
+                    ? "Đã chia sẻ bài viết của bạn."
+                    : ""}
+                </h2>
+              </div>
+            )}
+          </div>
+        </div>
+        <ConfirmPopup
+          show={showConfirm}
+          onConfirm={() => {
+            setShowConfirm(false);
+            resetModal();
+          }}
+          onCancel={() => setShowConfirm(false)}
+        />
+      </div>
+    </>
+
+
 
   );
 }

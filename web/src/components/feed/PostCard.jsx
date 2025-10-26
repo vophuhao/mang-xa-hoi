@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 
+
 import { usePostActions } from "@/hooks/usePostActions";
 
 import PostActions from "./PostActions";
@@ -10,6 +11,8 @@ import PostMedia from "./PostMedia";
 import PostModal from "./PostModal";
 import PostOptionsModal from "./PostOptionsModal";
 import PostTimestamp from "./PostTimestamp";
+import ShareModal from "./ShareModal";
+
 
 const PostCard = ({ post, onUsernameClick, onTagClick, onShareClick }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -27,6 +30,10 @@ const PostCard = ({ post, onUsernameClick, onTagClick, onShareClick }) => {
     handleCopyLink,
     handleShare,
     handleUserClick,
+    showShareModal,
+    sharePostState,
+    shareCallback,
+    handleCloseShare,
   } = usePostActions(post, { onUsernameClick });
 
   const pausePostVideos = useCallback(() => {
@@ -136,6 +143,24 @@ const PostCard = ({ post, onUsernameClick, onTagClick, onShareClick }) => {
         onCopyLink={handleCopyLink}
         onShare={(post) => handleShare(post, onShareClick)}
       />
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <ShareModal
+          open={showShareModal}
+          post={sharePostState}
+          currentUser={currentUser}
+          onClose={handleCloseShare}
+          onShare={(user) => {
+            // call original callback if exists
+            if (typeof shareCallback === "function")
+              shareCallback(sharePostState, user);
+            // e.g. open DM via routing or socket here
+            handleCloseShare();
+          }}
+          onCopy={(p) => handleCopyLink(p)}
+        />
+      )}
     </article>
   );
 };

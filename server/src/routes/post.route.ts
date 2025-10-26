@@ -3,6 +3,7 @@ import {
   deletePostHandler,
   getFeedPostsHandler,
   getPostByIdHandler,
+  getReelByIdHandler,
   getReelsFeedHandler,
   getTrendingPostsHandler,
   increasePostViewHandler,
@@ -27,5 +28,6 @@ postRoutes.get("/:id", getPostByIdHandler);
 postRoutes.put("/:id", updatePostHandler);
 postRoutes.delete("/:id", deletePostHandler);
 postRoutes.post("/views/:id", increasePostViewHandler);
+postRoutes.get("/reels/:id", getReelByIdHandler);
 
 export default postRoutes;

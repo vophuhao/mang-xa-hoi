@@ -76,7 +76,7 @@ const CollectionDetail = () => {
   };
 
   const handlePostClick = (post) => {
-    // Create post with user info for modal
+    console.log("Clicked post:", post);
     const postWithUser = {
       ...post,
       user: {
@@ -246,11 +246,18 @@ const CollectionDetail = () => {
                     onClick={() => handlePostClick(post)}
                   >
                     {post.mediaUrls && post.mediaUrls.length > 0 ? (
-                      <img
-                        src={post.mediaUrls[0]}
-                        alt="Post"
-                        className="h-full w-full object-cover"
-                      />
+                      post.mediaUrls[0].endsWith(".mp4") ? (
+                        <video
+                          src={post.mediaUrls[0]}
+                          className="h-full w-full object-cover"                         
+                        />
+                      ) : (
+                        <img
+                          src={post.mediaUrls[0]}
+                          alt={collection.name}
+                          className="h-full w-full object-cover"
+                        />
+                      )
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800">
                         <Grid3X3 className="h-8 w-8 text-gray-400" />

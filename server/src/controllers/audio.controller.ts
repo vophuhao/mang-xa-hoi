@@ -14,6 +14,7 @@ import cloudinary from "../config/cloudinary";
 import Post from "../models/post.model";
 import { BAD_REQUEST } from '@/constants/http';
 import { AuthenticatedRequest } from '@/types';
+import FuzzySearch from "fuzzy-search";
 import saveAudioModel from '@/models/saveAudio.model';
 ffmpeg.setFfmpegPath(path.resolve(__dirname, "../../bin/ffmpeg.exe"));
 ffmpeg.setFfprobePath(path.resolve(__dirname, "../../bin/ffprobe.exe"));
@@ -36,25 +37,48 @@ export async function syncMusic(req: Request, res: Response) {
 }
 
 // API lấy danh sách nhạc trong DB (có search nội bộ)
-export const getAudioList = catchErrors(async (req, res) => {
 
-  const { q } = req.query;
+function removeVietnameseTones(str: string) {
+  return str
+    .normalize("NFD") // tách dấu
+    .replace(/[\u0300-\u036f]/g, "") // xóa dấu
+    .replace(/đ/g, "d").replace(/Đ/g, "D")
+    .toLowerCase();
+}
 
-  let query = {};
-  if (q) {
-    query = {
-      $or: [
-        { title: { $regex: q, $options: "i" } },
-        { artist: { $regex: q, $options: "i" } }
-      ]
-    };
+export const getAudioList = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const { q } = req.query as { q?: string };
+
+  const audios = await Audio.find()
+    .populate("user", "userId _id avatarUrl")
+    .sort({ createdAt: -1 });
+
+  if (!q || q.trim() === "") {
+    return ResponseUtil.success(res, audios.slice(0, 50));
   }
 
-  const audios = await Audio.find(query)
-    .populate("user", "userId _id avatarUrl ")
-    .sort({ createdAt: -1 }).limit(50);
-  ResponseUtil.success(res, audios);
-})
+  // Chuẩn hóa keyword không dấu + lowercase
+  const normalizedQ = removeVietnameseTones(q);
+
+  // Chuẩn hóa dữ liệu audioList trước khi search
+  const normalizedAudios = audios.map((audio) => ({
+    ...audio.toObject(),
+    normalizedTitle: removeVietnameseTones(audio.title || ""),
+    normalizedArtist: removeVietnameseTones(audio.artist || ""),
+  }));
+
+  const searcher = new FuzzySearch(
+    normalizedAudios,
+    ["normalizedTitle", "normalizedArtist"],
+    { caseSensitive: false }
+  );
+
+  const results = searcher.search(normalizedQ);
+
+  ResponseUtil.success(res, results.slice(0, 50));
+});
+
+
 export const trimVideoHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
   const { start, end } = req.body;
   // eslint-disable-next-line no-undef

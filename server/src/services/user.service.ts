@@ -394,6 +394,7 @@ export class UserService {
         user: user._id,
         isHidden: false,
       })
+        .select("_id caption mediaUrls mediaType likeCount commentCount createdAt location likesHidden commentsDisabled commentCount")
         .populate("user", "username userId avatarUrl isVerified")
         .populate("comments")
         .sort({ createdAt: -1 })
