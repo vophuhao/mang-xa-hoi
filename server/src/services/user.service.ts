@@ -395,8 +395,9 @@ export class UserService {
         isHidden: false,
       })
         .select("_id caption mediaUrls mediaType likeCount commentCount createdAt location likesHidden commentsDisabled commentCount")
- 		.populate("user", "username userId avatarUrl isVerified")
-        .populate("comments")        .sort({ createdAt: -1 })
+        .populate("user", "username userId avatarUrl isVerified")
+        .populate("comments")        
+        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
       PostModel.countDocuments({
