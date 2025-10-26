@@ -1,10 +1,14 @@
 import FollowModel from "@/models/follow.model";
+import LikeModel from "@/models/like.model";
 import NotificationModel from "@/models/notification.model";
 import PostModel from "@/models/post.model";
+import SavedPostModel from "@/models/savedPost.model";
 import UserModel from "@/models/user.model";
+import { getNotificationHandler } from "@/socket";
 import ErrorFactory from "@/utils/ErrorFactory";
-import { UserBlockService } from "./userBlock.service";
 import mongoose from "mongoose";
+import NotificationService from "./notification.service";
+import { UserBlockService } from "./userBlock.service";
 
 export interface UserProfile {
   _id: string;
@@ -59,13 +63,8 @@ export class UserService {
     const user = await UserModel.findOne({ username }).select("-password");
 
     if (!user) {
-      throw ErrorFactory.resourceNotFound(
-        "User",
-        `User with username "${username}" not found`
-      );
+      throw ErrorFactory.resourceNotFound("User", `User with username "${username}" not found`);
     }
-
-
 
     // Get user stats and relationships in parallel
     const [isFollowing, followsBack, followersCount, followingCount, postsCount] =
@@ -95,8 +94,6 @@ export class UserService {
 
     return userProfile as UserProfile;
   }
-
-
 
   /**
    * Get user profile by userId
@@ -167,18 +164,31 @@ export class UserService {
       throw ErrorFactory.resourceExists("Follow relationship", "Already following this user");
     }
 
-    // Create follow relationship and notification in parallel
+    // Create follow relationship
     await Promise.all([
       FollowModel.create({ follower: currentUserId, following: userToFollowId }),
-      NotificationModel.create({
-        recipient: userToFollowId,
-        sender: currentUserId,
-        type: "follow",
-        message: "started following you",
-      }),
       UserModel.findByIdAndUpdate(userToFollowId, { $inc: { followersCount: 1 } }),
       UserModel.findByIdAndUpdate(currentUserId, { $inc: { followingCount: 1 } }),
     ]);
+
+    // Create notification and emit Socket.IO event
+    const notification = await NotificationService.createFollowNotification({
+      followedUserId: userToFollowId,
+      followerId: currentUserId,
+    });
+
+    if (notification) {
+      try {
+        const notificationHandler = getNotificationHandler();
+        notificationHandler.emitNotification(userToFollowId, notification);
+
+        // Update unread count
+        const { unreadCount } = await NotificationService.getUnreadCount(userToFollowId);
+        notificationHandler.emitUnreadCountUpdate(userToFollowId, unreadCount);
+      } catch (error) {
+        console.error("Failed to emit notification:", error);
+      }
+    }
 
     return { message: "User followed successfully" };
   }
@@ -319,7 +329,12 @@ export class UserService {
   /**
    * Search users
    */
-  static async searchUsers({ query, page = 1, limit = 20, userId }: SearchUsersParams & { userId?: string }) {
+  static async searchUsers({
+    query,
+    page = 1,
+    limit = 20,
+    userId,
+  }: SearchUsersParams & { userId?: string }) {
     if (!query?.trim()) {
       throw ErrorFactory.requiredField("Search query");
     }
@@ -335,7 +350,6 @@ export class UserService {
     if (excludedUserIds.length > 0) {
       searchFilter._id = { $nin: excludedUserIds.map(id => new mongoose.Types.ObjectId(id)) };
     }
-
 
     const [users, total] = await Promise.all([
       UserModel.find(searchFilter)
@@ -362,7 +376,12 @@ export class UserService {
   /**
    * Get user's posts
    */
-  static async getUserPosts(userId: string, page: number = 1, limit: number = 12) {
+  static async getUserPosts(
+    userId: string,
+    page: number = 1,
+    limit: number = 12,
+    currentUserId?: string
+  ) {
     const user = await UserModel.findOne({ userId });
     if (!user) {
       throw ErrorFactory.resourceNotFound("User");
@@ -376,7 +395,8 @@ export class UserService {
         isHidden: false,
       })
         .select("_id caption mediaUrls mediaType likeCount commentCount createdAt location likesHidden commentsDisabled commentCount")
-        .sort({ createdAt: -1 })
+ 		.populate("user", "username userId avatarUrl isVerified")
+        .populate("comments")        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
       PostModel.countDocuments({
@@ -385,8 +405,31 @@ export class UserService {
       }),
     ]);
 
+    // If currentUserId is provided, check isLiked and isSaved for each post
+    let postsWithStatus: any = posts;
+    if (currentUserId) {
+      const postIds = posts.map(post => post._id);
+      const [userLikes, userSaves] = await Promise.all([
+        LikeModel.find({ user: currentUserId, post: { $in: postIds } }).select("post"),
+        SavedPostModel.find({ user: currentUserId, post: { $in: postIds } }).select("post"),
+      ]);
+
+      const likedPostIds = new Set(
+        userLikes.map(like => (like.post as any)?.toString()).filter(Boolean)
+      );
+      const savedPostIds = new Set(
+        userSaves.map(save => (save.post as any)?.toString()).filter(Boolean)
+      );
+
+      postsWithStatus = posts.map(post => ({
+        ...post.toJSON(),
+        isLiked: likedPostIds.has((post._id as any).toString()),
+        isSaved: savedPostIds.has((post._id as any).toString()),
+      }));
+    }
+
     return {
-      data: posts,
+      data: postsWithStatus,
       pagination: {
         page,
         limit,

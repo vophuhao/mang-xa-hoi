@@ -13,10 +13,7 @@ const SidePanel = ({ activeMenu, onClose, isMobile }) => {
   // Mobile: Full screen overlay
   if (isMobile) {
     return (
-      <div
-        className="fixed top-0 left-0 z-50 h-full w-full bg-black/50"
-        onClick={onClose}
-      >
+      <div className="fixed top-0 left-0 z-50 h-full w-full bg-black/50" onClick={onClose}>
         <div
           className="relative h-full w-80 bg-white dark:bg-black"
           onClick={(e) => e.stopPropagation()}
@@ -32,7 +29,7 @@ const SidePanel = ({ activeMenu, onClose, isMobile }) => {
           {/* Panel content */}
           <div className="h-full overflow-y-auto">
             {activeMenu === "search" && <SearchPanel />}
-            {activeMenu === "notifications" && <NotificationPanel />}
+            {activeMenu === "notifications" && <NotificationPanel onClose={onClose} />}
           </div>
         </div>
       </div>
@@ -46,7 +43,7 @@ const SidePanel = ({ activeMenu, onClose, isMobile }) => {
     >
       <div className="h-full overflow-y-auto">
         {activeMenu === "search" && <SearchPanel />}
-        {activeMenu === "notifications" && <NotificationPanel />}
+        {activeMenu === "notifications" && <NotificationPanel onClose={onClose} />}
       </div>
     </div>
   );

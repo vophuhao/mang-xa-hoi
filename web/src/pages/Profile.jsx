@@ -31,7 +31,6 @@ const Profile = () => {
 
   const [activeTab, setActiveTab] = useState(() => getActiveTabFromPath());
 
-
   // Update active tab when URL changes
   useEffect(() => {
     setActiveTab(getActiveTabFromPath());
@@ -53,7 +52,6 @@ const Profile = () => {
     isLoading: postsLoading,
   } = useUserPosts(username);
   const { followUser, unfollowUser } = useFollowActions();
-
 
   // Story hooks
   const { data: highlights } = useHighlights(username);
