@@ -143,11 +143,20 @@ const CollectionsGrid = ({ onCollectionClick }) => {
             >
               {/* Background gradient + chữ cái đầu */}
               {collection.coverImage ? (
-                <img
-                  src={collection.coverImage}
-                  alt={collection.name}
-                  className="h-full w-full object-cover"
-                />
+                collection.coverImage.endsWith(".mp4") ? (
+                  <video
+                    src={collection.coverImage}
+                   className="h-full w-full object-cover"
+                    
+                    
+                  />
+                ) : (
+                  <img
+                    src={collection.coverImage}
+                    alt={collection.name}
+                    className="h-full w-full object-cover"
+                  />
+                )
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600">
                   <span className="text-2xl font-bold text-white">
