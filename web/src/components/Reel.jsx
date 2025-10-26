@@ -8,13 +8,15 @@ import { toast } from "react-toastify";
 
 import SaveToCollectionModal from "@/components/collection/SaveToCollectionModal";
 import useAuth from "@/hooks/useAuth";
-import { USER_QUERY_KEYS, useUser, useUserFollowing } from "@/hooks/useUser";
-import { getPostById, getReelById, getReelsFeed, increasePostView, likePost, unsavePost } from "@/lib/api";
+import {  useUser, useUserFollowing } from "@/hooks/useUser";
+import {  getReelById, getReelsFeed, increasePostView, likePost, unsavePost } from "@/lib/api";
 import { navigate } from "@/lib/navigation";
 import CommentModal from "@/modals/CommentReelModal";
-
+import ShareModal from "@/modals/ShareModal";
 
 import MoreOptionsMenu from "./MoreOptionsMenu";
+
+
 
 
 export default function ReelWeb() {
@@ -46,6 +48,9 @@ export default function ReelWeb() {
 
   const { data: followingData } = useUserFollowing(user?.data?.userId, 1);
   const followingIds = new Set(followingData?.data?.map((u) => u._id));
+  const [showShareModal, setShowShareModal] = useState(false);
+
+
 
   const handleFollowClick = async (targetUserId, isFollowing) => {
     try {
@@ -427,17 +432,17 @@ export default function ReelWeb() {
     <div className="h-screen w-full flex justify-center text-white">
       <div
         ref={containerRef}
-        className="h-screen w-[500px] sm:w-[400px] md:w-[500px] flex overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
+        className="h-screen w-[350px] sm:w-[400px]  md:w-[500px] flex overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
       >
         <div className="flex flex-col items-center w-full">
           {reels.map((reel, index) => (
 
-            <div key={reel._id}
+            <div key={index}
 
               className="flex snap-center items-center justify-center my-2 w-full">
               <div
 
-                className="relative w-full sm:w-[350px] md:w-[420px] sm:h-[650px] md:h-[750px] overflow-hidden shadow-lg cursor-pointer"
+                className="relative w-full  sm:w-[350px] md:w-[420px] h-[680px] sm:h-[700px] md:h-[750px] overflow-hidden shadow-lg cursor-pointer"
               >
                 <video
                   ref={el => (videoRefs.current[index] = el)}
@@ -499,6 +504,7 @@ export default function ReelWeb() {
                   setShowComments(true);
                 }}
                 handleSave={handleSave}
+                setShowShareModal={setShowShareModal}
                 savedMap={savedMap}
               />
 
@@ -536,6 +542,14 @@ export default function ReelWeb() {
         />
       )}
 
+      {showShareModal && (
+        <ShareModal
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          shareUrl={window.location.href}
+        />
+      )}
+
 
 
     </div>
@@ -551,7 +565,7 @@ function InfoOverlay({ reel, handleAudioClick, user, handleFollowClick, isFollow
         <div>
           <span onClick={() => navigate(`/${reel.user?.userId}`)} className="font-semibold text-[13px] text-white">{reel.user?.userId || "user"}</span>
           {reel.audioUser?.avatarUrl || reel.audioInfo?.coverl ? (
-            <div onClick={handleAudioClick(reel.audioInfo)} className="flex items-center space-x-1 text-[13px] text-gray-200 w-[180px] overflow-hidden">
+            <div onClick={handleAudioClick(reel.audioInfo)} className="flex items-center space-x-1 text-[13px] text-gray-200 sd:w-[180px] md:w-[180px] w-[130px] overflow-hidden">
               <span className="mr-1">🎵</span>
               <div className="relative w-full overflow-hidden">
                 <div className="animate-marquee whitespace-nowrap text-[13px]">
@@ -579,10 +593,10 @@ function InfoOverlay({ reel, handleAudioClick, user, handleFollowClick, isFollow
 }
 
 function ActionButtons({ reel, handleLike, likedMap, handleAudioClick,
-  setOpenMenu, setReelId, onOpenComments, handleSave, savedMap }) {
+  setOpenMenu, setReelId, onOpenComments, handleSave, savedMap ,setShowShareModal}) {
 
   return (
-    <div className="flex flex-col mt-100 ml-5 items-center justify-center space-y-6">
+    <div className="flex flex-col mt-85 md:mt-100 sm:mt-75 ml-5 items-center justify-center space-y-6">
       {/* Like button */}
       <div className="flex flex-col items-center space-y-1">
         <button
@@ -624,7 +638,9 @@ function ActionButtons({ reel, handleLike, likedMap, handleAudioClick,
       </div>
 
       <button>
-        <Send size={25} className="text-black dark:text-white cursor-pointer" />
+        <Send size={25} className="text-black dark:text-white cursor-pointer"
+          onClick={() => setShowShareModal(true)}
+        />
       </button>
 
       <button
