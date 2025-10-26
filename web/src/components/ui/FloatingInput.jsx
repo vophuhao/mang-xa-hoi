@@ -14,11 +14,7 @@ const FloatingInput = ({
 }) => {
   const [showPassword, setShowPassword] = useState(false);
 
-  const inputType = showPasswordToggle
-    ? showPassword
-      ? "text"
-      : "password"
-    : type;
+  const inputType = showPasswordToggle ? (showPassword ? "text" : "password") : type;
 
   const togglePassword = () => setShowPassword(!showPassword);
 
@@ -50,12 +46,7 @@ const FloatingInput = ({
           aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
         >
           {showPassword ? (
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -70,12 +61,7 @@ const FloatingInput = ({
               />
             </svg>
           ) : (
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
