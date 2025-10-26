@@ -19,6 +19,7 @@ import CollectionAudio from "./pages/ColectionAudio";
 import CollectionDetail from "./pages/CollectionDetail";
 import DirectInbox from "./pages/DirectInbox";
 import Explore from "./pages/Explore";
+import ExplorePeople from "./pages/ExplorePeople";
 import Feed from "./pages/Feed";
 import Layout from "./pages/Layout";
 import Messages from "./pages/Messages";
@@ -44,6 +45,7 @@ function App() {
           <Route path="/" element={<Layout />}>
             <Route index element={<Feed />} />
             <Route path="explore" element={<Explore />} />
+            <Route path="explore/people" element={<ExplorePeople />} />
             <Route path="reels" element={<ReelWeb />} />
             <Route path="reels/:id" element={<ReelWeb />} />
             <Route path="direct/inbox" element={<DirectInbox />} />

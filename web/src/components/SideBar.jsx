@@ -27,11 +27,16 @@ import useNotifications from "@/hooks/useNotifications";
 import useTheme from "@/hooks/useTheme";
 import { USER_QUERY_KEYS } from "@/hooks/useUser";
 import { logout } from "@/lib/api";
+import AccountListModal from "@/modals/AccountListModal";
 import CreatePostModal from "@/modals/CreatePostModal";
+import LoginModal from "@/modals/LoginModal";
 
 export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
   const [showMore, setShowMore] = useState(false);
   const [showPostModal, setShowPostModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showAccountListModal, setShowAccountListModal] = useState(false);
+  const [selectedEmail, setSelectedEmail] = useState("");
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const { theme, changeTheme } = useTheme();
@@ -125,7 +130,7 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
       id: "switch",
       label: "Chuyển tài khoản",
       icon: <SwitchCamera size={20} />,
-      action: () => console.log("Switch account clicked"),
+      action: () => setShowAccountListModal(true),
       closeOnClick: true,
     },
     {
@@ -308,6 +313,22 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
       </div>
 
       <CreatePostModal isOpen={showPostModal} onClose={() => setShowPostModal(false)} />
+      <AccountListModal
+        isOpen={showAccountListModal}
+        onClose={() => setShowAccountListModal(false)}
+        onSelectAccount={(email) => {
+          setSelectedEmail(email);
+          setShowLoginModal(true);
+        }}
+      />
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => {
+          setShowLoginModal(false);
+          setSelectedEmail("");
+        }}
+        initialEmail={selectedEmail}
+      />
     </div>
   );
 }

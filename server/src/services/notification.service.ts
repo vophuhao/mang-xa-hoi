@@ -429,7 +429,7 @@ export class NotificationService {
       recipient: recipientId,
       sender: senderId,
       type: "message",
-      message: messageCount === 1 ? "sent you a message" : `sent you ${messageCount} messages`,
+      message: `đã gửi ${messageCount} tin nhắn cho bạn`,
     });
   }
 

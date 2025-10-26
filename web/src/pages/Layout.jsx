@@ -8,6 +8,7 @@ import MobileFooter from "@/components/MobileFooter";
 import MobileHeader from "@/components/MobileHeader";
 import Sidebar from "@/components/SideBar";
 import SidePanel from "@/components/SidePanel";
+import { useSaveCurrentUser } from "@/hooks/useSaveCurrentUser";
 import { USER_QUERY_KEYS } from "@/hooks/useUser";
 import {
   closePanels,
@@ -41,6 +42,9 @@ const Layout = () => {
   const { activeMenu, isCollapsed, isMobile } = useSelector((state) => state.layout);
   const queryClient = useQueryClient();
   const currentUser = queryClient.getQueryData(USER_QUERY_KEYS.currentUser).data;
+
+  // Tự động lưu current user vào localStorage (behavior giống Instagram/Facebook)
+  useSaveCurrentUser();
 
   // Sync activeMenu with current route on mount/route change
   useEffect(() => {

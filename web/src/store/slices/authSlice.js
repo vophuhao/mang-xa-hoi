@@ -28,10 +28,7 @@ export const loginUser = createAsyncThunk(
 
 export const registerUser = createAsyncThunk(
   "auth/register",
-  async (
-    { email, username, password, confirmPassword },
-    { rejectWithValue }
-  ) => {
+  async ({ email, username, password, confirmPassword }, { rejectWithValue }) => {
     try {
       const response = await register({
         email,
@@ -111,6 +108,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, resetRegistered, setUser, logout } =
-  authSlice.actions;
+export const { clearError, resetRegistered, setUser, logout } = authSlice.actions;
 export default authSlice.reducer;

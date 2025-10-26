@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
 
+import { useNavigate } from "react-router-dom";
+
+import AccountListModal from "@/modals/AccountListModal";
+import LoginModal from "@/modals/LoginModal";
+
 const RightSidebar = ({
   currentUser,
   suggestedUsers,
@@ -7,7 +12,11 @@ const RightSidebar = ({
   onFollowClick,
   isFollowActionLoading,
 }) => {
+  const navigate = useNavigate();
   const [followStates, setFollowStates] = useState({});
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showAccountListModal, setShowAccountListModal] = useState(false);
+  const [selectedEmail, setSelectedEmail] = useState("");
 
   // Initialize follow states when suggested users are loaded
   useEffect(() => {
@@ -53,7 +62,10 @@ const RightSidebar = ({
             </p>
           </div>
         </div>
-        <button className="cursor-pointer text-xs font-semibold text-blue-500 hover:text-blue-600">
+        <button
+          onClick={() => setShowAccountListModal(true)}
+          className="cursor-pointer text-xs font-semibold text-blue-500 hover:text-blue-600"
+        >
           Chuyển
         </button>
       </div>
@@ -85,17 +97,24 @@ const RightSidebar = ({
         return (
           <div key={user._id} className="flex items-center justify-between">
             <div className="flex items-center">
-              {user.avatar ? (
-                <img
-                  src={user.avatar}
-                  alt={user.username}
-                  className="mr-3 h-8 w-8 rounded-full object-cover"
-                />
-              ) : (
-                <div className="mr-3 h-8 w-8 rounded-full bg-gray-300 dark:bg-gray-600"></div>
-              )}
+              <button onClick={() => navigate(`/${user.userId}`)} className="mr-3 cursor-pointer">
+                {user.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={user.username}
+                    className="h-8 w-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="h-8 w-8 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                )}
+              </button>
               <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-white">{user.username}</p>
+                <button
+                  onClick={() => navigate(`/${user.userId}`)}
+                  className="cursor-pointer text-sm font-medium text-gray-900 transition-colors dark:text-white"
+                >
+                  {user.username}
+                </button>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Gợi ý cho bạn</p>
               </div>
             </div>
@@ -149,7 +168,10 @@ const RightSidebar = ({
             <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400">
               Gợi ý cho bạn
             </h2>
-            <button className="cursor-pointer text-xs font-semibold text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300">
+            <button
+              onClick={() => navigate("/explore/people")}
+              className="cursor-pointer text-xs font-semibold text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300"
+            >
               Xem tất cả
             </button>
           </div>
@@ -162,6 +184,23 @@ const RightSidebar = ({
           <p className="mt-4">© 2025 PIXYY FROM GROUP 4</p>
         </div>
       </div>
+
+      <AccountListModal
+        isOpen={showAccountListModal}
+        onClose={() => setShowAccountListModal(false)}
+        onSelectAccount={(email) => {
+          setSelectedEmail(email);
+          setShowLoginModal(true);
+        }}
+      />
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => {
+          setShowLoginModal(false);
+          setSelectedEmail("");
+        }}
+        initialEmail={selectedEmail}
+      />
     </div>
   );
 };

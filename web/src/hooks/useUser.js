@@ -159,6 +159,10 @@ export const useFollowUser = () => {
       queryClient.invalidateQueries({
         queryKey: ["user", "following"],
       });
+      // Invalidate ExplorePeople query
+      queryClient.invalidateQueries({
+        queryKey: ["suggested-users-explore"],
+      });
     },
   });
 };
@@ -184,6 +188,10 @@ export const useUnfollowUser = () => {
       });
       queryClient.invalidateQueries({
         queryKey: ["user", "following"],
+      });
+      // Invalidate ExplorePeople query
+      queryClient.invalidateQueries({
+        queryKey: ["suggested-users-explore"],
       });
     },
   });
