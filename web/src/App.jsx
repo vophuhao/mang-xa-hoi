@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 import { Route, Routes, useNavigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 
@@ -16,6 +18,7 @@ import VerifyEmail from "@/pages/VerifyEmail";
 
 import Audio from "./components/Audio";
 import HashtagPanel from "./components/HashtagPanel";
+import CallPopup from "./components/popup/CallPopup";
 import ReelWeb from "./components/Reel";
 import CollectionAudio from "./pages/ColectionAudio";
 import CollectionDetail from "./pages/CollectionDetail";
@@ -28,58 +31,103 @@ import Messages from "./pages/Messages";
 import PostDetail from "./pages/PostDetail";
 import Profile from "./pages/Profile";
 import ProtectedRoute from "./routes/ProtectedRoute";
+import CallPage from "./pages/CallPage";
 
 export default function App({ children }) {
  
    const { user } = useAuth();
-  // useSocket manages connection and exposes helpers
-  const { socket, connect, disconnect, on, off, emit } = useSocket({
-    token: user?.token || user?.data?.token,
-    userId: user?.data?._id,
-  });
+   const userId = user?.data?._id;
+   const token = user?.token || user?.data?.token;
+
+   const { socket, on, off, emit } = useSocket({ token, userId });
+
    const navigate = useNavigate();
    setNavigate(navigate);
 
-  // Splash screen logic
-  const { showSplash, isAppReady, hideSplash } = useSplashScreen();
-  if (showSplash) return <SplashScreen onFinish={hideSplash} />;
-  if (!isAppReady) return null;
+   const [incomingCall, setIncomingCall] = useState(null);
 
+   useEffect(() => {
+      if (!socket) return;
 
-  return (
-    <>
-      <SocketContext.Provider value={socket}>
-        <Routes>
-          <Route path="/" element={<ProtectedRoute />}>
-            <Route path="/" element={<Layout />}>
-              <Route index element={<Feed />} />
-              <Route path="explore" element={<Explore />} />
-              <Route path="explore/people" element={<ExplorePeople />} />
-              <Route path="reels" element={<ReelWeb />} />
-              <Route path="reels/:id" element={<ReelWeb />} />
-              <Route path="direct/inbox" element={<DirectInbox />} />
-              <Route path="collections/:id" element={<CollectionDetail />} />
-              <Route path=":username" element={<Profile />} />
-              <Route path=":username/p/:postId" element={<PostDetail />} />
-              <Route path=":username/saved" element={<Profile />} />
-              <Route path=":username/saved/audio" element={<CollectionAudio />} />
-              <Route path=":username/saved/collections/:id" element={<CollectionDetail />} />
-              <Route path=":username/tagged" element={<Profile />} />
-              <Route path="audio/:id" element={<Audio />} />
-              <Route path="hashtags/:name" element={<HashtagPanel />} />
-              <Route path="message" element={<Messages />} />
-            </Route>
-          </Route>
+      const handleIncoming = (payload) => {
+         // payload: { fromUserId, fromUserName?, callType, callId }
+         console.log("[socket] incoming call:", payload);
+         setIncomingCall(payload);
+      };
 
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/email/verify/:code" element={<VerifyEmail />} />
-          <Route path="/password/forgot" element={<ForgotPassword />} />
-          <Route path="/password/reset" element={<ResetPassword />} />
-        </Routes>
+      const handleCallCancelled = ({ callId }) => {
+         if (incomingCall?.callId === callId) setIncomingCall(null);
+      };
 
-        <ToastContainer position="top-right" autoClose={2000} />
-      </SocketContext.Provider>
-    </>
-  );
+      // Listen for server forwarded call request
+      on("call_request", handleIncoming);
+      on("call_cancel", handleCallCancelled);
+
+      return () => {
+         off("call_request", handleIncoming);
+         off("call_cancel", handleCallCancelled);
+      };
+   }, [socket, on, off, incomingCall]);
+
+   const acceptCall = () => {
+      if (!incomingCall) return;
+      // notify server we accept
+      emit("call_response", { callId: incomingCall.callId, accepted: true, toUserId: incomingCall.fromUserId });
+      // open callee UI
+      const url = `/call?callId=${encodeURIComponent(incomingCall.callId)}&type=${encodeURIComponent(incomingCall.callType)}&role=callee&from=${encodeURIComponent(incomingCall.fromUserId)}`;
+      window.open(url, "_blank", "noopener,noreferrer");
+      setIncomingCall(null);
+   };
+
+   const declineCall = () => {
+      if (!incomingCall) return;
+      emit("call_response", { callId: incomingCall.callId, accepted: false, toUserId: incomingCall.fromUserId });
+      setIncomingCall(null);
+   };
+
+   // Splash screen logic
+   const { showSplash, isAppReady, hideSplash } = useSplashScreen();
+   if (showSplash) return <SplashScreen onFinish={hideSplash} />;
+   if (!isAppReady) return null;
+
+   return (
+      <>
+         <SocketContext.Provider value={socket}>
+            <Routes>
+               <Route path="/" element={<ProtectedRoute />}>
+                  <Route path="/" element={<Layout />}>
+                     {/* Route cố định cho cuộc gọi: phải nằm trước route động :username */}
+                     <Route path="call-room" element={<CallPage />} />
+                     <Route path="call" element={<CallPage />} />
+                     <Route index element={<Feed />} />
+                     <Route path="explore" element={<Explore />} />
+                     <Route path="explore/people" element={<ExplorePeople />} />
+                     <Route path="reels" element={<ReelWeb />} />
+                     <Route path="reels/:id" element={<ReelWeb />} />
+                     <Route path="direct/inbox" element={<DirectInbox />} />
+                     <Route path="collections/:id" element={<CollectionDetail />} />
+                     <Route path=":username" element={<Profile />} />
+                     <Route path=":username/p/:postId" element={<PostDetail />} />
+                     <Route path=":username/saved" element={<Profile />} />
+                     <Route path=":username/saved/audio" element={<CollectionAudio />} />
+                     <Route path=":username/saved/collections/:id" element={<CollectionDetail />} />
+                     <Route path=":username/tagged" element={<Profile />} />
+                     <Route path="audio/:id" element={<Audio />} />
+                     <Route path="hashtags/:name" element={<HashtagPanel />} />
+                     <Route path="message" element={<Messages />} />
+                  </Route>
+               </Route>
+
+               <Route path="/login" element={<Login />} />
+               <Route path="/register" element={<Register />} />
+               <Route path="/email/verify/:code" element={<VerifyEmail />} />
+               <Route path="/password/forgot" element={<ForgotPassword />} />
+               <Route path="/password/reset" element={<ResetPassword />} />
+            </Routes>
+
+            <CallPopup call={incomingCall} onAccept={acceptCall} onDecline={declineCall} />
+            <ToastContainer position="top-right" autoClose={2000} />
+         </SocketContext.Provider>
+      </>
+   );
 }

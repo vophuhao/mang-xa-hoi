@@ -5,6 +5,7 @@ import { MessageHandler } from "./handlers/messageHandler";
 import { NotificationHandler } from "./handlers/notificationHandler";
 import { TypingHandler } from "./handlers/typingHandler";
 import { socketAuthMiddleware } from "./middleware/socketAuth";
+import registerCallHandler from "./handlers/callHandler";
 
 let notificationHandler: NotificationHandler;
 
@@ -25,7 +26,7 @@ export function initializeSocket(httpServer: HttpServer) {
   const typingHandler = new TypingHandler();
   notificationHandler = new NotificationHandler(io);
 
-  io.on("connection", socket => {
+  io.on("connection", (socket) => {
     console.log(`User ${socket.userId} connected to socket`);
 
     // Join user to their personal room
@@ -57,6 +58,13 @@ export function initializeSocket(httpServer: HttpServer) {
     socket.on("disconnect", () => {
       console.log(`User ${socket.userId} disconnected from socket`);
     });
+
+    // register call handlers
+    try {
+      registerCallHandler(io, socket);
+    } catch (e) {
+      console.error("Failed to register call handler", e);
+    }
   });
 
   return io;

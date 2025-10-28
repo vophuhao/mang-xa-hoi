@@ -2,9 +2,10 @@ import { useMemo } from "react";
 
 import { useQueries } from "@tanstack/react-query";
 
+import useAuth from "@/hooks/useAuth";
 import { POST_QUERY_KEYS } from "@/hooks/usePost";
+import useSocket from "@/hooks/useSocket";
 import { getPostById } from "@/lib/api";
-
 
 export default function ChatWindow({
   selectedChat,
@@ -69,6 +70,30 @@ export default function ChatWindow({
     return map;
   }, [postQueries, postIds]);
 
+  const { user: authUser } = useAuth();
+  const userId = authUser?.data?._id;
+  const { emit } = useSocket();
+
+  const startCall = (type = "audio") => {
+    if (!selectedChat?.partner?._id) return;
+    const partnerId = String(selectedChat.partner._id);
+    const callId = `${userId}_${Date.now()}`;
+    const fromUserName = authUser?.data?.userId || authUser?.data?.displayName || "";
+
+    // notify recipient via socket (server should forward to u:{partnerId})
+    emit("call_request", {
+      toUserId: partnerId,
+      fromUserId: userId,
+      fromUserName,
+      callType: type, // "audio" or "video"
+      callId,
+    });
+
+    // open caller UI in new tab (use /call-room to avoid colliding with dynamic user routes)
+    const url = `/call-room?callId=${encodeURIComponent(callId)}&type=${encodeURIComponent(type)}&role=caller&to=${encodeURIComponent(partnerId)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
   if (!selectedChat) {
     return (
       <div className="flex items-center justify-center flex-1 text-gray-500 bg-gray-50">
@@ -84,18 +109,40 @@ export default function ChatWindow({
   return (
     <div className="flex-1 flex flex-col min-w-0">
       {/* Header */}
-      <div className="p-4 border-b border-gray-300 flex items-center space-x-3">
-        <img
-          src={selectedChat.partner?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedChat.partner?.userId || selectedChat.partner?.username || 'User')}&background=random`}
-          alt={selectedChat.partner?.userId || selectedChat.partner?.username || 'User'}
-          className="w-10 h-10 rounded-full object-cover"
-        />
-        <div>
-          <h3 className="font-bold text-gray-900">
-            {selectedChat.partner?.userId || selectedChat.partner?.username || 'Unknown User'}
-            {selectedChat.partner?.isVerified && <span className="ml-1 text-blue-500">✓</span>}
-          </h3>
-          <p className="text-sm text-gray-500">@{selectedChat.partner?.username || 'unknown'}</p>
+      <div className="p-4 border-b border-gray-300 flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <img
+            src={selectedChat.partner?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedChat.partner?.userId || selectedChat.partner?.username || 'User')}&background=random`}
+            alt={selectedChat.partner?.userId || selectedChat.partner?.username || 'User'}
+            className="w-10 h-10 rounded-full object-cover"
+          />
+          <div>
+            <h3 className="font-bold text-gray-900">
+              {selectedChat.partner?.userId || selectedChat.partner?.username || 'Unknown User'}
+              {selectedChat.partner?.isVerified && <span className="ml-1 text-blue-500">✓</span>}
+            </h3>
+            <p className="text-sm text-gray-500">@{selectedChat.partner?.username || 'unknown'}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <button
+            type="button"
+            title="Gọi thoại"
+            onClick={() => startCall("audio")}
+            className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-lg"
+          >
+            📞
+          </button>
+
+          <button
+            type="button"
+            title="Gọi video"
+            onClick={() => startCall("video")}
+            className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-lg"
+          >
+            🎥
+          </button>
         </div>
       </div>
 
