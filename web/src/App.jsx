@@ -1,9 +1,11 @@
 import { Route, Routes, useNavigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 
-import "react-toastify/dist/ReactToastify.css";
-
 import SplashScreen from "@/components/SplashScreen";
+import SocketContext from "@/contexts/SocketContext";
+import useAuth from "@/hooks/useAuth";
+import useSocket from "@/hooks/useSocket";
+import "react-toastify/dist/ReactToastify.css";
 import useSplashScreen from "@/hooks/useSplashScreen";
 import { setNavigate } from "@/lib/navigation";
 import ForgotPassword from "@/pages/ForgotPassword";
@@ -27,51 +29,57 @@ import PostDetail from "./pages/PostDetail";
 import Profile from "./pages/Profile";
 import ProtectedRoute from "./routes/ProtectedRoute";
 
-function App() {
-  // set the navigate function on our API client for use in the axios error interceptor
-  // this allows us to redirect to the login page when an auth error occurs
-  const navigate = useNavigate();
-  setNavigate(navigate);
+export default function App({ children }) {
+ 
+   const { user } = useAuth();
+  // useSocket manages connection and exposes helpers
+  const { socket, connect, disconnect, on, off, emit } = useSocket({
+    token: user?.token || user?.data?.token,
+    userId: user?.data?._id,
+  });
+   const navigate = useNavigate();
+   setNavigate(navigate);
 
   // Splash screen logic
   const { showSplash, isAppReady, hideSplash } = useSplashScreen();
   if (showSplash) return <SplashScreen onFinish={hideSplash} />;
   if (!isAppReady) return null;
 
+
   return (
     <>
-      <Routes>
-        <Route path="/" element={<ProtectedRoute />}>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Feed />} />
-            <Route path="explore" element={<Explore />} />
-            <Route path="explore/people" element={<ExplorePeople />} />
-            <Route path="reels" element={<ReelWeb />} />
-            <Route path="reels/:id" element={<ReelWeb />} />
-            <Route path="direct/inbox" element={<DirectInbox />} />
-            <Route path="collections/:id" element={<CollectionDetail />} />
-            <Route path=":username" element={<Profile />} />
-            <Route path=":username/p/:postId" element={<PostDetail />} />
-            <Route path=":username/saved" element={<Profile />} />
-            <Route path=":username/saved/audio" element={<CollectionAudio />} />
-            <Route path=":username/saved/collections/:id" element={<CollectionDetail />} />
-            <Route path=":username/tagged" element={<Profile />} />
-            <Route path="audio/:id" element={<Audio />} />
-            <Route path="hashtags/:name" element={<HashtagPanel />} />
-            <Route path="message" element={<Messages />} />
+      <SocketContext.Provider value={socket}>
+        <Routes>
+          <Route path="/" element={<ProtectedRoute />}>
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Feed />} />
+              <Route path="explore" element={<Explore />} />
+              <Route path="explore/people" element={<ExplorePeople />} />
+              <Route path="reels" element={<ReelWeb />} />
+              <Route path="reels/:id" element={<ReelWeb />} />
+              <Route path="direct/inbox" element={<DirectInbox />} />
+              <Route path="collections/:id" element={<CollectionDetail />} />
+              <Route path=":username" element={<Profile />} />
+              <Route path=":username/p/:postId" element={<PostDetail />} />
+              <Route path=":username/saved" element={<Profile />} />
+              <Route path=":username/saved/audio" element={<CollectionAudio />} />
+              <Route path=":username/saved/collections/:id" element={<CollectionDetail />} />
+              <Route path=":username/tagged" element={<Profile />} />
+              <Route path="audio/:id" element={<Audio />} />
+              <Route path="hashtags/:name" element={<HashtagPanel />} />
+              <Route path="message" element={<Messages />} />
+            </Route>
           </Route>
-        </Route>
 
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/email/verify/:code" element={<VerifyEmail />} />
-        <Route path="/password/forgot" element={<ForgotPassword />} />
-        <Route path="/password/reset" element={<ResetPassword />} />
-      </Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/email/verify/:code" element={<VerifyEmail />} />
+          <Route path="/password/forgot" element={<ForgotPassword />} />
+          <Route path="/password/reset" element={<ResetPassword />} />
+        </Routes>
 
-      <ToastContainer position="top-right" autoClose={2000} />
+        <ToastContainer position="top-right" autoClose={2000} />
+      </SocketContext.Provider>
     </>
   );
 }
-
-export default App;

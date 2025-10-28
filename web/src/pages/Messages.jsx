@@ -20,7 +20,8 @@ import {
 const Messages = () => {
   const { user } = useAuth();
   const userId = user?.data?._id;
-  const socket = useSocket();
+  // use hook and get helper functions
+  const { socket, on, off, emit } = useSocket({ token: user?.token || user?.data?.token, userId });
   const navigate = useNavigate(); // navigate to update query param when selecting convo
   const [searchParams] = useSearchParams();
 
@@ -85,6 +86,7 @@ const Messages = () => {
     if (!socket) return;
 
     const handleNewMessage = (message) => {
+      console.log("[socket] received new_message:", message);
       const senderId = String(message.sender?._id || message.sender);
       const recipientId = String(message.recipient?._id || message.recipient);
       const partnerId = String(selectedChat?.partner?._id);
@@ -121,15 +123,51 @@ const Messages = () => {
       }));
     };
 
-    socket.on("new_message", handleNewMessage);
-    return () => socket.off("new_message", handleNewMessage);
+    // register via hook.on which ensures socket exists
+    on("new_message", handleNewMessage);
+    return () => off("new_message", handleNewMessage);
     // eslint-disable-next-line
   }, [socket, selectedChat]);
 
+  // Socket: receive confirmation for sent message (append for sender)
   useEffect(() => {
-    if (!socket || !selectedChat || !userId) return;
-    socket.emit("join_conversation", selectedChat.partner._id);
-    return () => socket.emit("leave_conversation", selectedChat.partner._id);
+    if (!socket) return;
+
+    const handleMessageSent = ({ success, message }) => {
+      if (!success || !message) return;
+      // If selected chat is the partner, append the message
+      const partnerId = String(selectedChat?.partner?._id);
+      const sId = String(message.sender?._id || message.sender);
+      const rId = String(message.recipient?._id || message.recipient);
+
+      // update messages if message belongs to current conversation
+      if (selectedChat && (partnerId === sId || partnerId === rId)) {
+        setMessages((prev) => {
+          if (prev.some((m) => m._id === message._id)) return prev;
+          return [...prev, message];
+        });
+        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 0);
+      }
+
+      // update conversations list (lastMessage)
+      setConversations(prev => prev.map(conv => {
+        const pid = String(conv.partner._id);
+        if (pid === String(message.recipient?._id || message.recipient) || pid === String(message.sender?._id || message.sender)) {
+          return { ...conv, lastMessage: message };
+        }
+        return conv;
+      }));
+    };
+
+    on("message_sent", handleMessageSent);
+    return () => off("message_sent", handleMessageSent);
+  }, [socket, selectedChat]);
+
+  // No per-conversation socket join/leave here — socket is global (App provides it).
+  // Server should forward messages to recipient by room `u:{recipientId}`.
+  useEffect(() => {
+    // No per-conversation socket join/leave here — socket is global (App provides it).
+    // Server should forward messages to recipient by room `u:{recipientId}`.
   }, [socket, selectedChat, userId]);
 
   // API actions
@@ -207,6 +245,7 @@ const Messages = () => {
       const url = mediaUrls[i];
       const type = mediaTypes[i] || "image";
       if (socket) {
+        console.log("[socket] emit send_message ->", { to: selectedChat.partner._id, mediaUrl: url, mediaType: type });
         socket.emit("send_message", { recipientId: selectedChat.partner._id, messageType: "media", mediaUrl: url, mediaType: type });
       } else {
         await sendMessage({ recipientId: selectedChat.partner._id, messageType: "media", mediaUrl: url, mediaType: type });
@@ -214,7 +253,10 @@ const Messages = () => {
     }
 
     if (newMessage.trim()) {
-      if (socket) {
+      if (emit) {
+        console.log("[socket] emit send_message ->", { to: selectedChat.partner._id, content: newMessage.trim(), messageType: "text" });
+        emit("send_message", { recipientId: selectedChat.partner._id, content: newMessage.trim(), messageType: "text" });
+      } else if (socket) {
         socket.emit("send_message", { recipientId: selectedChat.partner._id, content: newMessage.trim(), messageType: "text" });
       } else {
         await sendMessage({ recipientId: selectedChat.partner._id, content: newMessage.trim(), messageType: "text" });

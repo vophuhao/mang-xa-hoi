@@ -29,7 +29,7 @@ export function initializeSocket(httpServer: HttpServer) {
     console.log(`User ${socket.userId} connected to socket`);
 
     // Join user to their personal room
-    socket.join(`user_${socket.userId}`);
+    socket.join(`u:${socket.userId}`);
     console.log(`User ${socket.userId} joined personal room`);
 
     // Conversation room management

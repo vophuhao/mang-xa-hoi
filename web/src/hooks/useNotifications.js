@@ -127,6 +127,39 @@ export const useNotifications = ({ unreadOnly = false } = {}) => {
   useEffect(() => {
     if (!socket) return;
 
+    // Message notification (when server emits message_notification)
+    const handleMessageNotification = (payload) => {
+      const notif = payload?.notification || payload;
+
+      // prepend if full object
+      if (notif && (notif._id || notif.id)) {
+        queryClient.setQueryData(["notifications", { unreadOnly: false }], (oldData) => {
+          if (!oldData) return oldData;
+          const firstPage = oldData.pages[0];
+          if (!firstPage) return oldData;
+          const id = notif._id || notif.id;
+          if (firstPage.data.some((n) => (n._id || n.id) === id)) return oldData;
+          return {
+            ...oldData,
+            pages: [
+              { ...firstPage, data: [notif, ...firstPage.data] },
+              ...oldData.pages.slice(1),
+            ],
+          };
+        });
+      } else {
+        // fallback: refetch
+        refetch();
+      }
+
+      // optimistically increase unread count
+      queryClient.setQueryData(["notifications", "unreadCount"], (old) => {
+        const prev = old?.data?.count ?? 0;
+        return { data: { count: prev + 1 } };
+      });
+      refetchUnreadCount();
+    };
+
     // New notification received
     const handleNewNotification = (notification) => {
       // Add to cache
@@ -207,6 +240,7 @@ export const useNotifications = ({ unreadOnly = false } = {}) => {
       queryClient.setQueryData(["notifications", "unreadCount"], { count });
     };
 
+    socket.on("message_notification", handleMessageNotification);
     socket.on("new_notification", handleNewNotification);
     socket.on("notification_read", handleNotificationRead);
     socket.on("all_notifications_read", handleAllNotificationsRead);
@@ -214,6 +248,7 @@ export const useNotifications = ({ unreadOnly = false } = {}) => {
     socket.on("unread_count_update", handleUnreadCountUpdate);
 
     return () => {
+      socket.off("message_notification", handleMessageNotification);
       socket.off("new_notification", handleNewNotification);
       socket.off("notification_read", handleNotificationRead);
       socket.off("all_notifications_read", handleAllNotificationsRead);

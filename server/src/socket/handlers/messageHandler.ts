@@ -16,11 +16,10 @@ export class MessageHandler {
           ...data,
         });
 
-        const roomName = [socket.userId, data.recipientId].sort().join("_");
+        const recipientRoom = `u:${data.recipientId}`;
 
-        // Emit to conversation room
-        this.io.to(roomName).emit("new_message", message);
-        console.log(`Message sent to room: ${roomName}`);
+        // emit normally
+        this.io.to(recipientRoom).emit("new_message", message);
 
         // Create or update message notification in database
         await NotificationService.createMessageNotification({
@@ -30,7 +29,7 @@ export class MessageHandler {
         });
 
         // Emit notification to recipient
-        this.io.to(`user_${data.recipientId}`).emit("message_notification", {
+        this.io.to(`u:${data.recipientId}`).emit("message_notification", {
           sender: message.sender,
           preview: message.content?.substring(0, 50) || "Sent a message",
           messageId: message._id,
