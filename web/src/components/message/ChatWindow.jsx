@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useLayoutEffect, useEffect } from "react";
 
 import { useQueries } from "@tanstack/react-query";
 
@@ -26,8 +26,7 @@ export default function ChatWindow({
   user,
   conversationFullyLoaded = false,
 }) {
-  // Hover-based timestamp popup — no local state needed
-  // collect unique shared post ids from messages
+
   const postIds = useMemo(() => {
     const s = new Set();
     groupedMessages.forEach((item) => {
@@ -35,13 +34,11 @@ export default function ChatWindow({
       const m = item.message;
       if (!m) return;
       if (m.messageType !== "post_share") return;
-      // sharedPost might be id string or populated object
       const pid = m.sharedPost && typeof m.sharedPost === "string"
         ? m.sharedPost
         : (m.sharedPost && m.sharedPost._id) || m.sharedPostId;
       if (pid) s.add(String(pid));
       else if (typeof m.content === "string") {
-        // try parse url pattern /p/:id
         const match = m.content.match(/\/p\/([a-zA-Z0-9_-]+)/);
         if (match) s.add(match[1]);
       }
@@ -49,7 +46,6 @@ export default function ChatWindow({
     return Array.from(s);
   }, [groupedMessages]);
 
-  // fetch posts in parallel (react-query useQueries)
   const postQueries = useQueries({
     queries: postIds.map((id) => ({
       queryKey: POST_QUERY_KEYS.post(id),
@@ -73,6 +69,43 @@ export default function ChatWindow({
   const { user: authUser } = useAuth();
   const userId = authUser?.data?._id;
   const { emit } = useSocket();
+  const [bubbleMaxWidth, setBubbleMaxWidth] = useState("40%");
+
+  useLayoutEffect(() => {
+    const compute = () => {
+      try {
+        const el = messagesContainerRef?.current;
+        const base = el?.clientWidth || window.innerWidth;
+        setBubbleMaxWidth(`${Math.floor(base * 0.4)}px`);
+      } catch {
+        setBubbleMaxWidth(`${Math.floor(window.innerWidth * 0.4)}px`);
+      }
+    };
+    compute();
+    window.addEventListener("resize", compute);
+    return () => window.removeEventListener("resize", compute);
+  }, [messagesContainerRef]);
+
+  useEffect(() => {
+    if (!messagesEndRef?.current) return;
+    const t = setTimeout(() => {
+      try {
+        messagesEndRef.current.scrollIntoView({ behavior: "auto", block: "end" });
+      } catch (err) {
+        // ignore
+      }
+    }, 0);
+    return () => clearTimeout(t);
+  }, [selectedChat?._id, groupedMessages?.length, messagesEndRef]);
+
+  const handleInputKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (!sendingMessage) {
+        handleSendMessage(e);
+      }
+    }
+  };
 
   const startCall = (type = "audio") => {
     if (!selectedChat?.partner?._id) return;
@@ -80,7 +113,6 @@ export default function ChatWindow({
     const callId = `${userId}_${Date.now()}`;
     const fromUserName = authUser?.data?.userId || authUser?.data?.displayName || "";
 
-    // notify recipient via socket (server should forward to u:{partnerId})
     emit("call_request", {
       toUserId: partnerId,
       fromUserId: userId,
@@ -89,7 +121,6 @@ export default function ChatWindow({
       callId,
     });
 
-    // open caller UI in new tab (use /call-room to avoid colliding with dynamic user routes)
     const url = `/call-room?callId=${encodeURIComponent(callId)}&type=${encodeURIComponent(type)}&role=caller&to=${encodeURIComponent(partnerId)}`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
@@ -199,20 +230,15 @@ export default function ChatWindow({
                     className="w-8 h-8 rounded-full object-cover mr-2 mt-1"
                   />
                 )}
-
-                {/* message bubble wrapper: use group hover to show popup under bubble */}
-                <div className={`relative group max-w-xs lg:max-w-md px-0 py-0 mt-2 mb-2 rounded-full`}>
-                  {/* post_share: render compact post preview (author name -> profile, image -> post, caption) */}
+                  <div className={`relative group px-0 py-0 mt-2 mb-2 rounded-full`}>
                   {message.messageType === "post_share" && (message.sharedPost || message.sharedPostId || message.content) ? (
                     (() => {
-                      // try to get populated post object
                       const postId = message.sharedPost && typeof message.sharedPost === "string"
                         ? message.sharedPost
                         : (message.sharedPost && message.sharedPost._id) || message.sharedPostId;
                       const populatedPost = (message.sharedPost && typeof message.sharedPost === "object") ? message.sharedPost : (postMap[postId] || null);
                       const post = populatedPost;
                       const author = post?.user || post?.author || post?.postedBy || post?.owner || (message.sharedPost && message.sharedPost.user) || {};
-                      // normalize image & caption fields (adjust as API)
                       const mediaUrls =
                         post?.thumbnailUrl ||
                         post?.mediaUrls ||
@@ -220,76 +246,76 @@ export default function ChatWindow({
                         (post?.media && (post.media[0]?.url || post.media[0])) ||
                         message.mediaUrl ||
                         null;
-
-                      // normalize to firstUrl
                       const firstMediaUrl = Array.isArray(mediaUrls) ? mediaUrls[0] : mediaUrls;
                       let previewImgSrc = null;
                       if (firstMediaUrl) {
-                        if (isVideoUrl(firstMediaUrl)) {
-                          // try Cloudinary thumbnail first
-                          previewImgSrc = cloudinaryVideoThumbnail(firstMediaUrl) || null;
-                        } else {
-                          previewImgSrc = firstMediaUrl;
-                        }
+                        if (isVideoUrl(firstMediaUrl)) previewImgSrc = cloudinaryVideoThumbnail(firstMediaUrl) || null;
+                        else previewImgSrc = firstMediaUrl;
                       }
                       const caption = post?.caption || "";
-
                       return (
-                        <div className="bg-[#1f2937] text-white rounded-lg overflow-hidden border shadow-sm">
-                          <a href={`/${author?.userId || author?.username || author?._id || ""}`} className="flex items-center space-x-3 px-3 py-2 hover:underline">
-                            <img src={author?.avatarUrl || `https://ui-avatars.com/api/?name=${author?.userId || author?.username || 'User'}&background=random`} alt={author?.userId || author?.username || 'user'} className="w-8 h-8 rounded-full object-cover" />
-                            <div className="text-sm font-medium">{author?.userId || author?.username || author?.displayName || 'User'}</div>
-                          </a>
+                        <div className="flex flex-col space-y-2 w-full">
+                          <div className={`w-full flex ${isOwn ? "justify-end" : "justify-start"}`}>
+                            <div className="bg-[#1f2937] text-white rounded-lg overflow-hidden border shadow-sm">
+                              <a href={`/${author?.userId || author?.username || author?._id || ""}`} className="flex items-center space-x-3 px-3 py-2 hover:underline">
+                                <img src={author?.avatarUrl || `https://ui-avatars.com/api/?name=${author?.userId || author?.username || 'User'}&background=random`} alt={author?.userId || author?.username || 'user'} className="w-8 h-8 rounded-full object-cover" />
+                                <div className="text-sm font-medium">{author?.userId || author?.username || author?.displayName || 'User'}</div>
+                              </a>
 
-                          {/* fixed width only: image/video keep original aspect ratio (width fixed, height auto) */}
-                          <a
-                            href={`/${author?.userId || author?.username || author?._id || ""}/p/${postId || ""}`}
-                            className="inline-block"
-                          >
-                            <div className="relative w-56 sm:w-64 flex-shrink-0 overflow-hidden rounded-md bg-black">
-                              {previewImgSrc ? (
-                                <>
-                                  <img
-                                    src={previewImgSrc}
-                                    alt="post preview"
-                                    className="w-full h-auto max-h-[70vh] object-contain"
-                                    loading="lazy"
-                                  />
-                                  {/* play overlay for video thumbnails */}
-                                  {isVideoUrl(firstMediaUrl) && (
-                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                      <div className="w-12 h-12 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
-                                        <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                                          <path d="M8 5v14l11-7z" />
-                                        </svg>
-                                      </div>
-                                    </div>
+                              <a href={`/${author?.userId || author?.username || author?._id || ""}/p/${postId || ""}`} className="inline-block">
+                                <div className="relative w-56 sm:w-64 flex-shrink-0 overflow-hidden rounded-md bg-black">
+                                  {previewImgSrc ? (
+                                    <>
+                                      <img src={previewImgSrc} alt="post preview" className="w-full h-auto max-h-[70vh] object-contain" loading="lazy" />
+                                      {isVideoUrl(firstMediaUrl) && (
+                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                          <div className="w-12 h-12 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
+                                            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                                              <path d="M8 5v14l11-7z" />
+                                            </svg>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <div className="w-full flex items-center justify-center text-sm text-gray-200 py-8">Xem bài viết</div>
                                   )}
-                                </>
-                              ) : (
-                                <div className="w-full flex items-center justify-center text-sm text-gray-200 py-8">
-                                  Xem bài viết
                                 </div>
-                              )}
-                            </div>
-                          </a>
+                              </a>
 
-                          {caption ? (
-                            <div className="px-3 py-2 text-sm text-gray-100">
-                              {caption.length > 200 ? `${caption.slice(0, 200)}...` : caption}
+                              {caption ? <div className="px-3 py-2 text-sm text-gray-100">{caption.length > 200 ? `${caption.slice(0, 200)}...` : caption}</div> : null}
                             </div>
-                          ) : null}
+                          </div>
+
+                          {message.content && (
+                            <div className={`w-full flex ${isOwn ? "justify-end" : "justify-start"}`}>
+                              <div
+                                className={`px-4 py-2 rounded-xl cursor-pointer break-words leading-5 ${isOwn ? "bg-blue-500 text-white" : "bg-[#EFEFEF] text-gray-900 border"}`}
+                                style={{ maxWidth: bubbleMaxWidth, minWidth: 96 }}
+                                onClick={() => {
+                                  try { if (!isOwn && !message.isRead && typeof handleMarkAsRead === "function") handleMarkAsRead(message._id); } catch (err) { console.error(err); }
+                                }}
+                                onDoubleClick={() => handleReaction(message._id, "❤️")}
+                              >
+                                <p className="text-sm">{renderTextWithBreaks(message.content)}</p>
+
+                                {message.reactions && message.reactions.length > 0 && (
+                                  <div className="flex space-x-1 mt-1">
+                                    {message.reactions.map((reaction, idx) => <span key={idx} className="text-xs">{reaction.emoji}</span>)}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })()
                   ) : message.messageType === "media" && message.mediaUrl ? (
                     <div className="px-0 py-0 rounded-2xl">
-                      {/* fixed-width only for inline media; preserve aspect ratio */}
                       <div className="relative w-56 sm:w-64 flex-shrink-0 overflow-hidden rounded-lg bg-black">
                         {message.mediaType === "image" ? (
                           <img src={message.mediaUrl} alt="Shared image" className="w-full h-auto max-h-[70vh] object-contain" />
                         ) : message.mediaType === "video" ? (
-                          // show video scaled with width fixed and height auto; use poster for preview
                           <video src={message.mediaUrl} controls poster={cloudinaryVideoThumbnail(message.mediaUrl) || undefined} className="w-full h-auto max-h-[70vh]" />
                         ) : (
                           <div className="w-full flex items-center justify-center text-sm text-gray-200 py-8">Không hỗ trợ media này</div>
@@ -298,31 +324,34 @@ export default function ChatWindow({
                       {message.content && <p className="text-sm mt-2">{message.content}</p>}
                     </div>
                   ) : (
-                    <div
-                      className={`max-w-xs lg:max-w-md px-4 py-1.5 rounded-full cursor-pointer ${isOwn ? 'bg-blue-500 text-white' : 'bg-[#EFEFEF] text-gray-900 border'}`}
-                      onClick={() => {
-                        // only mark read on click for recipients, popup shows on hover
-                        try { if (!isOwn && !message.isRead && typeof handleMarkAsRead === "function") handleMarkAsRead(message._id); } catch (err) { console.error(err); }
-                      }}
-                      onDoubleClick={() => handleReaction(message._id, "❤️")}
-                    >
-                      {message.messageType === "text" && <p className="text-sm">{message.content}</p>}
-                      {message.messageType === "location" && message.location && (
-                        <div>
-                          <p className="text-sm">📍 {message.location.name}</p>
-                          <p className="text-xs opacity-75">{message.location.coordinates[1]}, {message.location.coordinates[0]}</p>
-                        </div>
-                      )}
+                    <div className={`w-full flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                      <div
+                        className={`px-4 py-2 rounded-xl cursor-pointer break-words leading-5 ${isOwn ? "bg-blue-500 text-white" : "bg-[#EFEFEF] text-gray-900 border"}`}
+                        style={{ maxWidth: bubbleMaxWidth, minWidth: 96 }}
+                        onClick={() => {
+                          // only mark read on click for recipients
+                          try { if (!isOwn && !message.isRead && typeof handleMarkAsRead === "function") handleMarkAsRead(message._id); } catch (err) { console.error(err); }
+                        }}
+                        onDoubleClick={() => handleReaction(message._id, "❤️")}
+                      >
+                        {message.messageType === "text" && <p className="text-sm">{renderTextWithBreaks(message.content)}</p>}
 
-                      {message.reactions && message.reactions.length > 0 && (
-                        <div className="flex space-x-1 mt-1">
-                          {message.reactions.map((reaction, idx) => <span key={idx} className="text-xs">{reaction.emoji}</span>)}
-                        </div>
-                      )}
+                        {message.messageType === "location" && message.location && (
+                          <div>
+                            <p className="text-sm">📍 {message.location.name}</p>
+                            <p className="text-xs opacity-75">{message.location.coordinates[1]}, {message.location.coordinates[0]}</p>
+                          </div>
+                        )}
+
+                        {message.reactions && message.reactions.length > 0 && (
+                          <div className="flex space-x-1 mt-1">
+                            {message.reactions.map((reaction, idx) => <span key={idx} className="text-xs">{reaction.emoji}</span>)}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
 
-                  {/* popup shown on hover (group-hover) */}
                   <div className="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 absolute -top-7 left-1/2 transform -translate-x-1/2 z-20">
                     <div className="bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap">
                       {new Date(message.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
@@ -365,57 +394,67 @@ export default function ChatWindow({
         <div className="flex items-center w-full">
           <div className="flex items-center bg-white border border-gray-300 rounded-full w-full px-3 py-2">
             <button type="button" className="mr-2 flex-shrink-0 text-2xl focus:outline-none"><span role="img" aria-label="emoji">😊</span></button>
-            <input
-              type="text"
+            <textarea
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
+              onKeyDown={handleInputKeyDown}
+              onInput={(e) => { e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
               placeholder="Nhắn tin..."
-              className="flex-1 border-none outline-none bg-transparent text-base"
+              rows={1}
+              className="flex-1 border-none outline-none bg-transparent text-base resize-none overflow-hidden"
               disabled={sendingMessage}
             />
-            <div className="flex items-center space-x-2 ml-2">
-              {(newMessage.trim().length > 0 || selectedImages.length > 0) ? (
-                <span
-                  className="ml-2 text-blue-500 font-semibold cursor-pointer select-none"
-                  style={{ padding: "0 16px", lineHeight: "36px" }}
-                  onClick={() => !sendingMessage && handleSendMessage({ preventDefault: () => {} })}
-                  role="button"
-                >
-                  {sendingMessage ? "Đang gửi..." : "Gửi"}
-                </span>
-              ) : (
-                <>
-                  <button type="button" className="text-xl focus:outline-none" title="Ghi âm">🎤</button>
-                  <input type="file" accept="image/*,video/*" multiple style={{ display: "none" }} ref={imageInputRef} onChange={handleImageChange} />
-                  <button type="button" className="text-xl focus:outline-none" title="Chọn ảnh/video" onClick={() => imageInputRef.current.click()}>🖼️</button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+             <div className="flex items-center space-x-2 ml-2">
+               {(newMessage.trim().length > 0 || selectedImages.length > 0) ? (
+                 <span
+                   className="ml-2 text-blue-500 font-semibold cursor-pointer select-none"
+                   style={{ padding: "0 16px", lineHeight: "36px" }}
+                   onClick={() => !sendingMessage && handleSendMessage({ preventDefault: () => {} })}
+                   role="button"
+                 >
+                   {sendingMessage ? "Đang gửi..." : "Gửi"}
+                 </span>
+               ) : (
+                 <>
+                   <button type="button" className="text-xl focus:outline-none" title="Ghi âm">🎤</button>
+                   <input type="file" accept="image/*,video/*" multiple style={{ display: "none" }} ref={imageInputRef} onChange={handleImageChange} />
+                   <button type="button" className="text-xl focus:outline-none" title="Chọn ảnh/video" onClick={() => imageInputRef.current.click()}>🖼️</button>
+                 </>
+               )}
+             </div>
+           </div>
+         </div>
       </form>
     </div>
   );
 }
-
-// helper utilities to detect video/cloudinary and build video thumbnail URL
 const isVideoUrl = (u) => typeof u === "string" && /\.(mp4|mov|webm|ogg|mkv)(?:\?.*)?$/i.test(u);
 const isCloudinaryUrl = (u) => typeof u === "string" && u.includes("res.cloudinary.com");
 
-/**
- * Build Cloudinary thumbnail for a video URL.
- * - inserts so_0 (start at 0s) and image transforms, converts extension to .jpg
- * - example: https://res.cloudinary.com/demo/video/upload/v123/vid.mp4
- *   -> https://res.cloudinary.com/demo/video/upload/so_0,f_auto,q_auto,w_800/v123/vid.jpg
- */
 const cloudinaryVideoThumbnail = (url) => {
   if (!isCloudinaryUrl(url)) return null;
   try {
-    // insert transforms after /upload/
     const withTransform = url.replace("/upload/", "/upload/so_0,f_auto,q_auto,w_800/");
-    // change video extension to .jpg (keeps version/path)
+
     return withTransform.replace(/\.(mp4|mov|webm|ogg|mkv)(?:[?#].*)?$/i, ".jpg");
   } catch {
     return null;
   }
+};
+
+const renderTextWithBreaks = (text) => {
+  if (text == null) return null;
+  const normalized = String(text).replace(/\r\n/g, "\n");
+  const parts = normalized.split(/\\n|\n/); // handle both escaped "\\n" and real newlines
+  return parts.map((p, i) => (
+    <span key={i}>
+      {p}
+      {i < parts.length - 1 && <br />}
+    </span>
+  ));
+};
+
+export const escapeNewlinesForSave = (text) => {
+  if (text == null) return text;
+  return String(text).replace(/\r\n/g, "\n").replace(/\n/g, "\\n");
 };

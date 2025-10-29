@@ -7,17 +7,14 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 
 import SaveToCollectionModal from "@/components/collection/SaveToCollectionModal";
+import ShareModal from "@/components/feed/ShareModal";
 import useAuth from "@/hooks/useAuth";
 import {  useUser, useUserFollowing } from "@/hooks/useUser";
 import {  getReelById, getReelsFeed, increasePostView, likePost, unsavePost } from "@/lib/api";
 import { navigate } from "@/lib/navigation";
 import CommentModal from "@/modals/CommentReelModal";
-import ShareModal from "@/modals/ShareModal";
 
 import MoreOptionsMenu from "./MoreOptionsMenu";
-
-
-
 
 export default function ReelWeb() {
   const { id } = useParams();
@@ -505,6 +502,7 @@ export default function ReelWeb() {
                 }}
                 handleSave={handleSave}
                 setShowShareModal={setShowShareModal}
+                setSelectedReel={setSelectedReel}
                 savedMap={savedMap}
               />
 
@@ -541,12 +539,24 @@ export default function ReelWeb() {
           onSuccess={handleSaveSuccess}
         />
       )}
-
-      {showShareModal && (
+      {showShareModal && selectedReel && (
         <ShareModal
-          isOpen={showShareModal}
+          open={showShareModal}
+          post={selectedReel}
+          currentUser={user}
           onClose={() => setShowShareModal(false)}
-          shareUrl={window.location.href}
+          onShare={(users, url) => {
+            setShowShareModal(false);
+          }}
+          onCopy={(p) => {
+            const url = `${window.location.origin}/post/${p._id || p.id}`;
+            try {
+              navigator.clipboard?.writeText(url);
+              toast.success("Đã sao chép liên kết");
+            } catch {
+              toast.error("Không thể sao chép liên kết");
+            }
+          }}
         />
       )}
 
@@ -592,8 +602,19 @@ function InfoOverlay({ reel, handleAudioClick, user, handleFollowClick, isFollow
   );
 }
 
-function ActionButtons({ reel, handleLike, likedMap, handleAudioClick,
-  setOpenMenu, setReelId, onOpenComments, handleSave, savedMap ,setShowShareModal}) {
+function ActionButtons({
+  reel,
+  handleLike,
+  likedMap,
+  handleAudioClick,
+  setOpenMenu,
+  setReelId,
+  onOpenComments,
+  handleSave,
+  savedMap,
+  setShowShareModal,
+  setSelectedReel,
+}) {
 
   return (
     <div className="flex flex-col mt-85 md:mt-100 sm:mt-75 ml-5 items-center justify-center space-y-6">
@@ -638,8 +659,13 @@ function ActionButtons({ reel, handleLike, likedMap, handleAudioClick,
       </div>
 
       <button>
-        <Send size={25} className="text-black dark:text-white cursor-pointer"
-          onClick={() => setShowShareModal(true)}
+        <Send
+          size={25}
+          className="text-black dark:text-white cursor-pointer"
+          onClick={() => {
+            if (typeof setSelectedReel === "function") setSelectedReel(reel);
+            if (typeof setShowShareModal === "function") setShowShareModal(true);
+          }}
         />
       </button>
 
