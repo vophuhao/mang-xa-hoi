@@ -24,7 +24,7 @@ export const usernameSchema = z
   .string()
   .min(2, "Username must be at least 2 characters")
   .max(30, "Username must be less than 30 characters")
-  .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores");
+  .regex(/^[a-zA-Z0-9_ ]+$/, "Username can only contain letters, numbers, and underscores");
 
 export const mongoIdSchema = z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid ID format");
 

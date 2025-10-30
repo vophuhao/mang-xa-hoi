@@ -14,12 +14,14 @@ import { useFollowActions } from "@/hooks/useFollow";
 import { useHighlights, useStoriesByUsername, useUserStories } from "@/hooks/useStory";
 import { useCurrentUser, useUserPosts, useUserProfile } from "@/hooks/useUser";
 
+import EditProfile from "./EditProfile";
+
 const Profile = () => {
   const { username } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const [selectedPost, setSelectedPost] = useState(null);
-  // Removed unused savedTab state
+  const [isEditing, setIsEditing] = useState(false);
 
   // Determine active tab from URL
   const getActiveTabFromPath = useCallback(() => {
@@ -90,10 +92,8 @@ const Profile = () => {
     navigate(`/${username}`);
   };
 
-  const handleEditProfile = () => {
-    // TODO: Open edit profile modal
-    console.log("Edit profile");
-  };
+  const handleEditProfile = () => setIsEditing(true);
+  const handleCancelEdit = () => setIsEditing(false);
 
   const handleFollow = async () => {
     if (profileData?.data?._id) {
@@ -224,6 +224,10 @@ const Profile = () => {
     // TODO: Implement view highlight functionality
     console.log("View highlight:", highlight);
   };
+
+  if (isEditing) {
+    return <EditProfile onCancel={handleCancelEdit} />;
+  }
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">

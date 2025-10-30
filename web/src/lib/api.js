@@ -132,6 +132,7 @@ export const searchUsersToMessage = async (query, page = 1, limit = 10) =>
 export const uploadMedia = async (formData) => {
   return API.post("/media/save", formData, {
     headers: { "Content-Type": "multipart/form-data" },
+    withCredentials: true,
   });
 };
 

@@ -18,6 +18,7 @@ import ReelWeb from "./components/Reel";
 import CollectionAudio from "./pages/ColectionAudio";
 import CollectionDetail from "./pages/CollectionDetail";
 import DirectInbox from "./pages/DirectInbox";
+import EditProfile from "./pages/EditProfile";
 import Explore from "./pages/Explore";
 import ExplorePeople from "./pages/ExplorePeople";
 import Feed from "./pages/Feed";
@@ -26,6 +27,7 @@ import Messages from "./pages/Messages";
 import PostDetail from "./pages/PostDetail";
 import Profile from "./pages/Profile";
 import ProtectedRoute from "./routes/ProtectedRoute";
+
 
 function App() {
   // set the navigate function on our API client for use in the axios error interceptor
@@ -67,6 +69,7 @@ function App() {
         <Route path="/email/verify/:code" element={<VerifyEmail />} />
         <Route path="/password/forgot" element={<ForgotPassword />} />
         <Route path="/password/reset" element={<ResetPassword />} />
+        <Route path=":username/edit" element={<EditProfile />} />
       </Routes>
 
       <ToastContainer position="top-right" autoClose={2000} />

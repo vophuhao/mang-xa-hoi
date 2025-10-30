@@ -18,6 +18,7 @@ export const updateProfileSchema = z.object({
   userId: nameSchema.optional(),
   bio: bioSchema,
   avatarUrl: imageUrlSchema,
+  gender: z.enum(["male", "female", "other", "prefer_not_to_say"]).optional(),
 });
 
 // Get user by username
