@@ -5,7 +5,7 @@ import { useQueries } from "@tanstack/react-query";
 import useAuth from "@/hooks/useAuth";
 import { POST_QUERY_KEYS } from "@/hooks/usePost";
 import useSocket from "@/hooks/useSocket";
-import { getPostById } from "@/lib/api";
+import { getPostById, saveCallHistory, updateCallStatus } from "@/lib/api";
 
 export default function ChatWindow({
   selectedChat,
@@ -26,7 +26,6 @@ export default function ChatWindow({
   user,
   conversationFullyLoaded = false,
 }) {
-
   const postIds = useMemo(() => {
     const s = new Set();
     groupedMessages.forEach((item) => {
@@ -70,6 +69,7 @@ export default function ChatWindow({
   const userId = authUser?.data?._id;
   const { emit } = useSocket();
   const [bubbleMaxWidth, setBubbleMaxWidth] = useState("40%");
+  const [callTimeout, setCallTimeout] = useState(null); // ✅ THÊM: Track call timeout
 
   useLayoutEffect(() => {
     const compute = () => {
@@ -107,23 +107,84 @@ export default function ChatWindow({
     }
   };
 
-  const startCall = (type = "audio") => {
+  // ✅ SỬA: Đơn giản hóa startCall - chỉ có 1 type
+  const startCall = async () => {
     if (!selectedChat?.partner?._id) return;
     const partnerId = String(selectedChat.partner._id);
-    const callId = `${userId}_${Date.now()}`;
+    
+    const roomId = `room_${userId}_${partnerId}_${Date.now()}`;
     const fromUserName = authUser?.data?.userId || authUser?.data?.displayName || "";
 
+    try {
+      // ✅ Tạo call history với status "outgoing" 
+      await saveCallHistory({
+        recipientId: partnerId,
+        status: "outgoing", // ✅ Đánh dấu là cuộc gọi đi
+        roomId: String(roomId),
+        startedAt: new Date().toISOString(),
+      });
+      
+      console.log("[CALL] Outgoing call history created");
+
+      // ✅ THÊM: Set timeout 20s để đánh dấu "missed" nếu không có phản hồi
+      const timeoutId = setTimeout(async () => {
+        try {
+          await updateCallStatus(roomId, {
+            status: "missed",
+            endedAt: new Date().toISOString(),
+          });
+          console.log("[CALL] Call marked as missed after 20s timeout");
+        } catch (error) {
+          console.error("[CALL] Failed to update call to missed:", error);
+        }
+      }, 20000); // 20 seconds
+
+      setCallTimeout(timeoutId);
+
+    } catch (error) {
+      console.error("[CALL] Failed to create call history:", error);
+    }
+
+    // Emit call request
     emit("call_request", {
       toUserId: partnerId,
       fromUserId: userId,
       fromUserName,
-      callType: type, // "audio" or "video"
-      callId,
+      roomId,
     });
 
-    const url = `/call-room?callId=${encodeURIComponent(callId)}&type=${encodeURIComponent(type)}&role=caller&to=${encodeURIComponent(partnerId)}`;
+    // Mở call page
+    const url = `/call?roomId=${encodeURIComponent(roomId)}&role=caller&to=${encodeURIComponent(partnerId)}`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
+
+  // ✅ THÊM: Clear timeout khi component unmount
+  useEffect(() => {
+    return () => {
+      if (callTimeout) {
+        clearTimeout(callTimeout);
+      }
+    };
+  }, [callTimeout]);
+
+  // ✅ THÊM: Listen for call responses để clear timeout
+  useEffect(() => {
+    if (!emit?.socket) return;
+
+    const handleCallResponse = ({ accepted, roomId: responseRoomId }) => {
+      // Clear timeout nếu có response
+      if (callTimeout) {
+        clearTimeout(callTimeout);
+        setCallTimeout(null);
+      }
+    };
+
+    emit.socket.on("call_response", handleCallResponse);
+
+    return () => {
+      emit.socket.off("call_response", handleCallResponse);
+    };
+  }, [emit, callTimeout]);
 
   if (!selectedChat) {
     return (
@@ -156,23 +217,15 @@ export default function ChatWindow({
           </div>
         </div>
 
+        {/* ✅ SỬA: Chỉ có 1 nút call */}
         <div className="flex items-center space-x-2">
           <button
             type="button"
-            title="Gọi thoại"
-            onClick={() => startCall("audio")}
+            title="Gọi"
+            onClick={startCall}
             className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-lg"
           >
             📞
-          </button>
-
-          <button
-            type="button"
-            title="Gọi video"
-            onClick={() => startCall("video")}
-            className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-lg"
-          >
-            🎥
           </button>
         </div>
       </div>
@@ -212,7 +265,7 @@ export default function ChatWindow({
               return (
                 <div key={`date-${idx}`} className="flex items-center my-4">
                   <div className="flex-grow border-gray-300"></div>
-                  <span className="mx-4 text-xs text-gray-500 px-2 py-0.5 rounded"> {item.date}</span>
+                  <span className="mx-4 text-xs text-gray-500 px-2 py-0.5 rounded">{item.date}</span>
                   <div className="flex-grow border-gray-300"></div>
                 </div>
               );
@@ -230,8 +283,71 @@ export default function ChatWindow({
                     className="w-8 h-8 rounded-full object-cover mr-2 mt-1"
                   />
                 )}
-                  <div className={`relative group px-0 py-0 mt-2 mb-2 rounded-full`}>
-                  {message.messageType === "post_share" && (message.sharedPost || message.sharedPostId || message.content) ? (
+                
+                <div className={`relative group px-0 py-0 mt-2 mb-2 rounded-full`}>
+                  {/* ✅ SỬA: Render cuộc gọi theo status mới */}
+                  {message.messageType === "call" && message.callData ? (
+                    <div className={`w-full flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                      <div
+                        className={`px-4 py-3 rounded-xl cursor-pointer break-words leading-5 max-w-xs ${
+                          isOwn ? "bg-blue-500 text-white" : "bg-[#EFEFEF] text-gray-900 border"
+                        }`}
+                        onClick={() => {
+                          try { 
+                            if (!isOwn && !message.isRead && typeof handleMarkAsRead === "function") {
+                              handleMarkAsRead(message._id); 
+                            }
+                          } catch (err) { 
+                            console.error(err); 
+                          }
+                        }}
+                      >
+                        <div className="flex items-center space-x-2">
+                          {/* Call icon */}
+                          <div className={`text-xl ${isOwn ? 'text-white' : 'text-gray-600'}`}>
+                            📞
+                          </div>
+                          
+                          <div className="flex-1">
+                            {/* ✅ SỬA: Call status text theo logic mới */}
+                            <div className={`text-sm font-medium ${isOwn ? 'text-white' : 'text-gray-900'}`}>
+                              {getCallStatusText(message.callData.status, isOwn)}
+                            </div>
+                            
+                            {/* Call time */}
+                            <div className={`text-xs mt-1 ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
+                              {new Date(message.createdAt).toLocaleString('vi-VN', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                day: '2-digit',
+                                month: '2-digit'
+                              })}
+                            </div>
+                          </div>
+                          
+                          {/* Call again button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startCall();
+                            }}
+                            className={`p-1 rounded-full hover:bg-opacity-20 hover:bg-white transition-colors ${
+                              isOwn ? 'text-white' : 'text-gray-600'
+                            }`}
+                            title="Gọi lại"
+                          >
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : 
+                  
+                  /* ✅ EXISTING: Post share rendering */
+                  message.messageType === "post_share" && (message.sharedPost || message.sharedPostId || message.content) ? (
+                    // ...existing post_share code...
                     (() => {
                       const postId = message.sharedPost && typeof message.sharedPost === "string"
                         ? message.sharedPost
@@ -310,7 +426,11 @@ export default function ChatWindow({
                         </div>
                       );
                     })()
-                  ) : message.messageType === "media" && message.mediaUrl ? (
+                  ) : 
+                  
+                  /* ✅ EXISTING: Media rendering */
+                  message.messageType === "media" && message.mediaUrl ? (
+                    // ...existing media code...
                     <div className="px-0 py-0 rounded-2xl">
                       <div className="relative w-56 sm:w-64 flex-shrink-0 overflow-hidden rounded-lg bg-black">
                         {message.mediaType === "image" ? (
@@ -324,12 +444,13 @@ export default function ChatWindow({
                       {message.content && <p className="text-sm mt-2">{message.content}</p>}
                     </div>
                   ) : (
+                    
+                    /* ✅ EXISTING: Text messages */
                     <div className={`w-full flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
                       <div
                         className={`px-4 py-2 rounded-xl cursor-pointer break-words leading-5 ${isOwn ? "bg-blue-500 text-white" : "bg-[#EFEFEF] text-gray-900 border"}`}
                         style={{ maxWidth: bubbleMaxWidth, minWidth: 96 }}
                         onClick={() => {
-                          // only mark read on click for recipients
                           try { if (!isOwn && !message.isRead && typeof handleMarkAsRead === "function") handleMarkAsRead(message._id); } catch (err) { console.error(err); }
                         }}
                         onDoubleClick={() => handleReaction(message._id, "❤️")}
@@ -352,6 +473,7 @@ export default function ChatWindow({
                     </div>
                   )}
 
+                  {/* Tooltip */}
                   <div className="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 absolute -top-7 left-1/2 transform -translate-x-1/2 z-20">
                     <div className="bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap">
                       {new Date(message.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
@@ -428,6 +550,21 @@ export default function ChatWindow({
     </div>
   );
 }
+
+// ✅ SỬA: Helper function - chỉ 3 status
+const getCallStatusText = (status, isOwn) => {
+  switch (status) {
+    case "declined":
+      return "Cuộc gọi bị từ chối";
+    case "incoming":
+      return "Cuộc gọi đến";
+    case "outgoing":
+      return "Cuộc gọi đi";
+    default:
+      return "Cuộc gọi";
+  }
+};
+
 const isVideoUrl = (u) => typeof u === "string" && /\.(mp4|mov|webm|ogg|mkv)(?:\?.*)?$/i.test(u);
 const isCloudinaryUrl = (u) => typeof u === "string" && u.includes("res.cloudinary.com");
 
@@ -443,18 +580,9 @@ const cloudinaryVideoThumbnail = (url) => {
 };
 
 const renderTextWithBreaks = (text) => {
-  if (text == null) return null;
-  const normalized = String(text).replace(/\r\n/g, "\n");
-  const parts = normalized.split(/\\n|\n/); // handle both escaped "\\n" and real newlines
-  return parts.map((p, i) => (
-    <span key={i}>
-      {p}
-      {i < parts.length - 1 && <br />}
-    </span>
-  ));
-};
-
-export const escapeNewlinesForSave = (text) => {
-  if (text == null) return text;
-  return String(text).replace(/\r\n/g, "\n").replace(/\n/g, "\\n");
+  if (typeof text !== "string") return text;
+  return text.split(/(\n\r?|\r\n?)/).map((part, idx) => {
+    if (part.match(/^\s*$/)) return <br key={idx} />;
+    return part;
+  });
 };

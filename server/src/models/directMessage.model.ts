@@ -8,7 +8,7 @@ export interface DirectMessageDocument extends mongoose.Document {
   mediaType?: "image" | "video" | "audio";
 
   // Message types
-  messageType: "text" | "media" | "post_share" | "story_share" | "location" | "voice";
+  messageType: "text" | "media" | "post_share" | "story_share" | "location" | "voice" | "call";
 
   // Shared content references
   sharedPost?: mongoose.Types.ObjectId;
@@ -16,6 +16,15 @@ export interface DirectMessageDocument extends mongoose.Document {
   location?: {
     name: string;
     coordinates: [number, number];
+  };
+
+  // ✅ SỬA: Xóa "missed" và "completed", "cancelled"
+  callData?: {
+    duration?: number; // seconds
+    status: "incoming" | "outgoing" | "declined"; // ✅ CHỈ 3 status
+    roomId: string;
+    startedAt?: Date;
+    endedAt?: Date;
   };
 
   // Message status
@@ -64,7 +73,7 @@ const directMessageSchema = new mongoose.Schema<DirectMessageDocument>(
 
     messageType: {
       type: String,
-      enum: ["text", "media", "post_share", "story_share", "location", "voice"],
+      enum: ["text", "media", "post_share", "story_share", "location", "voice", "call"],
       required: true,
       default: "text",
     },
@@ -81,6 +90,26 @@ const directMessageSchema = new mongoose.Schema<DirectMessageDocument>(
     location: {
       name: String,
       coordinates: [Number],
+    },
+
+    // ✅ SỬA: Chỉ 3 status
+    callData: {
+      duration: Number, // seconds
+      status: {
+        type: String,
+        enum: ["incoming", "outgoing", "declined"], // ✅ XÓA missed, completed, cancelled
+        required: function() {
+          return this.messageType === "call";
+        }
+      },
+      roomId: {
+        type: String,
+        required: function() {
+          return this.messageType === "call";
+        }
+      },
+      startedAt: Date,
+      endedAt: Date,
     },
 
     // Status
@@ -111,6 +140,7 @@ const directMessageSchema = new mongoose.Schema<DirectMessageDocument>(
 directMessageSchema.index({ sender: 1, recipient: 1, createdAt: -1 });
 directMessageSchema.index({ recipient: 1, isRead: 1 });
 directMessageSchema.index({ createdAt: -1 });
+directMessageSchema.index({ "callData.roomId": 1 });
 
 const DirectMessageModel = mongoose.model<DirectMessageDocument>(
   "DirectMessage",

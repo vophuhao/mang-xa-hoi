@@ -6,6 +6,8 @@ import catchErrors from "@/utils/catchErrors";
 import { ResponseUtil } from "@/utils/response";
 import {
   sendMessageSchema,
+  saveCallHistorySchema,
+  updateCallStatusSchema,
   getConversationSchema,
   markAsReadSchema,
   reactToMessageSchema,
@@ -164,4 +166,60 @@ export const getMessageByIdHandler = catchErrors(async (req: AuthenticatedReques
   );
 
   return ResponseUtil.success(res, message, "Message retrieved successfully");
+});
+
+/**
+ * Save call history
+ * @route POST /messages/call-history
+ */
+export const saveCallHistoryHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const validatedData = saveCallHistorySchema.parse(req.body);
+  
+  console.log(`[CONTROLLER] Save call history request:`, {
+    senderId: req.userId,
+    recipientId: validatedData.recipientId,
+    status: validatedData.status,
+    roomId: validatedData.roomId,
+  });
+
+  // Check if call history already exists
+  const existingCall = await DirectMessageModel.findOne({
+    "callData.roomId": validatedData.roomId,
+    messageType: "call",
+  });
+
+  if (existingCall) {
+    console.log(`[CONTROLLER] Call history already exists for roomId: ${validatedData.roomId}`);
+    return ResponseUtil.success(res, existingCall, "Call history already exists");
+  }
+
+  const callMessage = await DirectMessageService.saveCallHistory({
+    senderId: (req.userId as any).toString(),
+    recipientId: validatedData.recipientId,
+    status: validatedData.status,
+    roomId: validatedData.roomId,
+    ...(validatedData.duration !== undefined && { duration: validatedData.duration }),
+    ...(validatedData.startedAt && { startedAt: validatedData.startedAt }),
+    ...(validatedData.endedAt && { endedAt: validatedData.endedAt }),
+  });
+
+  return ResponseUtil.created(res, callMessage, "Call history saved successfully");
+});
+
+/**
+ * Update call status
+ * @route PUT /messages/call/:roomId/status
+ */
+export const updateCallStatusHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const { roomId } = req.params;
+  const validatedData = updateCallStatusSchema.parse({ roomId, ...req.body });
+
+  const callMessage = await DirectMessageService.updateCallStatus(
+    validatedData.roomId,
+    validatedData.status,
+    validatedData.duration,
+    validatedData.endedAt
+  );
+
+  return ResponseUtil.success(res, callMessage, "Call status updated successfully");
 });

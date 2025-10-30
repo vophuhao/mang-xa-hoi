@@ -250,12 +250,29 @@ export default function useMessages({ initialUserId } = {}) {
   const getMessagePreview = useCallback((message) => {
     if (!message) return "Không có tin nhắn";
     switch (message.messageType) {
-      case "text": return message.content || "Tin nhắn văn bản";
-      case "media": return message.mediaType === "image" ? "📷 Ảnh" : message.mediaType === "video" ? "🎥 Video" : "Shared media";
-      case "location": return "📍 Vị trí";
-      case "post_share": return "📄 Chia sẻ bài viết";
-      case "story_share": return "📖 Chia sẻ story";
-      default: return "Tin nhắn";
+      case "text": 
+        return message.content || "Tin nhắn văn bản";
+      case "media": 
+        return message.mediaType === "image" ? "📷 Ảnh" : message.mediaType === "video" ? "🎥 Video" : "Shared media";
+      case "location": 
+        return "📍 Vị trí";
+      case "post_share": 
+        return "📄 Chia sẻ bài viết";
+      case "story_share": 
+        return "📖 Chia sẻ story";
+      case "call": // ✅ SỬA: Chỉ 3 status
+        if (message.callData) {
+          const status = message.callData.status;
+          switch (status) {
+            case "declined": return "📞 Cuộc gọi bị từ chối";
+            case "incoming": return "📞 Cuộc gọi đến";
+            case "outgoing": return "📞 Cuộc gọi đi";
+            default: return "📞 Cuộc gọi";
+          }
+        }
+        return "📞 Cuộc gọi";
+      default: 
+        return "Tin nhắn";
     }
   }, []);
 
