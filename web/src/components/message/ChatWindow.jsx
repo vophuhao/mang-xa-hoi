@@ -175,9 +175,17 @@ export default function ChatWindow({
     }
   };
 
-  // ✅ SỬA: Đơn giản hóa startCall - XÓA timeout logic
+  // ✅ SỬA: startCall với kiểm tra online status
   const startCall = async () => {
     if (!selectedChat?.partner?._id) return;
+    
+    // ✅ THÊM: Kiểm tra online status trước khi gọi
+    if (!isPartnerOnline) {
+      // Có thể thêm toast notification nếu cần
+      console.log("[CALL] Cannot call - user is offline");
+      return;
+    }
+    
     const partnerId = String(selectedChat.partner._id);
     
     const roomId = `room_${userId}_${partnerId}_${Date.now()}`;
@@ -195,8 +203,6 @@ export default function ChatWindow({
       });
       
       console.log("[CALL] Outgoing call history created");
-
-      // ✅ XÓA: Không còn timeout logic
 
     } catch (error) {
       console.error("[CALL] Failed to create call history:", error);
@@ -277,9 +283,14 @@ export default function ChatWindow({
         <div className="flex items-center space-x-2">
           <button
             type="button"
-            title="Gọi"
+            title={isPartnerOnline ? "Gọi" : "Người dùng không trực tuyến"}
             onClick={startCall}
-            className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-lg"
+            disabled={!isPartnerOnline} // ✅ THÊM: Disable khi offline
+            className={`p-2 rounded-full text-lg transition-colors ${
+              isPartnerOnline 
+                ? "bg-gray-100 hover:bg-gray-200 cursor-pointer" 
+                : "bg-gray-50 text-gray-400 cursor-not-allowed"
+            }`}
           >
             📞
           </button>
@@ -402,12 +413,18 @@ export default function ChatWindow({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              startCall();
+                              // ✅ THÊM: Kiểm tra online trước khi gọi lại
+                              if (isPartnerOnline) {
+                                startCall();
+                              }
                             }}
-                            className={`p-1 rounded-full hover:bg-opacity-20 hover:bg-white transition-colors ${
-                              isOwn ? 'text-white' : 'text-gray-600'
+                            disabled={!isPartnerOnline} // ✅ THÊM: Disable khi offline
+                            title={isPartnerOnline ? "Gọi lại" : "Người dùng không trực tuyến"}
+                            className={`p-1 rounded-full transition-colors ${
+                              isPartnerOnline 
+                                ? `hover:bg-opacity-20 hover:bg-white cursor-pointer ${isOwn ? 'text-white' : 'text-gray-600'}`
+                                : "text-gray-400 cursor-not-allowed"
                             }`}
-                            title="Gọi lại"
                           >
                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                               <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
