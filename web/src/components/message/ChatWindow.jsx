@@ -2,7 +2,9 @@ import { useMemo, useState, useLayoutEffect, useEffect, useRef } from "react";
 
 import { useQueries } from "@tanstack/react-query";
 
+import OnlineStatusIndicator from "@/components/common/OnlineStatusIndicator";
 import useAuth from "@/hooks/useAuth";
+import useOnlineUsers from "@/hooks/useOnlineUsers";
 import { POST_QUERY_KEYS } from "@/hooks/usePost";
 import useSocket from "@/hooks/useSocket";
 import { getPostById, saveCallHistory } from "@/lib/api";
@@ -213,6 +215,9 @@ export default function ChatWindow({
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
+  // ✅ THÊM: Hook để check online status
+  const { isUserOnline } = useOnlineUsers();
+
   if (!selectedChat) {
     return (
       <div className="flex items-center justify-center flex-1 text-gray-500 bg-gray-50">
@@ -225,26 +230,50 @@ export default function ChatWindow({
     );
   }
 
+  // ✅ THÊM: Check online status của partner
+  const isPartnerOnline = isUserOnline(selectedChat.partner?._id);
+
   return (
     <div className="flex-1 flex flex-col min-w-0">
       {/* Header */}
       <div className="p-4 border-b border-gray-300 flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <img
-            src={selectedChat.partner?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedChat.partner?.userId || selectedChat.partner?.username || 'User')}&background=random`}
-            alt={selectedChat.partner?.userId || selectedChat.partner?.username || 'User'}
-            className="w-10 h-10 rounded-full object-cover"
-          />
+          {/* Avatar with Online Status */}
+          <div className="relative">
+            <img
+              src={selectedChat.partner?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedChat.partner?.userId || selectedChat.partner?.username || 'User')}&background=random`}
+              alt={selectedChat.partner?.userId || selectedChat.partner?.username || 'User'}
+              className="w-10 h-10 rounded-full object-cover"
+            />
+            {/* ✅ THÊM: Online Status Indicator */}
+            <OnlineStatusIndicator 
+              isOnline={isPartnerOnline}
+              size="sm"
+              className="bottom-0 right-0"
+            />
+          </div>
+
           <div>
-            <h3 className="font-bold text-gray-900">
-              {selectedChat.partner?.userId || selectedChat.partner?.username || 'Unknown User'}
-              {selectedChat.partner?.isVerified && <span className="ml-1 text-blue-500">✓</span>}
-            </h3>
-            <p className="text-sm text-gray-500">@{selectedChat.partner?.username || 'unknown'}</p>
+            <div className="flex items-center space-x-2">
+              <h3 className="font-bold text-gray-900">
+                {selectedChat.partner?.userId || selectedChat.partner?.username || 'Unknown User'}
+                {selectedChat.partner?.isVerified && <span className="ml-1 text-blue-500">✓</span>}
+              </h3>
+              {/* ✅ THÊM: Online status text */}
+              {isPartnerOnline && (
+                <span className="text-xs text-green-600 font-medium">• Online</span>
+              )}
+            </div>
+            <p className="text-sm text-gray-500">
+              @{selectedChat.partner?.username || 'unknown'}
+              {!isPartnerOnline && (
+                <span className="text-red-500 ml-2">• Offline</span>
+              )}
+            </p>
           </div>
         </div>
 
-        {/* ✅ SỬA: Chỉ có 1 nút call */}
+        {/* Call button */}
         <div className="flex items-center space-x-2">
           <button
             type="button"
@@ -257,7 +286,7 @@ export default function ChatWindow({
         </div>
       </div>
 
-      {/* Messages Area */}
+      {/* Messages Area - giữ nguyên existing code */}
       <div ref={messagesContainerRef} className="flex-1 p-4 space-y-3 overflow-y-auto bg-white">
         <div>
           {/* ✅ THÊM: Load more trigger và loading indicator */}

@@ -6,6 +6,7 @@ import ChatWindow from "@/components/message/ChatWindow";
 import ConversationList from "@/components/message/ConversationList";
 import useAuth from "@/hooks/useAuth";
 import useMessages from "@/hooks/useMessages";
+import useOnlineUsers from "@/hooks/useOnlineUsers";
 
 const Messages = () => {
   const navigate = useNavigate();
@@ -50,6 +51,7 @@ const Messages = () => {
     groupMessagesByDate
   } = useMessages({ initialUserId: searchParams.get("userId") });
 
+  const onlineUsersHook = useOnlineUsers();
   const groupedMessages = groupMessagesByDate(messages);
 
   // ✅ THÊM: Load more messages function
@@ -115,6 +117,7 @@ const Messages = () => {
         onSelectConversation={handleSelectConversation}
         fetchConversations={fetchConversations}
         openConversationFromSearch={handleOpenConversationFromSearch}
+        // ✅ KHÔNG cần pass hook, component tự dùng useOnlineUsers
       />
 
       <ChatWindow
@@ -140,6 +143,7 @@ const Messages = () => {
         hasNextPage={hasMore}
         loadMoreMessages={loadMoreMessages}
         isLoadingMore={isLoadingMore}
+        // ✅ KHÔNG cần pass hook, component tự dùng useOnlineUsers
       />
     </div>
   );
