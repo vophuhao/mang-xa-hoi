@@ -2,6 +2,8 @@ import type { AuthenticatedRequest } from "@/types";
 import type { Response } from "express";
 
 import DirectMessageService from "@/services/directMessage.service";
+import DirectMessageModel from "@/models/directMessage.model";
+
 import catchErrors from "@/utils/catchErrors";
 import { ResponseUtil } from "@/utils/response";
 import {

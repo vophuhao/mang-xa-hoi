@@ -1,11 +1,11 @@
-import { useMemo, useState, useLayoutEffect, useEffect } from "react";
+import { useMemo, useState, useLayoutEffect, useEffect, useRef } from "react";
 
 import { useQueries } from "@tanstack/react-query";
 
 import useAuth from "@/hooks/useAuth";
 import { POST_QUERY_KEYS } from "@/hooks/usePost";
 import useSocket from "@/hooks/useSocket";
-import { getPostById, saveCallHistory, updateCallStatus } from "@/lib/api";
+import { getPostById, saveCallHistory } from "@/lib/api";
 
 export default function ChatWindow({
   selectedChat,
@@ -25,6 +25,9 @@ export default function ChatWindow({
   handleSendMessage,
   user,
   conversationFullyLoaded = false,
+  hasNextPage = false,
+  loadMoreMessages,
+  isLoadingMore = false,
 }) {
   const postIds = useMemo(() => {
     const s = new Set();
@@ -69,7 +72,62 @@ export default function ChatWindow({
   const userId = authUser?.data?._id;
   const { emit } = useSocket();
   const [bubbleMaxWidth, setBubbleMaxWidth] = useState("40%");
-  const [callTimeout, setCallTimeout] = useState(null); // ✅ THÊM: Track call timeout
+  
+  // ✅ THÊM: Scroll detection refs
+  const scrollPositionRef = useRef(0);
+  const isLoadingRef = useRef(false);
+  const loadTriggerRef = useRef(null);
+
+  // ✅ THÊM: Intersection Observer để detect scroll to top
+  useEffect(() => {
+    if (!messagesContainerRef?.current || !hasNextPage || isLoadingMore) return;
+
+    const container = messagesContainerRef.current;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting && !isLoadingRef.current && hasNextPage) {
+          console.log("[SCROLL] Loading more messages...");
+          isLoadingRef.current = true;
+          
+          // Lưu scroll position trước khi load
+          scrollPositionRef.current = container.scrollHeight - container.scrollTop;
+          
+          // Load more messages
+          if (loadMoreMessages) {
+            loadMoreMessages().finally(() => {
+              isLoadingRef.current = false;
+            });
+          }
+        }
+      },
+      {
+        root: container,
+        rootMargin: '50px 0px 0px 0px',
+        threshold: 0.1
+      }
+    );
+
+    if (loadTriggerRef.current) {
+      observer.observe(loadTriggerRef.current);
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasNextPage, isLoadingMore, loadMoreMessages, messagesContainerRef]);
+
+  // ✅ THÊM: Maintain scroll position sau khi load more
+  useEffect(() => {
+    if (!messagesContainerRef?.current || !scrollPositionRef.current) return;
+
+    const container = messagesContainerRef.current;
+    const newScrollTop = container.scrollHeight - scrollPositionRef.current;
+    
+    // Restore scroll position
+    container.scrollTop = newScrollTop;
+    scrollPositionRef.current = 0;
+  }, [groupedMessages.length]);
 
   useLayoutEffect(() => {
     const compute = () => {
@@ -87,16 +145,24 @@ export default function ChatWindow({
   }, [messagesContainerRef]);
 
   useEffect(() => {
-    if (!messagesEndRef?.current) return;
-    const t = setTimeout(() => {
-      try {
-        messagesEndRef.current.scrollIntoView({ behavior: "auto", block: "end" });
-      } catch (err) {
-        // ignore
-      }
-    }, 0);
-    return () => clearTimeout(t);
-  }, [selectedChat?._id, groupedMessages?.length, messagesEndRef]);
+    if (!messagesEndRef?.current || isLoadingRef.current) return;
+    
+    const container = messagesContainerRef?.current;
+    if (!container) return;
+
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+    
+    if (isNearBottom || groupedMessages.length <= 10) {
+      const t = setTimeout(() => {
+        try {
+          messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+        } catch (err) {
+          console.warn("Scroll error:", err);
+        }
+      }, 100);
+      return () => clearTimeout(t);
+    }
+  }, [selectedChat?._id, groupedMessages?.length, messagesEndRef, messagesContainerRef]);
 
   const handleInputKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -107,7 +173,7 @@ export default function ChatWindow({
     }
   };
 
-  // ✅ SỬA: Đơn giản hóa startCall - chỉ có 1 type
+  // ✅ SỬA: Đơn giản hóa startCall - XÓA timeout logic
   const startCall = async () => {
     if (!selectedChat?.partner?._id) return;
     const partnerId = String(selectedChat.partner._id);
@@ -116,30 +182,19 @@ export default function ChatWindow({
     const fromUserName = authUser?.data?.userId || authUser?.data?.displayName || "";
 
     try {
-      // ✅ Tạo call history với status "outgoing" 
+      console.log("[CALL] Starting call with roomId:", roomId);
+
+      // ✅ CHỈ tạo call history với status "outgoing"
       await saveCallHistory({
         recipientId: partnerId,
-        status: "outgoing", // ✅ Đánh dấu là cuộc gọi đi
+        status: "outgoing",
         roomId: String(roomId),
         startedAt: new Date().toISOString(),
       });
       
       console.log("[CALL] Outgoing call history created");
 
-      // ✅ THÊM: Set timeout 20s để đánh dấu "missed" nếu không có phản hồi
-      const timeoutId = setTimeout(async () => {
-        try {
-          await updateCallStatus(roomId, {
-            status: "missed",
-            endedAt: new Date().toISOString(),
-          });
-          console.log("[CALL] Call marked as missed after 20s timeout");
-        } catch (error) {
-          console.error("[CALL] Failed to update call to missed:", error);
-        }
-      }, 20000); // 20 seconds
-
-      setCallTimeout(timeoutId);
+      // ✅ XÓA: Không còn timeout logic
 
     } catch (error) {
       console.error("[CALL] Failed to create call history:", error);
@@ -157,34 +212,6 @@ export default function ChatWindow({
     const url = `/call?roomId=${encodeURIComponent(roomId)}&role=caller&to=${encodeURIComponent(partnerId)}`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
-
-  // ✅ THÊM: Clear timeout khi component unmount
-  useEffect(() => {
-    return () => {
-      if (callTimeout) {
-        clearTimeout(callTimeout);
-      }
-    };
-  }, [callTimeout]);
-
-  // ✅ THÊM: Listen for call responses để clear timeout
-  useEffect(() => {
-    if (!emit?.socket) return;
-
-    const handleCallResponse = ({ accepted, roomId: responseRoomId }) => {
-      // Clear timeout nếu có response
-      if (callTimeout) {
-        clearTimeout(callTimeout);
-        setCallTimeout(null);
-      }
-    };
-
-    emit.socket.on("call_response", handleCallResponse);
-
-    return () => {
-      emit.socket.off("call_response", handleCallResponse);
-    };
-  }, [emit, callTimeout]);
 
   if (!selectedChat) {
     return (
@@ -233,6 +260,22 @@ export default function ChatWindow({
       {/* Messages Area */}
       <div ref={messagesContainerRef} className="flex-1 p-4 space-y-3 overflow-y-auto bg-white">
         <div>
+          {/* ✅ THÊM: Load more trigger và loading indicator */}
+          {hasNextPage && (
+            <div ref={loadTriggerRef} className="flex justify-center py-4">
+              {isLoadingMore ? (
+                <div className="flex items-center space-x-2 text-gray-500">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                  <span className="text-sm">Đang tải tin nhắn cũ...</span>
+                </div>
+              ) : (
+                <div className="text-xs text-gray-400 text-center">
+                  Cuộn lên để xem tin nhắn cũ hơn
+                </div>
+              )}
+            </div>
+          )}
+
           {conversationFullyLoaded && (
             <div className="flex justify-center mb-4">
               <div className="flex flex-col items-center p-6 w-72">
@@ -260,6 +303,7 @@ export default function ChatWindow({
             </div>
           )}
 
+          {/* ✅ Messages rendering - giữ nguyên code cũ */}
           {groupedMessages.map((item, idx) => {
             if (item.type === 'date') {
               return (
@@ -496,7 +540,7 @@ export default function ChatWindow({
         </div>
       </div>
 
-      {/* Input area */}
+      {/* Input area - giữ nguyên */}
       <form onSubmit={handleSendMessage} className="p-4 bg-white">
         {selectedImages.length > 0 && (
           <div className="flex space-x-2 mb-2">

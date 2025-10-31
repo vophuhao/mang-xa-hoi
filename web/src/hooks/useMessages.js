@@ -60,16 +60,31 @@ export default function useMessages({ initialUserId } = {}) {
     }
   }, []);
 
+  // ✅ SỬA: fetchMessages để hỗ trợ load more đúng cách
   const fetchMessages = useCallback(async (partnerId, pageToLoad = 1) => {
     try {
       const response = await getConversation(partnerId, pageToLoad, 10);
       if (response && response.success && response.data) {
         const newMessages = response.data.slice().reverse();
-        if (pageToLoad === 1) setMessages(newMessages);
-        else setMessages(prev => [...newMessages, ...prev]);
+        
+        // ✅ SỬA: Logic load more
+        if (pageToLoad === 1) {
+          setMessages(newMessages);
+        } else {
+          // ✅ QUAN TRỌNG: Thêm tin nhắn cũ vào ĐẦU danh sách
+          setMessages(prev => [...newMessages, ...prev]);
+        }
 
         setHasMore(response.pagination?.hasNext ?? false);
-        try { await apiMarkAllAsRead(partnerId); } catch { /* silent */ }
+        
+        // Mark as read chỉ khi load page đầu tiên
+        if (pageToLoad === 1) {
+          try { 
+            await apiMarkAllAsRead(partnerId); 
+          } catch { 
+            /* silent */ 
+          }
+        }
       } else {
         if (pageToLoad === 1) setMessages([]);
         setHasMore(false);
