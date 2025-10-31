@@ -69,3 +69,15 @@ export const resolveReportsByPostHandler = catchErrors(async (req: Authenticated
 
   return ResponseUtil.success(res, result, "Reports resolved successfully");
 });
+
+// Đánh dấu báo cáo của người dùng đã xử lý
+export const resolveReportsByUserHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const { userId } = req.params;
+  const { key } = req.body;
+  const adminId = req.userId;
+  if (!userId) throw AppError.badRequest("userId is required");
+  if (!adminId) throw AppError.unauthorized("Unauthorized");
+
+  const result = await ReportService.resolveReportsByUser({ userId, adminId, key });
+  return ResponseUtil.success(res, result, "Reports resolved successfully");
+});

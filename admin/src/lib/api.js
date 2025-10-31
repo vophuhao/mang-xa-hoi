@@ -160,5 +160,9 @@ export const resolveReport = async (postId , key) => {
   return API.patch(`/report/resolve/${postId}`, { key });
 }
 
+export const resolveReportUser = async (userId, key) => {
+  return API.patch(`/report/resolve-user/${userId}`, { key });
+};
+
 
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
   Bookmark,
@@ -19,18 +19,18 @@ import { toast } from "react-toastify";
 
 import logo_pixyy from "@/assets/images/logo_pixyy.png";
 import useTheme from "@/hooks/useTheme";
-import { logout } from "@/lib/api";
-
+import { getReports, logout } from "@/lib/api";
 
 export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
   const [showMore, setShowMore] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const { theme, changeTheme } = useTheme();
 
   const navItems = [
     { id: "home", label: "Trang chủ", icon: <Home size={24} /> },
-    { id: "report", label: "Báo cáo", icon: <AlertCircle size={24} /> },
+    { id: "report", label: "Báo cáo", icon: <AlertCircle size={24} />, badge: pendingCount },
     { id: "user", label: "Người dùng", icon: <User size={24} /> },
   ];
 
@@ -42,6 +42,21 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
     onError: () => {
       toast.error("Đăng xuất thất bại, vui lòng thử lại!");
     },
+  });
+
+  const { data: reportsData } = useQuery({
+    queryKey: ["reports", { status: "pending", limit: 1 }],
+    queryFn: () => getReports({ status: "pending", limit: 1 }),
+    onSuccess: (res) => {
+      const body = res?.data;
+      const pagination = body?.pagination || body?.data?.pagination;
+      setPendingCount(pagination?.total || 0);
+    },
+  });
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["pendingReports"],
+    queryFn: () => getReports({ status: "pending", limit: 1 }),
   });
 
   const handleThemeToggle = () => {
@@ -203,6 +218,11 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
             >
               {item.label}
             </span>
+            {item.badge > 0 && (
+              <span className="absolute -top-1 -right-2 bg-red-500 text-white rounded-full px-1.5 text-xs">
+                {item.badge}
+              </span>
+            )}
           </button>
         ))}
       </div>

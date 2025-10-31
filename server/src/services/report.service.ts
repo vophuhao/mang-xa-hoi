@@ -135,7 +135,9 @@ class ReportService {
         "Bài viết của bạn đã bị xóa vì vi phạm tiêu chuẩn cộng đồng.",
     });
     // Xóa bài viết
-    await PostModel.findByIdAndDelete(postId);
+    console.log("Xóa bài viết:", postId);
+    const deleted = await PostModel.findByIdAndDelete(postId);
+    console.log("Kết quả xóa:", deleted);
     postDeleted = true;
   }
 
@@ -145,7 +147,69 @@ class ReportService {
   };
 }
 
+  /**
+   * Đánh dấu báo cáo của người dùng là đã xử lý
+   */
+  async resolveReportsByUser({
+    userId,
+    adminId,
+    key,
+  }: {
+    userId: string | mongoose.Types.ObjectId;
+    adminId: string | mongoose.Types.ObjectId;
+    key: string;
+  }) {
+    const reports = await ReportModel.find({ targetId: userId, targetType: "user" });
+    if (!reports.length) throw AppError.notFound("No reports found for this user");
 
+    await ReportModel.updateMany(
+      { targetId: userId, targetType: "user" },
+      {
+        $set: {
+          status: "resolved",
+          resolvedBy: adminId,
+          resolvedAt: new Date(),
+        },
+      }
+    );
+
+    let userBanned = false;
+    if (key !== "skip") {
+      const user = await UserModel.findById(userId);
+      if (user) {
+        user.strikes = (user.strikes || 0) + 1;
+        user.lastStrikeAt = new Date();
+
+        // Strike system
+        if (user.strikes >= 3 && user.strikes < 5) {
+          user.isBanned = true;
+          user.banUntil = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000); // 3 ngày
+          await NotificationModel.create({
+            recipient: user._id,
+            type: "soft_ban",
+            message: "Tài khoản của bạn bị tạm khóa 3 ngày do vi phạm tiêu chuẩn cộng đồng.",
+          });
+        } else if (user.strikes >= 5) {
+          user.isBanned = true;
+          user.banUntil = null; // Ban vĩnh viễn
+          await NotificationModel.create({
+            recipient: user._id,
+            type: "hard_ban",
+            message: "Tài khoản của bạn bị khóa vĩnh viễn do vi phạm nhiều lần.",
+          });
+        } else {
+          await NotificationModel.create({
+            recipient: user._id,
+            type: "warning",
+            message: "Bạn vừa bị cảnh cáo do vi phạm tiêu chuẩn cộng đồng.",
+          });
+        }
+        await user.save();
+        userBanned = true;
+      }
+    }
+    return { resolvedCount: reports.length, userBanned };
+  }
 
   /**
    * Lấy chi tiết báo cáo
