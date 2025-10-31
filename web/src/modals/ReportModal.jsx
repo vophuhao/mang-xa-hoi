@@ -6,40 +6,51 @@ import { CheckCircle, X } from "lucide-react";
 import { report } from "@/lib/api";
 
 
-export default function ReportModal({ reelId, onBack, onClose }) {
+export default function ReportModal({ reelId, user, onBack, onClose }) {
     const [step, setStep] = useState("select"); // 'select' | 'thankyou'
     const [loading, setLoading] = useState(false);
 
-    const reasons = [
-        "Chỉ là tôi không thích nội dung này",
-        "Bắt nạt hoặc liên hệ theo cách không mong muốn",
-        "Tự tử, tự gây thương tích hoặc ăn uống thất thường",
-        "Bạo lực, thù ghét hoặc bóc lột",
-        "Bán hoặc quảng cáo mặt hàng bị hạn chế",
-        "Ảnh khỏa thân hoặc hoạt động tình dục",
-        "Lừa đảo, gian lận hoặc spam",
-        "Thông tin sai sự thật",
-    ];
+    const isUserReport = !!user;
+    const reasons = isUserReport
+        ? [
+            "Spam hoặc tài khoản giả mạo",
+            "Quấy rối hoặc bắt nạt",
+            "Chia sẻ nội dung không phù hợp",
+            "Ngôn từ thù ghét hoặc bạo lực",
+            "Tự tử hoặc tự gây thương tích",
+            "Khác"
+        ]
+        : [
+            "Chỉ là tôi không thích nội dung này",
+            "Bắt nạt hoặc liên hệ theo cách không mong muốn",
+            "Tự tử, tự gây thương tích hoặc ăn uống thất thường",
+            "Bạo lực, thù ghét hoặc bóc lột",
+            "Bán hoặc quảng cáo mặt hàng bị hạn chế",
+            "Ảnh khỏa thân hoặc hoạt động tình dục",
+            "Lừa đảo, gian lận hoặc spam",
+            "Thông tin sai sự thật",
+        ];
 
     const handleReport = async (reason) => {
         setLoading(true);
         try {
-            const data = {
+        const data = isUserReport
+            ? {
+                targetId: user._id,
+                targetType: "user",
+                reason,
+            }
+            : {
                 targetId: reelId,
                 targetType: "post",
                 reason,
             };
-            const res = await report(data)
-            console.log("Kết quả báo cáo:", res);
-            if (res.success) {
-                setStep("thankyou");
-            }
-
+        const res = await report(data);
+        if (res.success) setStep("thankyou");
         } catch (err) {
-            console.error("Lỗi gửi báo cáo:", err);
-            alert("Đã xảy ra lỗi. Vui lòng thử lại sau!");
+        alert("Đã xảy ra lỗi. Vui lòng thử lại sau!");
         } finally {
-            setLoading(false);
+        setLoading(false);
         }
     };
 

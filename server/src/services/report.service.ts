@@ -186,6 +186,7 @@ class ReportService {
           user.banUntil = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000); // 3 ngày
           await NotificationModel.create({
             recipient: user._id,
+            sender: adminId,
             type: "soft_ban",
             message: "Tài khoản của bạn bị tạm khóa 3 ngày do vi phạm tiêu chuẩn cộng đồng.",
           });
@@ -194,12 +195,14 @@ class ReportService {
           user.banUntil = null; // Ban vĩnh viễn
           await NotificationModel.create({
             recipient: user._id,
+            sender: adminId,
             type: "hard_ban",
             message: "Tài khoản của bạn bị khóa vĩnh viễn do vi phạm nhiều lần.",
           });
         } else {
           await NotificationModel.create({
             recipient: user._id,
+            sender: adminId,
             type: "warning",
             message: "Bạn vừa bị cảnh cáo do vi phạm tiêu chuẩn cộng đồng.",
           });
