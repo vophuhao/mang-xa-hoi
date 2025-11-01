@@ -1,15 +1,22 @@
+import { useCallback, useState } from "react";
+
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import ChatWindow from "@/components/message/ChatWindow";
 import ConversationList from "@/components/message/ConversationList";
 import useAuth from "@/hooks/useAuth";
 import useMessages from "@/hooks/useMessages";
+import useOnlineUsers from "@/hooks/useOnlineUsers";
 
 const Messages = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const userId = user?.data?._id;
+
+  // ✅ THÊM: State cho infinite scroll
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const {
     selectedChat,
@@ -44,27 +51,37 @@ const Messages = () => {
     groupMessagesByDate
   } = useMessages({ initialUserId: searchParams.get("userId") });
 
-  // fetchConversations already called inside hook on mount
-
-  // hook handles selectedChat -> fetch messages
-
-  // scrolling handled in hook
-
-  // scroll listener can be attached by consumer if needed (or keep messagesContainerRef)
-
-  // everything else handled by useMessages hook
-
+  const onlineUsersHook = useOnlineUsers();
   const groupedMessages = groupMessagesByDate(messages);
 
-  // Select conversation and update URL
+  // ✅ THÊM: Load more messages function
+  const loadMoreMessages = useCallback(async () => {
+    if (!selectedChat?.partner?._id || isLoadingMore || !hasMore) return;
+
+    setIsLoadingMore(true);
+    try {
+      const nextPage = currentPage + 1;
+      
+      // ✅ SỬA: Sử dụng fetchMessages từ hook với page tiếp theo
+      await fetchMessages(selectedChat.partner._id, nextPage);
+      
+      setCurrentPage(nextPage);
+    } catch (error) {
+      console.error("[MESSAGES] Failed to load more messages:", error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [selectedChat?.partner?._id, currentPage, isLoadingMore, hasMore, fetchMessages]);
+
   const handleSelectConversation = async (conversation) => {
+    // ✅ THÊM: Reset pagination khi chọn chat mới
+    setCurrentPage(1);
     await selectConversation(conversation, (url) => navigate(url));
   };
 
-  // auto-open handled by useMessages via initialUserId
-
-  // open conversation from search (used by ConversationList)
   const handleOpenConversationFromSearch = async (userObj) => {
+    // ✅ THÊM: Reset pagination khi mở chat từ search
+    setCurrentPage(1);
     await openConversationFromSearch(userObj, (url) => navigate(url));
   };
 
@@ -100,6 +117,7 @@ const Messages = () => {
         onSelectConversation={handleSelectConversation}
         fetchConversations={fetchConversations}
         openConversationFromSearch={handleOpenConversationFromSearch}
+        // ✅ KHÔNG cần pass hook, component tự dùng useOnlineUsers
       />
 
       <ChatWindow
@@ -121,6 +139,11 @@ const Messages = () => {
         user={user}
         userId={userId}
         conversationFullyLoaded={!hasMore}
+        // ✅ THÊM: Props cho infinite scroll
+        hasNextPage={hasMore}
+        loadMoreMessages={loadMoreMessages}
+        isLoadingMore={isLoadingMore}
+        // ✅ KHÔNG cần pass hook, component tự dùng useOnlineUsers
       />
     </div>
   );

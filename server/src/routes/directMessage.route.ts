@@ -1,5 +1,9 @@
+import { Router } from "express";
+
 import {
   sendMessageHandler,
+  saveCallHistoryHandler,
+  updateCallStatusHandler,
   getConversationHandler,
   getUserConversationsHandler,
   markAsReadHandler,
@@ -10,24 +14,27 @@ import {
   getMessageByIdHandler,
 } from "@/controllers/directMessage.controller";
 import authenticate from "@/middleware/authenticate";
-import { Router } from "express";
 
-const directMessageRoutes = Router();
+const router = Router();
 
 // Protected routes - require authentication
-directMessageRoutes.use(authenticate);
+router.use(authenticate);
 
 // Message CRUD
-directMessageRoutes.post("/", sendMessageHandler);
-directMessageRoutes.get("/conversations", getUserConversationsHandler);
-directMessageRoutes.get("/conversation/:partnerId", getConversationHandler);
-directMessageRoutes.get("/:messageId", getMessageByIdHandler);
-directMessageRoutes.delete("/:messageId", deleteMessageHandler);
+router.post("/", sendMessageHandler);
+router.get("/conversations", getUserConversationsHandler);
+router.get("/conversation/:partnerId", getConversationHandler);
+router.get("/:messageId", getMessageByIdHandler);
+router.delete("/:messageId", deleteMessageHandler);
 
 // Message interactions
-directMessageRoutes.put("/:messageId/read", markAsReadHandler);
-directMessageRoutes.put("/conversation/:partnerId/read-all", markAllAsReadHandler);
-directMessageRoutes.post("/:messageId/react", reactToMessageHandler);
-directMessageRoutes.delete("/:messageId/react", removeReactionHandler);
+router.put("/:messageId/read", markAsReadHandler);
+router.put("/conversation/:partnerId/read-all", markAllAsReadHandler);
+router.post("/:messageId/react", reactToMessageHandler);
+router.delete("/:messageId/react", removeReactionHandler);
 
-export default directMessageRoutes;
+// ✅ THÊM Call history routes
+router.post("/call-history", authenticate, saveCallHistoryHandler);
+router.put("/call/:roomId/status", authenticate, updateCallStatusHandler);
+
+export default router;

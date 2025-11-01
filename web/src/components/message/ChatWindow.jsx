@@ -1,11 +1,13 @@
-import { useMemo, useState, useLayoutEffect, useEffect } from "react";
+import { useMemo, useState, useLayoutEffect, useEffect, useRef } from "react";
 
 import { useQueries } from "@tanstack/react-query";
 
+import OnlineStatusIndicator from "@/components/common/OnlineStatusIndicator";
 import useAuth from "@/hooks/useAuth";
+import useOnlineUsers from "@/hooks/useOnlineUsers";
 import { POST_QUERY_KEYS } from "@/hooks/usePost";
 import useSocket from "@/hooks/useSocket";
-import { getPostById } from "@/lib/api";
+import { getPostById, saveCallHistory } from "@/lib/api";
 
 export default function ChatWindow({
   selectedChat,
@@ -25,8 +27,10 @@ export default function ChatWindow({
   handleSendMessage,
   user,
   conversationFullyLoaded = false,
+  hasNextPage = false,
+  loadMoreMessages,
+  isLoadingMore = false,
 }) {
-
   const postIds = useMemo(() => {
     const s = new Set();
     groupedMessages.forEach((item) => {
@@ -70,6 +74,62 @@ export default function ChatWindow({
   const userId = authUser?.data?._id;
   const { emit } = useSocket();
   const [bubbleMaxWidth, setBubbleMaxWidth] = useState("40%");
+  
+  // ✅ THÊM: Scroll detection refs
+  const scrollPositionRef = useRef(0);
+  const isLoadingRef = useRef(false);
+  const loadTriggerRef = useRef(null);
+
+  // ✅ THÊM: Intersection Observer để detect scroll to top
+  useEffect(() => {
+    if (!messagesContainerRef?.current || !hasNextPage || isLoadingMore) return;
+
+    const container = messagesContainerRef.current;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting && !isLoadingRef.current && hasNextPage) {
+          console.log("[SCROLL] Loading more messages...");
+          isLoadingRef.current = true;
+          
+          // Lưu scroll position trước khi load
+          scrollPositionRef.current = container.scrollHeight - container.scrollTop;
+          
+          // Load more messages
+          if (loadMoreMessages) {
+            loadMoreMessages().finally(() => {
+              isLoadingRef.current = false;
+            });
+          }
+        }
+      },
+      {
+        root: container,
+        rootMargin: '50px 0px 0px 0px',
+        threshold: 0.1
+      }
+    );
+
+    if (loadTriggerRef.current) {
+      observer.observe(loadTriggerRef.current);
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasNextPage, isLoadingMore, loadMoreMessages, messagesContainerRef]);
+
+  // ✅ THÊM: Maintain scroll position sau khi load more
+  useEffect(() => {
+    if (!messagesContainerRef?.current || !scrollPositionRef.current) return;
+
+    const container = messagesContainerRef.current;
+    const newScrollTop = container.scrollHeight - scrollPositionRef.current;
+    
+    // Restore scroll position
+    container.scrollTop = newScrollTop;
+    scrollPositionRef.current = 0;
+  }, [groupedMessages.length]);
 
   useLayoutEffect(() => {
     const compute = () => {
@@ -87,16 +147,24 @@ export default function ChatWindow({
   }, [messagesContainerRef]);
 
   useEffect(() => {
-    if (!messagesEndRef?.current) return;
-    const t = setTimeout(() => {
-      try {
-        messagesEndRef.current.scrollIntoView({ behavior: "auto", block: "end" });
-      } catch (err) {
-        // ignore
-      }
-    }, 0);
-    return () => clearTimeout(t);
-  }, [selectedChat?._id, groupedMessages?.length, messagesEndRef]);
+    if (!messagesEndRef?.current || isLoadingRef.current) return;
+    
+    const container = messagesContainerRef?.current;
+    if (!container) return;
+
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+    
+    if (isNearBottom || groupedMessages.length <= 10) {
+      const t = setTimeout(() => {
+        try {
+          messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+        } catch (err) {
+          console.warn("Scroll error:", err);
+        }
+      }, 100);
+      return () => clearTimeout(t);
+    }
+  }, [selectedChat?._id, groupedMessages?.length, messagesEndRef, messagesContainerRef]);
 
   const handleInputKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -107,23 +175,54 @@ export default function ChatWindow({
     }
   };
 
-  const startCall = (type = "audio") => {
+  // ✅ SỬA: startCall với kiểm tra online status
+  const startCall = async () => {
     if (!selectedChat?.partner?._id) return;
+    
+    // ✅ THÊM: Kiểm tra online status trước khi gọi
+    if (!isPartnerOnline) {
+      // Có thể thêm toast notification nếu cần
+      console.log("[CALL] Cannot call - user is offline");
+      return;
+    }
+    
     const partnerId = String(selectedChat.partner._id);
-    const callId = `${userId}_${Date.now()}`;
+    
+    const roomId = `room_${userId}_${partnerId}_${Date.now()}`;
     const fromUserName = authUser?.data?.userId || authUser?.data?.displayName || "";
 
+    try {
+      console.log("[CALL] Starting call with roomId:", roomId);
+
+      // ✅ CHỈ tạo call history với status "outgoing"
+      await saveCallHistory({
+        recipientId: partnerId,
+        status: "outgoing",
+        roomId: String(roomId),
+        startedAt: new Date().toISOString(),
+      });
+      
+      console.log("[CALL] Outgoing call history created");
+
+    } catch (error) {
+      console.error("[CALL] Failed to create call history:", error);
+    }
+
+    // Emit call request
     emit("call_request", {
       toUserId: partnerId,
       fromUserId: userId,
       fromUserName,
-      callType: type, // "audio" or "video"
-      callId,
+      roomId,
     });
 
-    const url = `/call-room?callId=${encodeURIComponent(callId)}&type=${encodeURIComponent(type)}&role=caller&to=${encodeURIComponent(partnerId)}`;
+    // Mở call page
+    const url = `/call?roomId=${encodeURIComponent(roomId)}&role=caller&to=${encodeURIComponent(partnerId)}`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
+
+  // ✅ THÊM: Hook để check online status
+  const { isUserOnline } = useOnlineUsers();
 
   if (!selectedChat) {
     return (
@@ -137,49 +236,86 @@ export default function ChatWindow({
     );
   }
 
+  // ✅ THÊM: Check online status của partner
+  const isPartnerOnline = isUserOnline(selectedChat.partner?._id);
+
   return (
     <div className="flex-1 flex flex-col min-w-0">
       {/* Header */}
       <div className="p-4 border-b border-gray-300 flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <img
-            src={selectedChat.partner?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedChat.partner?.userId || selectedChat.partner?.username || 'User')}&background=random`}
-            alt={selectedChat.partner?.userId || selectedChat.partner?.username || 'User'}
-            className="w-10 h-10 rounded-full object-cover"
-          />
+          {/* Avatar with Online Status */}
+          <div className="relative">
+            <img
+              src={selectedChat.partner?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedChat.partner?.userId || selectedChat.partner?.username || 'User')}&background=random`}
+              alt={selectedChat.partner?.userId || selectedChat.partner?.username || 'User'}
+              className="w-10 h-10 rounded-full object-cover"
+            />
+            {/* ✅ THÊM: Online Status Indicator */}
+            <OnlineStatusIndicator 
+              isOnline={isPartnerOnline}
+              size="sm"
+              className="bottom-0 right-0"
+            />
+          </div>
+
           <div>
-            <h3 className="font-bold text-gray-900">
-              {selectedChat.partner?.userId || selectedChat.partner?.username || 'Unknown User'}
-              {selectedChat.partner?.isVerified && <span className="ml-1 text-blue-500">✓</span>}
-            </h3>
-            <p className="text-sm text-gray-500">@{selectedChat.partner?.username || 'unknown'}</p>
+            <div className="flex items-center space-x-2">
+              <h3 className="font-bold text-gray-900">
+                {selectedChat.partner?.userId || selectedChat.partner?.username || 'Unknown User'}
+                {selectedChat.partner?.isVerified && <span className="ml-1 text-blue-500">✓</span>}
+              </h3>
+              {/* ✅ THÊM: Online status text */}
+              {isPartnerOnline && (
+                <span className="text-xs text-green-600 font-medium">• Online</span>
+              )}
+            </div>
+            <p className="text-sm text-gray-500">
+              @{selectedChat.partner?.username || 'unknown'}
+              {!isPartnerOnline && (
+                <span className="text-red-500 ml-2">• Offline</span>
+              )}
+            </p>
           </div>
         </div>
 
+        {/* Call button */}
         <div className="flex items-center space-x-2">
           <button
             type="button"
-            title="Gọi thoại"
-            onClick={() => startCall("audio")}
-            className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-lg"
+            title={isPartnerOnline ? "Gọi" : "Người dùng không trực tuyến"}
+            onClick={startCall}
+            disabled={!isPartnerOnline} // ✅ THÊM: Disable khi offline
+            className={`p-2 rounded-full text-lg transition-colors ${
+              isPartnerOnline 
+                ? "bg-gray-100 hover:bg-gray-200 cursor-pointer" 
+                : "bg-gray-50 text-gray-400 cursor-not-allowed"
+            }`}
           >
             📞
-          </button>
-
-          <button
-            type="button"
-            title="Gọi video"
-            onClick={() => startCall("video")}
-            className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-lg"
-          >
-            🎥
           </button>
         </div>
       </div>
 
-      {/* Messages Area */}
+      {/* Messages Area - giữ nguyên existing code */}
       <div ref={messagesContainerRef} className="flex-1 p-4 space-y-3 overflow-y-auto bg-white">
         <div>
+          {/* ✅ THÊM: Load more trigger và loading indicator */}
+          {hasNextPage && (
+            <div ref={loadTriggerRef} className="flex justify-center py-4">
+              {isLoadingMore ? (
+                <div className="flex items-center space-x-2 text-gray-500">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                  <span className="text-sm">Đang tải tin nhắn cũ...</span>
+                </div>
+              ) : (
+                <div className="text-xs text-gray-400 text-center">
+                  Cuộn lên để xem tin nhắn cũ hơn
+                </div>
+              )}
+            </div>
+          )}
+
           {conversationFullyLoaded && (
             <div className="flex justify-center mb-4">
               <div className="flex flex-col items-center p-6 w-72">
@@ -207,12 +343,13 @@ export default function ChatWindow({
             </div>
           )}
 
+          {/* ✅ Messages rendering - giữ nguyên code cũ */}
           {groupedMessages.map((item, idx) => {
             if (item.type === 'date') {
               return (
                 <div key={`date-${idx}`} className="flex items-center my-4">
                   <div className="flex-grow border-gray-300"></div>
-                  <span className="mx-4 text-xs text-gray-500 px-2 py-0.5 rounded"> {item.date}</span>
+                  <span className="mx-4 text-xs text-gray-500 px-2 py-0.5 rounded">{item.date}</span>
                   <div className="flex-grow border-gray-300"></div>
                 </div>
               );
@@ -230,8 +367,77 @@ export default function ChatWindow({
                     className="w-8 h-8 rounded-full object-cover mr-2 mt-1"
                   />
                 )}
-                  <div className={`relative group px-0 py-0 mt-2 mb-2 rounded-full`}>
-                  {message.messageType === "post_share" && (message.sharedPost || message.sharedPostId || message.content) ? (
+                
+                <div className={`relative group px-0 py-0 mt-2 mb-2 rounded-full`}>
+                  {/* ✅ SỬA: Render cuộc gọi theo status mới */}
+                  {message.messageType === "call" && message.callData ? (
+                    <div className={`w-full flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                      <div
+                        className={`px-4 py-3 rounded-xl cursor-pointer break-words leading-5 max-w-xs ${
+                          isOwn ? "bg-blue-500 text-white" : "bg-[#EFEFEF] text-gray-900 border"
+                        }`}
+                        onClick={() => {
+                          try { 
+                            if (!isOwn && !message.isRead && typeof handleMarkAsRead === "function") {
+                              handleMarkAsRead(message._id); 
+                            }
+                          } catch (err) { 
+                            console.error(err); 
+                          }
+                        }}
+                      >
+                        <div className="flex items-center space-x-2">
+                          {/* Call icon */}
+                          <div className={`text-xl ${isOwn ? 'text-white' : 'text-gray-600'}`}>
+                            📞
+                          </div>
+                          
+                          <div className="flex-1">
+                            {/* ✅ SỬA: Call status text theo logic mới */}
+                            <div className={`text-sm font-medium ${isOwn ? 'text-white' : 'text-gray-900'}`}>
+                              {getCallStatusText(message.callData.status, isOwn)}
+                            </div>
+                            
+                            {/* Call time */}
+                            <div className={`text-xs mt-1 ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
+                              {new Date(message.createdAt).toLocaleString('vi-VN', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                day: '2-digit',
+                                month: '2-digit'
+                              })}
+                            </div>
+                          </div>
+                          
+                          {/* Call again button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // ✅ THÊM: Kiểm tra online trước khi gọi lại
+                              if (isPartnerOnline) {
+                                startCall();
+                              }
+                            }}
+                            disabled={!isPartnerOnline} // ✅ THÊM: Disable khi offline
+                            title={isPartnerOnline ? "Gọi lại" : "Người dùng không trực tuyến"}
+                            className={`p-1 rounded-full transition-colors ${
+                              isPartnerOnline 
+                                ? `hover:bg-opacity-20 hover:bg-white cursor-pointer ${isOwn ? 'text-white' : 'text-gray-600'}`
+                                : "text-gray-400 cursor-not-allowed"
+                            }`}
+                          >
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : 
+                  
+                  /* ✅ EXISTING: Post share rendering */
+                  message.messageType === "post_share" && (message.sharedPost || message.sharedPostId || message.content) ? (
+                    // ...existing post_share code...
                     (() => {
                       const postId = message.sharedPost && typeof message.sharedPost === "string"
                         ? message.sharedPost
@@ -310,7 +516,11 @@ export default function ChatWindow({
                         </div>
                       );
                     })()
-                  ) : message.messageType === "media" && message.mediaUrl ? (
+                  ) : 
+                  
+                  /* ✅ EXISTING: Media rendering */
+                  message.messageType === "media" && message.mediaUrl ? (
+                    // ...existing media code...
                     <div className="px-0 py-0 rounded-2xl">
                       <div className="relative w-56 sm:w-64 flex-shrink-0 overflow-hidden rounded-lg bg-black">
                         {message.mediaType === "image" ? (
@@ -324,12 +534,13 @@ export default function ChatWindow({
                       {message.content && <p className="text-sm mt-2">{message.content}</p>}
                     </div>
                   ) : (
+                    
+                    /* ✅ EXISTING: Text messages */
                     <div className={`w-full flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
                       <div
                         className={`px-4 py-2 rounded-xl cursor-pointer break-words leading-5 ${isOwn ? "bg-blue-500 text-white" : "bg-[#EFEFEF] text-gray-900 border"}`}
                         style={{ maxWidth: bubbleMaxWidth, minWidth: 96 }}
                         onClick={() => {
-                          // only mark read on click for recipients
                           try { if (!isOwn && !message.isRead && typeof handleMarkAsRead === "function") handleMarkAsRead(message._id); } catch (err) { console.error(err); }
                         }}
                         onDoubleClick={() => handleReaction(message._id, "❤️")}
@@ -352,6 +563,7 @@ export default function ChatWindow({
                     </div>
                   )}
 
+                  {/* Tooltip */}
                   <div className="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 absolute -top-7 left-1/2 transform -translate-x-1/2 z-20">
                     <div className="bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap">
                       {new Date(message.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
@@ -374,7 +586,7 @@ export default function ChatWindow({
         </div>
       </div>
 
-      {/* Input area */}
+      {/* Input area - giữ nguyên */}
       <form onSubmit={handleSendMessage} className="p-4 bg-white">
         {selectedImages.length > 0 && (
           <div className="flex space-x-2 mb-2">
@@ -428,6 +640,21 @@ export default function ChatWindow({
     </div>
   );
 }
+
+// ✅ SỬA: Helper function - chỉ 3 status
+const getCallStatusText = (status, isOwn) => {
+  switch (status) {
+    case "declined":
+      return "Cuộc gọi bị từ chối";
+    case "incoming":
+      return "Cuộc gọi đến";
+    case "outgoing":
+      return "Cuộc gọi đi";
+    default:
+      return "Cuộc gọi";
+  }
+};
+
 const isVideoUrl = (u) => typeof u === "string" && /\.(mp4|mov|webm|ogg|mkv)(?:\?.*)?$/i.test(u);
 const isCloudinaryUrl = (u) => typeof u === "string" && u.includes("res.cloudinary.com");
 
@@ -443,18 +670,9 @@ const cloudinaryVideoThumbnail = (url) => {
 };
 
 const renderTextWithBreaks = (text) => {
-  if (text == null) return null;
-  const normalized = String(text).replace(/\r\n/g, "\n");
-  const parts = normalized.split(/\\n|\n/); // handle both escaped "\\n" and real newlines
-  return parts.map((p, i) => (
-    <span key={i}>
-      {p}
-      {i < parts.length - 1 && <br />}
-    </span>
-  ));
-};
-
-export const escapeNewlinesForSave = (text) => {
-  if (text == null) return text;
-  return String(text).replace(/\r\n/g, "\n").replace(/\n/g, "\\n");
+  if (typeof text !== "string") return text;
+  return text.split(/(\n\r?|\r\n?)/).map((part, idx) => {
+    if (part.match(/^\s*$/)) return <br key={idx} />;
+    return part;
+  });
 };
