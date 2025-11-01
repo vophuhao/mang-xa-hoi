@@ -81,3 +81,4 @@ export const resolveReportsByUserHandler = catchErrors(async (req: Authenticated
   const result = await ReportService.resolveReportsByUser({ userId, adminId, key });
   return ResponseUtil.success(res, result, "Reports resolved successfully");
 });
+
