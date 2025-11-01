@@ -1,3 +1,6 @@
+import useOnlineUsers from "@/hooks/useOnlineUsers";
+
+import OnlineStatusIndicator from "../common/OnlineStatusIndicator";
 import SearchPanel from "../SearchPanel";
 
 export default function ConversationList({
@@ -8,6 +11,9 @@ export default function ConversationList({
   fetchConversations,
   openConversationFromSearch,
 }) {
+  // ✅ THÊM: Hook để check online status
+  const { isUserOnline } = useOnlineUsers();
+
   return (
     <div className="w-100 border-r border-gray-300 bg-white flex-shrink-0 h-screen flex flex-col">
       {/* Header user info */}
@@ -64,44 +70,65 @@ export default function ConversationList({
           </div>
         ) : (
           <div>
-            {conversations.map((conversation) => (
-              <div
-                key={conversation._id}
-                onClick={() => onSelectConversation(conversation)}
-                className={`flex items-center px-4 py-3 cursor-pointer transition-colors
-                  ${selectedChatId === conversation._id
-                    ? "bg-blue-50 border-l-4 border-l-blue-500"
-                    : "hover:bg-gray-50"
-                  }`}
-              >
-                <img
-                  src={conversation.partner?.avatarUrl ||
-                    `https://ui-avatars.com/api/?name=${encodeURIComponent(conversation.partner?.userId || conversation.partner?.username || 'User')}&background=random`}
-                  alt={conversation.partner?.userId || conversation.partner?.username || 'User'}
-                  className="w-10 h-10 rounded-full object-cover border mr-3"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-gray-900 truncate">
-                      {conversation.partner?.userId || conversation.partner?.username || 'Unknown User'}
-                    </span>
-                    {conversation.lastMessage && (
-                      <span className="text-xs text-gray-400 ml-2 whitespace-nowrap">
-                        {new Date(conversation.lastMessage.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    )}
+            {conversations.map((conversation) => {
+              // ✅ THÊM: Check online status
+              const isPartnerOnline = isUserOnline(conversation.partner?._id);
+              
+              return (
+                <div
+                  key={conversation._id}
+                  onClick={() => onSelectConversation(conversation)}
+                  className={`flex items-center px-4 py-3 cursor-pointer transition-colors
+                    ${selectedChatId === conversation._id
+                      ? "bg-blue-50 border-l-4 border-l-blue-500"
+                      : "hover:bg-gray-50"
+                    }`}
+                >
+                  {/* ✅ SỬA: Avatar với online indicator */}
+                  <div className="relative mr-3">
+                    <img
+                      src={conversation.partner?.avatarUrl ||
+                        `https://ui-avatars.com/api/?name=${encodeURIComponent(conversation.partner?.userId || conversation.partner?.username || 'User')}&background=random`}
+                      alt={conversation.partner?.userId || conversation.partner?.username || 'User'}
+                      className="w-10 h-10 rounded-full object-cover border"
+                    />
+                    {/* ✅ THÊM: Online Status Indicator */}
+                    <OnlineStatusIndicator 
+                      isOnline={isPartnerOnline}
+                      size="sm"
+                      className="bottom-0 right-0"
+                    />
                   </div>
-                  <span className="text-sm truncate text-gray-500">
-                    {(conversation.lastMessage?.sender?._id || conversation.lastMessage?.sender) === user?.data?._id ? "Bạn: " : ""}
-                    {conversation.lastMessage
-                      ? (conversation.lastMessage.messageType === "post_share"
-                          ? "Đã chia sẻ bài viết"
-                          : (conversation.lastMessage.content || (conversation.lastMessage.messageType === "media" ? "📷 Media" : "Tin nhắn")))
-                      : "Không có tin nhắn"}
-                  </span>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-medium text-gray-900 truncate">
+                          {conversation.partner?.userId || conversation.partner?.username || 'Unknown User'}
+                        </span>
+                        {/* ✅ THÊM: Online text indicator */}
+                        {isPartnerOnline && (
+                          <span className="text-xs text-green-600 font-medium">• Online</span>
+                        )}
+                      </div>
+                      {conversation.lastMessage && (
+                        <span className="text-xs text-gray-400 ml-2 whitespace-nowrap">
+                          {new Date(conversation.lastMessage.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-sm truncate text-gray-500">
+                      {(conversation.lastMessage?.sender?._id || conversation.lastMessage?.sender) === user?.data?._id ? "Bạn: " : ""}
+                      {conversation.lastMessage
+                        ? (conversation.lastMessage.messageType === "post_share"
+                            ? "Đã chia sẻ bài viết"
+                            : (conversation.lastMessage.content || (conversation.lastMessage.messageType === "media" ? "📷 Media" : "Tin nhắn")))
+                        : "Không có tin nhắn"}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

@@ -257,3 +257,10 @@ export const markAllNotificationsAsRead = async () => API.patch("/notifications/
 // Delete a notification
 export const deleteNotification = async (notificationId) =>
   API.delete(`/notifications/${notificationId}`);
+
+// =============== CALL HISTORY API ===============
+// Save call history
+export const saveCallHistory = async (data) => API.post("/messages/call-history", data);
+
+// Update call status
+export const updateCallStatus = async (roomId, data) => API.put(`/messages/call/${roomId}/status`, data);

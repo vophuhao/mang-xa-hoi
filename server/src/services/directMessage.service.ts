@@ -5,11 +5,12 @@ import UserModel from "@/models/user.model";
 import ErrorFactory from "@/utils/ErrorFactory";
 import mongoose from "mongoose";
 
+// ✅ SỬA: Thêm "call" vào messageType
 export type SendMessageData = {
   senderId: string;
   recipientId: string;
   content?: string | undefined;
-  messageType: "text" | "media" | "post_share" | "story_share" | "location" | "voice";
+  messageType: "text" | "media" | "post_share" | "story_share" | "location" | "voice" | "call"; // ✅ Thêm "call"
   mediaUrl?: string | undefined;
   mediaType?: "image" | "video" | "audio" | undefined;
   sharedPost?: string | undefined;
@@ -21,6 +22,15 @@ export type SendMessageData = {
       }
     | undefined;
   replyTo?: string | undefined;
+
+  // ✅ THÊM: callData cho message type "call"
+  callData?: {
+    duration?: number | undefined;
+    status: "incoming" | "outgoing" | "declined";
+    roomId: string;
+    startedAt?: Date | undefined;
+    endedAt?: Date | undefined;
+  };
 };
 
 export interface GetConversationParams {
@@ -75,6 +85,15 @@ export class DirectMessageService {
       throw ErrorFactory.validationFailed("Story share must reference a story");
     }
 
+    // ✅ THÊM: Validate call message
+    if (data.messageType === "call" && !data.callData) {
+      throw ErrorFactory.validationFailed("Call message must have call data");
+    }
+
+    if (data.messageType === "call" && data.callData && !data.callData.roomId) {
+      throw ErrorFactory.validationFailed("Call message must have room ID");
+    }
+
     // Validate shared content exists
     if (data.sharedPost) {
       const post = await PostModel.findById(data.sharedPost);
@@ -98,6 +117,7 @@ export class DirectMessageService {
       }
     }
 
+    // ✅ SỬA: Thêm callData vào create message
     const message = await DirectMessageModel.create({
       sender: data.senderId,
       recipient: data.recipientId,
@@ -109,18 +129,10 @@ export class DirectMessageService {
       sharedStory: data.sharedStory,
       location: data.location,
       replyTo: data.replyTo,
+      callData: data.callData, // ✅ Thêm callData
       isDelivered: true,
       deliveredAt: new Date(),
     });
-
-    // Create notification for recipient
-    // await NotificationModel.create({
-    //   recipient: data.recipientId,
-    //   sender: data.senderId,
-    //   type: "direct_message",
-    //   message: "đã gửi tin nhắn cho bạn",
-    //   directMessage: message._id, // Reference to message
-    // });
 
     return message.populate([
       { path: "sender", select: "username userId avatarUrl isVerified" },
@@ -129,6 +141,94 @@ export class DirectMessageService {
       { path: "sharedPost", populate: { path: "user", select: "username avatarUrl" } },
       { path: "sharedStory", populate: { path: "user", select: "username avatarUrl" } },
     ]);
+  }
+
+  // ✅ THÊM: Save call history method
+  static async saveCallHistory({
+    senderId,
+    recipientId,
+    status,
+    roomId,
+    duration,
+    startedAt,
+    endedAt,
+  }: {
+    senderId: string;
+    recipientId: string;
+    status: "incoming" | "outgoing" | "declined";
+    roomId: string;
+    duration?: number;
+    startedAt?: string;
+    endedAt?: string;
+  }) {
+    const callMessage = await this.sendMessage({
+      senderId,
+      recipientId,
+      messageType: "call",
+      content: this.generateCallContent(status, duration),
+      callData: {
+        status,
+        roomId,
+        ...(duration !== undefined && { duration }),
+        ...(startedAt && { startedAt: new Date(startedAt) }),
+        ...(endedAt && { endedAt: new Date(endedAt) }),
+      },
+    });
+
+    console.log(`[SERVICE] Created call history: ${senderId} → ${recipientId}, status: ${status}, roomId: ${roomId}`);
+    return callMessage;
+  }
+
+  // ✅ THÊM: Generate call content method
+  private static generateCallContent(
+    status: "incoming" | "outgoing" | "declined",
+    duration?: number
+  ): string {
+    switch (status) {
+      case "declined":
+        return "Cuộc gọi bị từ chối";
+      case "incoming":
+        return "Cuộc gọi đến";
+      case "outgoing":
+        return "Cuộc gọi đi";
+      default:
+        return "Cuộc gọi";
+    }
+  }
+
+  // ✅ THÊM: Update call status method
+  static async updateCallStatus(
+    roomId: string,
+    status: "incoming" | "outgoing" | "declined",
+    duration?: number,
+    endedAt?: string
+  ) {
+    const callMessage = await DirectMessageModel.findOne({
+      "callData.roomId": roomId,
+      messageType: "call",
+    });
+
+    if (!callMessage || !callMessage.callData) {
+      throw ErrorFactory.resourceNotFound("Call message");
+    }
+
+    console.log(`[SERVICE] Updating call message ${callMessage._id} from status "${callMessage.callData.status}" to "${status}"`);
+
+    callMessage.callData.status = status;
+    if (duration !== undefined) {
+      callMessage.callData.duration = duration;
+    }
+    if (endedAt) {
+      callMessage.callData.endedAt = new Date(endedAt);
+    }
+
+    // Update content
+    callMessage.content = this.generateCallContent(status, duration);
+
+    await callMessage.save();
+    console.log(`[SERVICE] Updated call message to status: ${status}`);
+    
+    return callMessage;
   }
 
   /**

@@ -4,15 +4,17 @@ import { Server } from "socket.io";
 import { MessageHandler } from "./handlers/messageHandler";
 import { NotificationHandler } from "./handlers/notificationHandler";
 import { TypingHandler } from "./handlers/typingHandler";
+import { OnlineUsersHandler } from "./handlers/onlineUsersHandler"; // ✅ ADD
 import { socketAuthMiddleware } from "./middleware/socketAuth";
 import registerCallHandler from "./handlers/callHandler";
 
 let notificationHandler: NotificationHandler;
+let onlineUsersHandler: OnlineUsersHandler; // ✅ ADD
 
 export function initializeSocket(httpServer: HttpServer) {
   const io = new Server(httpServer, {
     cors: {
-      origin: APP_ORIGIN, // Có thể thay bằng APP_ORIGIN trong production
+      origin: APP_ORIGIN,
       credentials: true,
       methods: ["GET", "POST"],
     },
@@ -25,6 +27,7 @@ export function initializeSocket(httpServer: HttpServer) {
   const messageHandler = new MessageHandler(io);
   const typingHandler = new TypingHandler();
   notificationHandler = new NotificationHandler(io);
+  onlineUsersHandler = new OnlineUsersHandler(io); // ✅ ADD
 
   io.on("connection", (socket) => {
     console.log(`User ${socket.userId} connected to socket`);
@@ -32,6 +35,10 @@ export function initializeSocket(httpServer: HttpServer) {
     // Join user to their personal room
     socket.join(`u:${socket.userId}`);
     console.log(`User ${socket.userId} joined personal room`);
+
+    // ✅ ADD: Handle user online
+    onlineUsersHandler.handleUserOnline(socket);
+    onlineUsersHandler.handleGetOnlineUsers(socket);
 
     // Conversation room management
     socket.on("join_conversation", (partnerId: string) => {
@@ -57,6 +64,8 @@ export function initializeSocket(httpServer: HttpServer) {
     // Handle disconnect
     socket.on("disconnect", () => {
       console.log(`User ${socket.userId} disconnected from socket`);
+      // ✅ ADD: Handle user offline
+      onlineUsersHandler.handleUserOffline(socket);
     });
 
     // register call handlers
@@ -76,4 +85,12 @@ export function getNotificationHandler(): NotificationHandler {
     throw new Error("Socket.IO not initialized");
   }
   return notificationHandler;
+}
+
+// ✅ ADD: Export online users handler
+export function getOnlineUsersHandler(): OnlineUsersHandler {
+  if (!onlineUsersHandler) {
+    throw new Error("Socket.IO not initialized");
+  }
+  return onlineUsersHandler;
 }

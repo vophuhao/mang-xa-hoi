@@ -16,7 +16,7 @@ export const sendMessageSchema = z.object({
     .max(1000, "Message content must be less than 1000 characters")
     .optional(),
   messageType: z
-    .enum(["text", "media", "post_share", "story_share", "location", "voice"])
+    .enum(["text", "media", "post_share", "story_share", "location", "voice", "call"])
     .default("text"),
   mediaUrl: z
     .string()
@@ -42,6 +42,13 @@ export const sendMessageSchema = z.object({
     })
     .optional(),
   replyTo: mongoIdSchema.optional(),
+  callData: z.object({
+    duration: z.number().optional(),
+    status: z.enum(["incoming", "outgoing", "declined"]), // ✅ CHỈ 3 status
+    roomId: z.string(),
+    startedAt: z.date().optional(),
+    endedAt: z.date().optional(),
+  }).optional(),
 }).refine(
   (data) => {
     // Text message must have content
@@ -165,6 +172,23 @@ export const forwardMessageSchema = z.object({
     .max(10, "Maximum 10 recipients allowed"),
 });
 
+// Schema cho call history
+export const saveCallHistorySchema = z.object({
+  recipientId: z.string().min(1, "Recipient ID is required"),
+  status: z.enum(["incoming", "outgoing", "declined"]),
+  roomId: z.string().min(1, "Room ID is required"),
+  duration: z.number().optional(),
+  startedAt: z.string().datetime().optional(),
+  endedAt: z.string().datetime().optional(),
+});
+
+export const updateCallStatusSchema = z.object({
+  roomId: z.string().min(1, "Room ID is required"),
+  status: z.enum(["incoming", "outgoing", "declined"]),
+  duration: z.number().optional(),
+  endedAt: z.string().datetime().optional(),
+});
+
 // Export types
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;
 export type GetConversationInput = z.infer<typeof getConversationSchema>;
@@ -179,3 +203,5 @@ export type SearchMessagesInput = z.infer<typeof searchMessagesSchema>;
 export type GetMediaMessagesInput = z.infer<typeof getMediaMessagesSchema>;
 export type ReportMessageInput = z.infer<typeof reportMessageSchema>;
 export type ForwardMessageInput = z.infer<typeof forwardMessageSchema>;
+export type SaveCallHistoryInput = z.infer<typeof saveCallHistorySchema>;
+export type UpdateCallStatusInput = z.infer<typeof updateCallStatusSchema>;

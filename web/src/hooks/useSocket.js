@@ -7,10 +7,9 @@ import SocketContext from "@/contexts/SocketContext";
 const DEFAULT_URL = import.meta.env.VITE_WS_URL || import.meta.env.VITE_API_URL || "http://localhost:5555";
 
 export default function useSocket({ token, userId } = {}) {
-  // always call hooks in same order
   const socketRef = useRef(null);
   const [socket, setSocket] = useState(null);
-  const ownerRef = useRef(false); // true if this hook created the socket
+  const ownerRef = useRef(false);
   const ctxSocket = useContext(SocketContext);
 
   const connect = useCallback(() => {
@@ -27,7 +26,7 @@ export default function useSocket({ token, userId } = {}) {
     });
 
     socketRef.current = s;
-    ownerRef.current = true; // we created it
+    ownerRef.current = true;
     setSocket(s);
 
     s.on("connect", () => {
@@ -47,7 +46,6 @@ export default function useSocket({ token, userId } = {}) {
   }, [token, userId]);
 
   useEffect(() => {
-    // if context provides socket, do not create a local one or take ownership
     if (ctxSocket) return;
     if (!token && !userId) return;
     const s = connect();
@@ -88,7 +86,6 @@ export default function useSocket({ token, userId } = {}) {
   }, [ctxSocket]);
 
   const disconnect = useCallback(() => {
-    // do not disconnect context-provided socket
     if (ctxSocket) return;
     if (!ownerRef.current) return;
     try { socketRef.current?.disconnect(); } catch (e) { console.warn("[useSocket] disconnect error", e); }
@@ -97,12 +94,11 @@ export default function useSocket({ token, userId } = {}) {
     setSocket(null);
   }, [ctxSocket]);
 
-  // if there's a context socket, return a small wrapper that uses it
   if (ctxSocket) {
     return {
       socket: ctxSocket,
       connect: () => ctxSocket,
-      disconnect: () => {}, // noop for context socket
+      disconnect: () => {},
       emit: (event, ...args) => ctxSocket.emit(event, ...args),
       on: (event, handler) => ctxSocket.on(event, handler),
       off: (event, handler) => ctxSocket.off(event, handler),
