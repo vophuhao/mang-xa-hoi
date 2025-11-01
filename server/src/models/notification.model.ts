@@ -12,7 +12,10 @@ export interface NotificationDocument extends mongoose.Document {
     | "message"
     | "story_view"
     | "direct_message"
-    | "post_share";
+    | "post_share"
+    | "warning"
+    | "soft_ban"
+    | "hard_ban";
   message: string;
 
   // Reference to related content
@@ -64,6 +67,10 @@ const notificationSchema = new mongoose.Schema<NotificationDocument>(
         "story_view",
         "direct_message",
         "post_share",
+        "warning",     // cảnh cáo
+        "soft_ban",    // khóa tạm thời
+        "hard_ban",    // khóa vĩnh viễn
+        "post_removed",
       ],
       required: true,
       index: true,

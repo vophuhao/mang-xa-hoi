@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 
-import { getReports, resolveReport } from "@/lib/api";
+import { getReports, resolveReport, resolveReportUser } from "@/lib/api";
 
 
 const Badge = ({ children, color = "gray" }) => {
@@ -107,6 +107,7 @@ export default function Report() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [adminNote, setAdminNote] = useState("");
   const LIMIT = 10;
 
   // Fetch reports (logic giữ nguyên)
@@ -148,12 +149,16 @@ export default function Report() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeType, activeStatus, page]);
 
-  const handleClick = async (postId, key) => {
+  const handleClick = async (targetId, key) => {
     try {
-      const res = await resolveReport(postId, key);
-      
+      if (activeType === "post") {
+        await resolveReport(targetId, key, adminNote);
+      } else if (activeType === "user") {
+        await resolveReportUser(targetId, key, adminNote);
+      }
       toast.success("Xử lý báo cáo thành công");
-      onclose();
+      setSelected(null);
+      setAdminNote("");
       fetchReports();
     } catch (err) {
       console.error("Lỗi:", err);

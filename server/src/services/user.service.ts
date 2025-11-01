@@ -477,6 +477,82 @@ export class UserService {
       return [];
     }
   }
+  static async getAllUser() {
+    const users = await UserModel.find().select("-password");
+    return users;
+  } 
+
+  /**
+   * Dashboard overview stats (total counts, new users, total posts, top users)
+   */
+  static async getDashboardOverview(options?: { daysForActive?: number; topLimit?: number }) {
+    const daysForActive = options?.daysForActive ?? 30;
+    const topLimit = options?.topLimit ?? 5;
+
+    try {
+      const now = new Date();
+      const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const startPeriod = new Date(now.getTime() - daysForActive * 24 * 60 * 60 * 1000);
+
+      const [
+        totalUsers,
+        totalPosts,
+        newUsersToday,
+        newUsersThisWeek,
+        newUsersThisMonth,
+        activeUsersInPeriodIds,
+        topUsers,
+      ] = await Promise.all([
+        UserModel.countDocuments(),
+        PostModel.countDocuments(),
+        UserModel.countDocuments({ createdAt: { $gte: startToday } }),
+        UserModel.countDocuments({ createdAt: { $gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) } }),
+        UserModel.countDocuments({ createdAt: { $gte: new Date(now.getFullYear(), now.getMonth(), 1) } }),
+        PostModel.distinct("user", { createdAt: { $gte: startPeriod } }),
+        // top users by followersCount
+        UserModel.find()
+          .select("_id username userId avatarUrl followersCount")
+          .sort({ followersCount: -1 })
+          .limit(topLimit),
+      ]);
+
+      const activeUsersCount = Array.isArray(activeUsersInPeriodIds) ? activeUsersInPeriodIds.length : 0;
+
+      return {
+        totalUsers,
+        totalPosts,
+        newUsersToday,
+        newUsersThisWeek,
+        newUsersThisMonth,
+        activeUsersLastNDays: activeUsersCount,
+        topUsers,
+      };
+    } catch (err) {
+      console.error("getDashboardOverview error:", err);
+      return {
+        totalUsers: 0,
+        totalPosts: 0,
+        newUsersToday: 0,
+        newUsersThisWeek: 0,
+        newUsersThisMonth: 0,
+        activeUsersLastNDays: 0,
+        topUsers: [],
+      };
+    }
+  }
+
+  
+  static async getActiveUsersCount(days = 30) {
+    try {
+      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      const userIds = await PostModel.distinct("user", { createdAt: { $gte: since } });
+      return Array.isArray(userIds) ? userIds.length : 0;
+    } catch (err) {
+      console.error("getActiveUsersCount error:", err);
+      return 0;
+    }
+  }
+
 }
 
 export default UserService;

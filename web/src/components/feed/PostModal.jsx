@@ -6,6 +6,7 @@ import { useUpdatePost } from "@/hooks/usePost";
 import { usePostActions } from "@/hooks/usePostActions";
 import { updatePost } from "@/lib/api";
 import EditPostModal from "@/modals/EditPostModal";
+import ReportModal from "@/modals/ReportModal";
 
 import CommentInput from "./CommentInput";
 import CommentList from "./CommentList";
@@ -27,7 +28,6 @@ const PostModal = ({ post, isOpen, onClose, onUsernameClick, onShareClick, hideA
     handleCloseOptions,
     handlePostEdit,
     handlePostDelete,
-    handlePostReport,
     handleCopyLink,
     handleShare,
     handleUserClick,
@@ -48,6 +48,12 @@ const PostModal = ({ post, isOpen, onClose, onUsernameClick, onShareClick, hideA
   // Close modal on Escape key
   const [isOpenEditModal, setIsOpenEditModal] = useState(false);
  const { mutate: mutateUpdatePost, isPending } = useUpdatePost();
+  const [openModal, setOpenModal] = useState(false);
+
+ 
+  const handlePostReport = () => {
+    setOpenModal(true);
+  }
 
   const handleOpenEdit = () => {
 
@@ -239,6 +245,12 @@ const PostModal = ({ post, isOpen, onClose, onUsernameClick, onShareClick, hideA
           onSave={handleSaveEdit}
         />
       )}
+      {
+        openModal && (<ReportModal
+          reelId={post._id} onBack={() => setOpenModal(false)} onClose={() => setOpenModal(false)}
+        />
+        )
+      }
 
 
     </div>

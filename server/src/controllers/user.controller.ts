@@ -153,3 +153,10 @@ export const getUserPostsHandler = catchErrors(async (req: AuthenticatedRequest,
   );
   return ResponseUtil.paginated(res, result.data, result.pagination);
 });
+
+export const getAllUser = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  
+  const result = await UserService.getAllUser();
+  return ResponseUtil.success(res, result);
+}
+);

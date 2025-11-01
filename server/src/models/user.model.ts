@@ -33,6 +33,12 @@ export interface UserDocument extends mongoose.Document {
   showActivityStatus: boolean;
   allowDirectMessages: "everyone" | "people_you_follow" | "off";
 
+  // New fields
+  isBanned: boolean;
+  banUntil: Date | null;
+  strikes: number;
+  lastStrikeAt: Date | null;
+
   comparePassword(val: string): Promise<boolean>;
   omitPassword(): Omit<UserDocument, "password">;
 }
@@ -122,6 +128,12 @@ const userSchema = new mongoose.Schema<UserDocument>(
       enum: ["everyone", "people_you_follow", "off"],
       default: "everyone",
     },
+
+    // New fields
+    isBanned: { type: Boolean, default: false },
+    banUntil: { type: Date, default: null },
+    strikes: { type: Number, default: 0 },
+    lastStrikeAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

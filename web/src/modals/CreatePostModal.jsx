@@ -831,11 +831,11 @@ export default function CreatePostModal({ isOpen, onClose }) {
                       />
                     </svg>
 
-                    <p className="text-lg font-medium text-gray-700">
+                    <p className="text-xl font-medium text-gray-700">
                       Kéo ảnh và video vào đây
                     </p>
 
-                    <label className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-1 rounded-lg cursor-pointer font-semibold">
+                    <label className="bg-blue-600 hover:bg-blue-700 text-white  rounded-lg cursor-pointer font-semibold">
                       <input
                         type="file"
                         accept="image/*,video/*"
@@ -843,7 +843,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
                         className="hidden"
                         onChange={handleImageUpload}
                       />
-                      Chọn từ máy tính
+                      <p className="text-white px-6 py-1 text-lg">Chọn từ máy tính</p>
                     </label>
                   </div>
                 ) : (

@@ -46,6 +46,9 @@ export const searchUsers = async (query, page = 1, limit = 20) => {
 export const getUserByUserId = async (userId) =>
   API.get(`/users/userid/${userId}`);
 
+export const getAllUsers = async () => {
+  return API.get("/users/all/users");
+}
 
 // =============== SESSION API ===============
 export const getSessions = async () => API.get("/sessions");
@@ -53,6 +56,9 @@ export const deleteSession = async (id) => API.delete(`/sessions/${id}`);
 
 // =============== POST API ===============
 // Post CRUD
+export const getAllPosts = async () => {
+  return API.get("/posts/all/posts");
+}
 export const createPost = async (data) => API.post("/posts", data);
 export const getFeedPosts = async () => API.get("/posts/feed");
 export const getTrendingPosts = async () => API.get("/posts/trending");
@@ -130,6 +136,7 @@ export const searchUsersToMessage = async (query, page = 1, limit = 10) =>
 export const uploadMedia = async (formData) => {
   return API.post("/media/save", formData, {
     headers: { "Content-Type": "multipart/form-data" },
+    withCredentials: true,
   });
 };
 
@@ -158,6 +165,10 @@ export const getReports = async (params) => {
 export const resolveReport = async (postId , key) => {
   return API.patch(`/report/resolve/${postId}`, { key });
 }
+
+export const resolveReportUser = async (userId, key) => {
+  return API.patch(`/report/resolve-user/${userId}`, { key });
+};
 
 
 
