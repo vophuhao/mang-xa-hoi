@@ -20,6 +20,7 @@ import Audio from "./components/Audio";
 import HashtagPanel from "./components/HashtagPanel";
 import CallPopup from "./components/popup/CallPopup";
 import ReelWeb from "./components/Reel";
+import CallPage from "./pages/CallPage";
 import CollectionAudio from "./pages/ColectionAudio";
 import CollectionDetail from "./pages/CollectionDetail";
 import DirectInbox from "./pages/DirectInbox";
@@ -32,7 +33,7 @@ import Messages from "./pages/Messages";
 import PostDetail from "./pages/PostDetail";
 import Profile from "./pages/Profile";
 import ProtectedRoute from "./routes/ProtectedRoute";
-import CallPage from "./pages/CallPage";
+
 
 export default function App({ children }) {
  
