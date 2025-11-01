@@ -13,6 +13,7 @@ import PostActions from "./PostActions";
 import PostHeader from "./PostHeader";
 import PostMedia from "./PostMedia";
 import PostOptionsModal from "./PostOptionsModal";
+import ShareModal from "./ShareModal";
 
 
 const PostModal = ({ post, isOpen, onClose, onUsernameClick, onShareClick, hideActions = [] }) => {
@@ -30,6 +31,11 @@ const PostModal = ({ post, isOpen, onClose, onUsernameClick, onShareClick, hideA
     handleCopyLink,
     handleShare,
     handleUserClick,
+    // share modal helpers from hook
+    showShareModal,
+    sharePostState,
+    shareCallback,
+    handleCloseShare,
   } = usePostActions(post, { onUsernameClick });
 
   // Reply state structure:
@@ -171,7 +177,8 @@ const PostModal = ({ post, isOpen, onClose, onUsernameClick, onShareClick, hideA
                     commentInput.focus();
                   }
                 }}
-                onShareClick={() => onShareClick?.(post)}
+                // use local handleShare from usePostActions so modal opens reliably
+                onShareClick={handleShare}
               />
             </div>
             {post.commentsDisabled ? (
@@ -210,6 +217,20 @@ const PostModal = ({ post, isOpen, onClose, onUsernameClick, onShareClick, hideA
         onCopyLink={handleCopyLink}
         onShare={handleShare}
       />
+      {/* Share Modal (reuse feed ShareModal) */}
+      {showShareModal && (
+        <ShareModal
+          open={showShareModal}
+          post={post}
+          currentUser={currentUser}
+          onClose={handleCloseShare}
+          onShare={(user) => {
+            if (typeof shareCallback === "function") shareCallback(sharePostState, user);
+            handleCloseShare();
+          }}
+          onCopy={(p) => handleCopyLink(p)}
+        />
+      )}
       {isOpenEditModal && (
         <EditPostModal
           isOpen={isOpenEditModal}

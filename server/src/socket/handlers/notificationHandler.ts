@@ -14,34 +14,34 @@ export class NotificationHandler {
    * Emit new notification to specific user
    */
   emitNotification(userId: string, notification: any) {
-    this.io.to(`user_${userId}`).emit("new_notification", notification);
+    this.io.to(`u:${userId}`).emit("new_notification", notification);
   }
 
   /**
    * Emit notification read event
    */
   emitNotificationRead(userId: string, notificationId: string) {
-    this.io.to(`user_${userId}`).emit("notification_read", { notificationId });
+    this.io.to(`u:${userId}`).emit("notification_read", { notificationId });
   }
 
   /**
    * Emit all notifications read event
    */
   emitAllNotificationsRead(userId: string) {
-    this.io.to(`user_${userId}`).emit("all_notifications_read");
+    this.io.to(`u:${userId}`).emit("all_notifications_read");
   }
 
   /**
    * Emit notification deleted event
    */
   emitNotificationDeleted(userId: string, notificationId: string) {
-    this.io.to(`user_${userId}`).emit("notification_deleted", { notificationId });
+    this.io.to(`u:${userId}`).emit("notification_deleted", { notificationId });
   }
 
   /**
    * Emit unread count update
    */
   emitUnreadCountUpdate(userId: string, count: number) {
-    this.io.to(`user_${userId}`).emit("unread_count_update", { count });
+    this.io.to(`u:${userId}`).emit("unread_count_update", { count });
   }
 }

@@ -60,31 +60,16 @@ export default function useMessages({ initialUserId } = {}) {
     }
   }, []);
 
-  // ✅ SỬA: fetchMessages để hỗ trợ load more đúng cách
   const fetchMessages = useCallback(async (partnerId, pageToLoad = 1) => {
     try {
       const response = await getConversation(partnerId, pageToLoad, 10);
       if (response && response.success && response.data) {
         const newMessages = response.data.slice().reverse();
-        
-        // ✅ SỬA: Logic load more
-        if (pageToLoad === 1) {
-          setMessages(newMessages);
-        } else {
-          // ✅ QUAN TRỌNG: Thêm tin nhắn cũ vào ĐẦU danh sách
-          setMessages(prev => [...newMessages, ...prev]);
-        }
+        if (pageToLoad === 1) setMessages(newMessages);
+        else setMessages(prev => [...newMessages, ...prev]);
 
         setHasMore(response.pagination?.hasNext ?? false);
-        
-        // Mark as read chỉ khi load page đầu tiên
-        if (pageToLoad === 1) {
-          try { 
-            await apiMarkAllAsRead(partnerId); 
-          } catch { 
-            /* silent */ 
-          }
-        }
+        try { await apiMarkAllAsRead(partnerId); } catch { /* silent */ }
       } else {
         if (pageToLoad === 1) setMessages([]);
         setHasMore(false);
@@ -265,29 +250,12 @@ export default function useMessages({ initialUserId } = {}) {
   const getMessagePreview = useCallback((message) => {
     if (!message) return "Không có tin nhắn";
     switch (message.messageType) {
-      case "text": 
-        return message.content || "Tin nhắn văn bản";
-      case "media": 
-        return message.mediaType === "image" ? "📷 Ảnh" : message.mediaType === "video" ? "🎥 Video" : "Shared media";
-      case "location": 
-        return "📍 Vị trí";
-      case "post_share": 
-        return "📄 Chia sẻ bài viết";
-      case "story_share": 
-        return "📖 Chia sẻ story";
-      case "call": // ✅ SỬA: Chỉ 3 status
-        if (message.callData) {
-          const status = message.callData.status;
-          switch (status) {
-            case "declined": return "📞 Cuộc gọi bị từ chối";
-            case "incoming": return "📞 Cuộc gọi đến";
-            case "outgoing": return "📞 Cuộc gọi đi";
-            default: return "📞 Cuộc gọi";
-          }
-        }
-        return "📞 Cuộc gọi";
-      default: 
-        return "Tin nhắn";
+      case "text": return message.content || "Tin nhắn văn bản";
+      case "media": return message.mediaType === "image" ? "📷 Ảnh" : message.mediaType === "video" ? "🎥 Video" : "Shared media";
+      case "location": return "📍 Vị trí";
+      case "post_share": return "📄 Chia sẻ bài viết";
+      case "story_share": return "📖 Chia sẻ story";
+      default: return "Tin nhắn";
     }
   }, []);
 
