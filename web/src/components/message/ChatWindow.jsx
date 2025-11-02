@@ -419,7 +419,6 @@ export default function ChatWindow({
                           <div
                             className={`text-lg md:text-xl ${isOwn ? "text-white" : "text-gray-600 dark:text-gray-300"}`}
                           >
-                            📞
                           </div>
 
                           <div className="flex-1">

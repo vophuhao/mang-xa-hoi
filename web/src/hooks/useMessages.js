@@ -279,13 +279,13 @@ export default function useMessages({ initialUserId } = {}) {
         if (message.callData) {
           const status = message.callData.status;
           switch (status) {
-            case "declined": return "📞 Cuộc gọi bị từ chối";
-            case "incoming": return "📞 Cuộc gọi đến";
-            case "outgoing": return "📞 Cuộc gọi đi";
-            default: return "📞 Cuộc gọi";
+            case "declined": return "Cuộc gọi bị từ chối";
+            case "incoming": return "Cuộc gọi đến";
+            case "outgoing": return "Cuộc gọi đi";
+            default: return "Cuộc gọi";
           }
         }
-        return "📞 Cuộc gọi";
+        return "Cuộc gọi";
       default: 
         return "Tin nhắn";
     }
