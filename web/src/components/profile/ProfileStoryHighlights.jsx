@@ -101,11 +101,19 @@ const ProfileStoryHighlights = ({
               <div className="relative">
                 <div className="h-16 w-16 overflow-hidden rounded-full bg-gradient-to-r from-purple-400 to-pink-400 p-[2px] transition-all group-hover:from-purple-600 group-hover:to-pink-600">
                   <div className="h-full w-full rounded-full bg-white p-[2px] dark:bg-gray-800">
-                    <img
-                      src={userStories[0]?.mediaUrl || userStories[0]?.user?.avatarUrl}
-                      alt="Current Story"
-                      className="h-full w-full rounded-full object-cover"
-                    />
+                    {(userStories[0]?.mediaUrl || userStories[0]?.user?.avatarUrl)?.toLowerCase().endsWith(".mp4") ? (
+                      <video
+                        src={userStories[0]?.mediaUrl || userStories[0]?.user?.avatarUrl}
+                        className="h-full w-full rounded-full object-cover"                 
+                      />
+                    ) : (
+                      <img
+                        src={userStories[0]?.mediaUrl || userStories[0]?.user?.avatarUrl}
+                        alt="Current Story"
+                        className="h-full w-full rounded-full object-cover"
+                      />
+                    )}
+
                   </div>
                 </div>
                 {/* Story count badge */}
