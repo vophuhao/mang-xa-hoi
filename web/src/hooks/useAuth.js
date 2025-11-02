@@ -7,7 +7,7 @@ export const AUTH = "auth";
 
 const useAuth = (opts = {}) => {
   const location = useLocation();
-  const isLoginPage = location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/password/forgot' || location.pathname.startsWith('/password/reset') || location.pathname.startsWith('/email/verify/:code');
+  const isLoginPage = location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/password/forgot' || location.pathname.startsWith('/password/reset') || location.pathname.startsWith('/email/verify/');
 
   const { data: user, ...rest } = useQuery({
     queryKey: [AUTH],
