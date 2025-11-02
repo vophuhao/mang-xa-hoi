@@ -1,6 +1,7 @@
 import { useState } from "react";
 
-import { Edit2, Plus, Settings, MoreHorizontal, UserCheck } from "lucide-react";
+import { Edit2, Plus, Settings, MoreHorizontal, UserCheck, MessageCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 import { useBlockedUsers } from "@/hooks/useBlockedUsers";
 import { USER_QUERY_KEYS, useUser, useUserFollowers, useUserFollowing } from "@/hooks/useUser";
@@ -18,6 +19,7 @@ const ProfileHeader = ({
   onUnfollow,
   isFollowing,
 }) => {
+  const navigate = useNavigate();
   const [showMore, setShowMore] = useState(false);
   const [openMenu, setOpenMenu] = useState(null);
   const [openFollowerModal, setOpenFollowerModal] = useState(false);
@@ -25,11 +27,19 @@ const ProfileHeader = ({
   const [openBlockModal, setOpenBlockModal] = useState(false);
 
   const { data: followingData } = useUserFollowing(user?.userId, 1);
-
   const { data: followerData } = useUserFollowers(user?.userId, 1);
+  const { data: blockedData } = useBlockedUsers();
 
-  const {data : blockedData} =  useBlockedUsers();
+  const handleSendMessage = () => {
+    const userId = user?.userId || user?._id;
+    
+    if (!userId) {
+      console.error("User ID not found");
+      return;
+    }
 
+    navigate(`/message?userId=${encodeURIComponent(userId)}`);
+  };
 
   const formatCount = (count) => {
     if (count >= 1000000) {
@@ -104,8 +114,12 @@ const ProfileHeader = ({
                         Theo dõi
                       </button>
                     )}
-                    <button className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700">
-                      Nhắn tin
+                    <button 
+                      onClick={handleSendMessage}
+                      className="flex items-center space-x-2 rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      <span>Nhắn tin</span>
                     </button>
                     <button onClick={(e) => {
                       setOpenMenu(true);
@@ -114,12 +128,7 @@ const ProfileHeader = ({
                     </button>
                   </>
                 )}
-                {/* <button
-                  onClick={() => setShowMore(!showMore)}
-                  className="rounded-lg bg-gray-100 p-2 text-gray-900 hover:bg-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </button> */}
+
               </div>
             </div>
 
