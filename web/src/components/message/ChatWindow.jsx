@@ -1,4 +1,4 @@
-import { useMemo, useState, useLayoutEffect, useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { useQueries } from "@tanstack/react-query";
 
@@ -38,9 +38,10 @@ export default function ChatWindow({
       const m = item.message;
       if (!m) return;
       if (m.messageType !== "post_share") return;
-      const pid = m.sharedPost && typeof m.sharedPost === "string"
-        ? m.sharedPost
-        : (m.sharedPost && m.sharedPost._id) || m.sharedPostId;
+      const pid =
+        m.sharedPost && typeof m.sharedPost === "string"
+          ? m.sharedPost
+          : (m.sharedPost && m.sharedPost._id) || m.sharedPostId;
       if (pid) s.add(String(pid));
       else if (typeof m.content === "string") {
         const match = m.content.match(/\/p\/([a-zA-Z0-9_-]+)/);
@@ -74,7 +75,7 @@ export default function ChatWindow({
   const userId = authUser?.data?._id;
   const { emit } = useSocket();
   const [bubbleMaxWidth, setBubbleMaxWidth] = useState("40%");
-  
+
   // ✅ THÊM: Scroll detection refs
   const scrollPositionRef = useRef(0);
   const isLoadingRef = useRef(false);
@@ -91,10 +92,10 @@ export default function ChatWindow({
         if (entry.isIntersecting && !isLoadingRef.current && hasNextPage) {
           console.log("[SCROLL] Loading more messages...");
           isLoadingRef.current = true;
-          
+
           // Lưu scroll position trước khi load
           scrollPositionRef.current = container.scrollHeight - container.scrollTop;
-          
+
           // Load more messages
           if (loadMoreMessages) {
             loadMoreMessages().finally(() => {
@@ -105,8 +106,8 @@ export default function ChatWindow({
       },
       {
         root: container,
-        rootMargin: '50px 0px 0px 0px',
-        threshold: 0.1
+        rootMargin: "50px 0px 0px 0px",
+        threshold: 0.1,
       }
     );
 
@@ -125,7 +126,7 @@ export default function ChatWindow({
 
     const container = messagesContainerRef.current;
     const newScrollTop = container.scrollHeight - scrollPositionRef.current;
-    
+
     // Restore scroll position
     container.scrollTop = newScrollTop;
     scrollPositionRef.current = 0;
@@ -148,12 +149,13 @@ export default function ChatWindow({
 
   useEffect(() => {
     if (!messagesEndRef?.current || isLoadingRef.current) return;
-    
+
     const container = messagesContainerRef?.current;
     if (!container) return;
 
-    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-    
+    const isNearBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+
     if (isNearBottom || groupedMessages.length <= 10) {
       const t = setTimeout(() => {
         try {
@@ -178,16 +180,16 @@ export default function ChatWindow({
   // ✅ SỬA: startCall với kiểm tra online status
   const startCall = async () => {
     if (!selectedChat?.partner?._id) return;
-    
+
     // ✅ THÊM: Kiểm tra online status trước khi gọi
     if (!isPartnerOnline) {
       // Có thể thêm toast notification nếu cần
       console.log("[CALL] Cannot call - user is offline");
       return;
     }
-    
+
     const partnerId = String(selectedChat.partner._id);
-    
+
     const roomId = `room_${userId}_${partnerId}_${Date.now()}`;
     const fromUserName = authUser?.data?.userId || authUser?.data?.displayName || "";
 
@@ -201,9 +203,8 @@ export default function ChatWindow({
         roomId: String(roomId),
         startedAt: new Date().toISOString(),
       });
-      
-      console.log("[CALL] Outgoing call history created");
 
+      console.log("[CALL] Outgoing call history created");
     } catch (error) {
       console.error("[CALL] Failed to create call history:", error);
     }
@@ -226,10 +227,12 @@ export default function ChatWindow({
 
   if (!selectedChat) {
     return (
-      <div className="flex items-center justify-center flex-1 text-gray-500 bg-gray-50">
-        <div className="text-center">
-          <div className="text-6xl mb-4">💬</div>
-          <h3 className="text-lg font-medium mb-2">Chọn một đoạn chat để bắt đầu</h3>
+      <div className="flex flex-1 items-center justify-center bg-gray-50 text-gray-500 dark:bg-gray-900 dark:text-gray-400">
+        <div className="px-4 text-center">
+          <div className="mb-4 text-4xl md:text-6xl">💬</div>
+          <h3 className="mb-2 text-base font-medium text-gray-900 md:text-lg dark:text-white">
+            Chọn một đoạn chat để bắt đầu
+          </h3>
           <p className="text-sm">Tin nhắn của bạn sẽ hiển thị ở đây</p>
         </div>
       </div>
@@ -240,42 +243,49 @@ export default function ChatWindow({
   const isPartnerOnline = isUserOnline(selectedChat.partner?._id);
 
   return (
-    <div className="flex-1 flex flex-col min-w-0">
+    <div className="flex min-w-0 flex-1 flex-col bg-white dark:bg-gray-900">
       {/* Header */}
-      <div className="p-4 border-b border-gray-300 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
+      <div className="flex items-center justify-between border-b border-gray-300 bg-white p-3 md:p-4 dark:border-gray-700 dark:bg-gray-900">
+        <div className="flex items-center space-x-2 md:space-x-3">
           {/* Avatar with Online Status */}
           <div className="relative">
             <a href={`/${selectedChat.partner?.userId || selectedChat.partner?._id}`}>
               <img
-                src={selectedChat.partner?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedChat.partner?.userId || selectedChat.partner?.username || 'User')}&background=random`}
-                alt={selectedChat.partner?.userId || selectedChat.partner?.username || 'User'}
-                className="w-10 h-10 rounded-full object-cover"
+                src={
+                  selectedChat.partner?.avatarUrl ||
+                  `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedChat.partner?.userId || selectedChat.partner?.username || "User")}&background=random`
+                }
+                alt={selectedChat.partner?.userId || selectedChat.partner?.username || "User"}
+                className="h-10 w-10 rounded-full object-cover"
               />
             </a>
             {/* ✅ THÊM: Online Status Indicator */}
-            <OnlineStatusIndicator 
+            <OnlineStatusIndicator
               isOnline={isPartnerOnline}
               size="sm"
-              className="bottom-0 right-0"
+              className="right-0 bottom-0"
             />
           </div>
 
           <div>
             <div className="flex items-center space-x-2">
-              <h3 className="font-bold text-gray-900">
-                {selectedChat.partner?.userId || selectedChat.partner?.username || 'Unknown User'}
-                {selectedChat.partner?.isVerified && <span className="ml-1 text-blue-500">✓</span>}
+              <h3 className="text-sm font-bold text-gray-900 md:text-base dark:text-white">
+                {selectedChat.partner?.userId || selectedChat.partner?.username || "Unknown User"}
+                {selectedChat.partner?.isVerified && (
+                  <span className="ml-1 text-blue-500 dark:text-blue-400">✓</span>
+                )}
               </h3>
               {/* ✅ THÊM: Online status text */}
               {isPartnerOnline && (
-                <span className="text-xs text-green-600 font-medium">• Online</span>
+                <span className="hidden text-xs font-medium text-green-600 md:inline dark:text-green-400">
+                  • Online
+                </span>
               )}
             </div>
-            <p className="text-sm text-gray-500">
-              @{selectedChat.partner?.username || 'unknown'}
+            <p className="text-xs text-gray-500 md:text-sm dark:text-gray-400">
+              @{selectedChat.partner?.username || "unknown"}
               {!isPartnerOnline && (
-                <span className="text-red-500 ml-2">• Offline</span>
+                <span className="ml-2 text-red-500 dark:text-red-400">• Offline</span>
               )}
             </p>
           </div>
@@ -288,10 +298,10 @@ export default function ChatWindow({
             title={isPartnerOnline ? "Gọi" : "Người dùng không trực tuyến"}
             onClick={startCall}
             disabled={!isPartnerOnline} // ✅ THÊM: Disable khi offline
-            className={`p-2 rounded-full text-lg transition-colors ${
-              isPartnerOnline 
-                ? "bg-gray-100 hover:bg-gray-200 cursor-pointer" 
-                : "bg-gray-50 text-gray-400 cursor-not-allowed"
+            className={`rounded-full p-2 text-lg transition-colors ${
+              isPartnerOnline
+                ? "cursor-pointer bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+                : "cursor-not-allowed bg-gray-50 text-gray-400 dark:bg-gray-800 dark:text-gray-600"
             }`}
           >
             📞
@@ -300,44 +310,49 @@ export default function ChatWindow({
       </div>
 
       {/* Messages Area - giữ nguyên existing code */}
-      <div ref={messagesContainerRef} className="flex-1 p-4 space-y-3 overflow-y-auto bg-white">
+      <div
+        ref={messagesContainerRef}
+        className="flex-1 space-y-3 overflow-y-auto bg-white p-3 md:p-4 dark:bg-gray-900"
+      >
         <div>
           {/* ✅ THÊM: Load more trigger và loading indicator */}
           {hasNextPage && (
             <div ref={loadTriggerRef} className="flex justify-center py-4">
               {isLoadingMore ? (
-                <div className="flex items-center space-x-2 text-gray-500">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
-                  <span className="text-sm">Đang tải tin nhắn cũ...</span>
+                <div className="flex items-center space-x-2 text-gray-500 dark:text-gray-400">
+                  <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-gray-400 dark:border-gray-500"></div>
+                  <span className="text-sm">Đang tải...</span>
                 </div>
               ) : (
-                <div className="text-xs text-gray-400 text-center">
-                  Cuộn lên để xem tin nhắn cũ hơn
+                <div className="text-center text-xs text-gray-400 dark:text-gray-500">
+                  Kéo xuống để tải thêm
                 </div>
               )}
             </div>
           )}
 
           {conversationFullyLoaded && (
-            <div className="flex justify-center mb-4">
-              <div className="flex flex-col items-center p-6 w-72">
+            <div className="mb-4 flex justify-center">
+              <div className="flex w-full flex-col items-center p-4 md:w-72 md:p-6">
                 <img
                   src={
                     selectedChat.partner?.avatarUrl ||
-                    `https://ui-avatars.com/api/?name=${selectedChat.partner?.userId || selectedChat.partner?.username || 'User'}&background=random`
+                    `https://ui-avatars.com/api/?name=${selectedChat.partner?.userId || selectedChat.partner?.username || "User"}&background=random`
                   }
-                  alt={selectedChat.partner?.userId || selectedChat.partner?.username || 'User'}
-                  className="w-24 h-24 rounded-full object-cover"
+                  alt={selectedChat.partner?.userId || selectedChat.partner?.username || "User"}
+                  className="h-16 w-16 rounded-full border-2 border-gray-200 object-cover md:h-24 md:w-24 dark:border-gray-700"
                 />
-                <h2 className="mt-4 text-lg font-semibold text-gray-900">
-                  {selectedChat.partner?.userId || selectedChat.partner?.username || 'Unknown User'}
+                <h2 className="mt-4 text-base font-semibold text-gray-900 md:text-lg dark:text-white">
+                  {selectedChat.partner?.userId || selectedChat.partner?.username || "Unknown User"}
                 </h2>
                 {selectedChat.partner?.bio && (
-                  <p className="text-sm text-gray-500">{selectedChat.partner.bio}</p>
+                  <p className="text-center text-xs text-gray-500 md:text-sm dark:text-gray-400">
+                    {selectedChat.partner.bio}
+                  </p>
                 )}
                 <a
                   href={`/${selectedChat.partner?.userId || selectedChat.partner?._id}`}
-                  className="mt-4 inline-block px-4 py-2 text-sm font-medium bg-gray-100 rounded-lg hover:bg-gray-200"
+                  className="mt-4 inline-block rounded-lg bg-gray-100 px-4 py-2 text-xs font-medium text-gray-900 hover:bg-gray-200 md:text-sm dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
                 >
                   Xem trang cá nhân
                 </a>
@@ -347,12 +362,14 @@ export default function ChatWindow({
 
           {/* ✅ Messages rendering - giữ nguyên code cũ */}
           {groupedMessages.map((item, idx) => {
-            if (item.type === 'date') {
+            if (item.type === "date") {
               return (
-                <div key={`date-${idx}`} className="flex items-center my-4">
-                  <div className="flex-grow border-gray-300"></div>
-                  <span className="mx-4 text-xs text-gray-500 px-2 py-0.5 rounded">{item.date}</span>
-                  <div className="flex-grow border-gray-300"></div>
+                <div key={`date-${idx}`} className="my-4 flex items-center">
+                  <div className="flex-grow border-gray-300 dark:border-gray-700"></div>
+                  <span className="mx-4 rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                    {item.date}
+                  </span>
+                  <div className="flex-grow border-gray-300 dark:border-gray-700"></div>
                 </div>
               );
             }
@@ -361,56 +378,71 @@ export default function ChatWindow({
             const isOwn = isOwnMessage(message);
 
             return (
-              <div key={message._id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+              <div key={message._id} className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
                 {!isOwn && (
                   <img
-                    src={selectedChat.partner?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedChat.partner?.username || 'User')}&background=random`}
-                    alt={selectedChat.partner?.username || 'User'}
-                    className="w-8 h-8 rounded-full object-cover mr-2 mt-1"
+                    src={
+                      selectedChat.partner?.avatarUrl ||
+                      `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedChat.partner?.username || "User")}&background=random`
+                    }
+                    alt={selectedChat.partner?.username || "User"}
+                    className="mt-1 mr-2 h-8 w-8 rounded-full object-cover"
                   />
                 )}
-                
-                <div className={`relative group px-0 py-0 mt-2 mb-2 rounded-full`}>
+
+                <div className={`group relative mt-2 mb-2 rounded-full px-0 py-0`}>
                   {/* ✅ SỬA: Render cuộc gọi theo status mới */}
                   {message.messageType === "call" && message.callData ? (
-                    <div className={`w-full flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`flex w-full ${isOwn ? "justify-end" : "justify-start"}`}>
                       <div
-                        className={`px-4 py-3 rounded-xl cursor-pointer break-words leading-5 max-w-xs ${
-                          isOwn ? "bg-blue-500 text-white" : "bg-[#EFEFEF] text-gray-900 border"
+                        className={`max-w-xs cursor-pointer rounded-xl px-3 py-2 leading-5 break-words md:px-4 md:py-3 ${
+                          isOwn
+                            ? "bg-blue-500 text-white dark:bg-blue-600"
+                            : "border border-gray-200 bg-[#EFEFEF] text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                         }`}
                         onClick={() => {
-                          try { 
-                            if (!isOwn && !message.isRead && typeof handleMarkAsRead === "function") {
-                              handleMarkAsRead(message._id); 
+                          try {
+                            if (
+                              !isOwn &&
+                              !message.isRead &&
+                              typeof handleMarkAsRead === "function"
+                            ) {
+                              handleMarkAsRead(message._id);
                             }
-                          } catch (err) { 
-                            console.error(err); 
+                          } catch (err) {
+                            console.error(err);
                           }
                         }}
                       >
                         <div className="flex items-center space-x-2">
                           {/* Call icon */}
-                          <div className={`text-xl ${isOwn ? 'text-white' : 'text-gray-600'}`}>
+                          <div
+                            className={`text-lg md:text-xl ${isOwn ? "text-white" : "text-gray-600 dark:text-gray-300"}`}
+                          >
                             📞
                           </div>
-                          
+
                           <div className="flex-1">
                             {/* ✅ SỬA: Call status text theo logic mới */}
-                            <div className={`text-sm font-medium ${isOwn ? 'text-white' : 'text-gray-900'}`}>
+                            <div
+                              className={`text-xs font-medium md:text-sm ${isOwn ? "text-white" : "text-gray-900 dark:text-white"}`}
+                            >
                               {getCallStatusText(message.callData.status, isOwn)}
                             </div>
-                            
+
                             {/* Call time */}
-                            <div className={`text-xs mt-1 ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
-                              {new Date(message.createdAt).toLocaleString('vi-VN', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                day: '2-digit',
-                                month: '2-digit'
+                            <div
+                              className={`mt-1 text-xs ${isOwn ? "text-blue-100 dark:text-blue-200" : "text-gray-500 dark:text-gray-400"}`}
+                            >
+                              {new Date(message.createdAt).toLocaleString("vi-VN", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                day: "2-digit",
+                                month: "2-digit",
                               })}
                             </div>
                           </div>
-                          
+
                           {/* Call again button */}
                           <button
                             onClick={(e) => {
@@ -422,31 +454,40 @@ export default function ChatWindow({
                             }}
                             disabled={!isPartnerOnline} // ✅ THÊM: Disable khi offline
                             title={isPartnerOnline ? "Gọi lại" : "Người dùng không trực tuyến"}
-                            className={`p-1 rounded-full transition-colors ${
-                              isPartnerOnline 
-                                ? `hover:bg-opacity-20 hover:bg-white cursor-pointer ${isOwn ? 'text-white' : 'text-gray-600'}`
-                                : "text-gray-400 cursor-not-allowed"
+                            className={`rounded-full p-1 transition-colors ${
+                              isPartnerOnline
+                                ? `hover:bg-opacity-20 cursor-pointer hover:bg-white ${isOwn ? "text-white" : "text-gray-600"}`
+                                : "cursor-not-allowed text-gray-400"
                             }`}
                           >
-                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                               <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
                             </svg>
                           </button>
                         </div>
                       </div>
                     </div>
-                  ) : 
-                  
-                  /* ✅ EXISTING: Post share rendering */
-                  message.messageType === "post_share" && (message.sharedPost || message.sharedPostId || message.content) ? (
+                  ) : /* ✅ EXISTING: Post share rendering */
+                  message.messageType === "post_share" &&
+                    (message.sharedPost || message.sharedPostId || message.content) ? (
                     // ...existing post_share code...
                     (() => {
-                      const postId = message.sharedPost && typeof message.sharedPost === "string"
-                        ? message.sharedPost
-                        : (message.sharedPost && message.sharedPost._id) || message.sharedPostId;
-                      const populatedPost = (message.sharedPost && typeof message.sharedPost === "object") ? message.sharedPost : (postMap[postId] || null);
+                      const postId =
+                        message.sharedPost && typeof message.sharedPost === "string"
+                          ? message.sharedPost
+                          : (message.sharedPost && message.sharedPost._id) || message.sharedPostId;
+                      const populatedPost =
+                        message.sharedPost && typeof message.sharedPost === "object"
+                          ? message.sharedPost
+                          : postMap[postId] || null;
                       const post = populatedPost;
-                      const author = post?.user || post?.author || post?.postedBy || post?.owner || (message.sharedPost && message.sharedPost.user) || {};
+                      const author =
+                        post?.user ||
+                        post?.author ||
+                        post?.postedBy ||
+                        post?.owner ||
+                        (message.sharedPost && message.sharedPost.user) ||
+                        {};
                       const mediaUrls =
                         post?.thumbnailUrl ||
                         post?.mediaUrls ||
@@ -457,28 +498,57 @@ export default function ChatWindow({
                       const firstMediaUrl = Array.isArray(mediaUrls) ? mediaUrls[0] : mediaUrls;
                       let previewImgSrc = null;
                       if (firstMediaUrl) {
-                        if (isVideoUrl(firstMediaUrl)) previewImgSrc = cloudinaryVideoThumbnail(firstMediaUrl) || null;
+                        if (isVideoUrl(firstMediaUrl))
+                          previewImgSrc = cloudinaryVideoThumbnail(firstMediaUrl) || null;
                         else previewImgSrc = firstMediaUrl;
                       }
                       const caption = post?.caption || "";
                       return (
-                        <div className="flex flex-col space-y-2 w-full">
-                          <div className={`w-full flex ${isOwn ? "justify-end" : "justify-start"}`}>
-                            <div className="bg-[#1f2937] text-white rounded-lg overflow-hidden border shadow-sm">
-                              <a href={`/${author?.userId || author?.username || author?._id || ""}`} className="flex items-center space-x-3 px-3 py-2 hover:underline">
-                                <img src={author?.avatarUrl || `https://ui-avatars.com/api/?name=${author?.userId || author?.username || 'User'}&background=random`} alt={author?.userId || author?.username || 'user'} className="w-8 h-8 rounded-full object-cover" />
-                                <div className="text-sm font-medium">{author?.userId || author?.username || author?.displayName || 'User'}</div>
+                        <div className="flex w-full flex-col space-y-2">
+                          <div className={`flex w-full ${isOwn ? "justify-end" : "justify-start"}`}>
+                            <div className="overflow-hidden rounded-lg border bg-[#1f2937] text-white shadow-sm">
+                              <a
+                                href={`/${author?.userId || author?.username || author?._id || ""}`}
+                                className="flex items-center space-x-3 px-3 py-2 hover:underline"
+                              >
+                                <img
+                                  src={
+                                    author?.avatarUrl ||
+                                    `https://ui-avatars.com/api/?name=${author?.userId || author?.username || "User"}&background=random`
+                                  }
+                                  alt={author?.userId || author?.username || "user"}
+                                  className="h-8 w-8 rounded-full object-cover"
+                                />
+                                <div className="text-sm font-medium">
+                                  {author?.userId ||
+                                    author?.username ||
+                                    author?.displayName ||
+                                    "User"}
+                                </div>
                               </a>
 
-                              <a href={`/${author?.userId || author?.username || author?._id || ""}/p/${postId || ""}`} className="inline-block">
-                                <div className="relative w-56 sm:w-64 flex-shrink-0 overflow-hidden rounded-md bg-black">
+                              <a
+                                href={`/${author?.userId || author?.username || author?._id || ""}/p/${postId || ""}`}
+                                className="inline-block"
+                              >
+                                <div className="relative w-56 flex-shrink-0 overflow-hidden rounded-md bg-black sm:w-64">
                                   {previewImgSrc ? (
                                     <>
-                                      <img src={previewImgSrc} alt="post preview" className="w-full h-auto max-h-[70vh] object-contain" loading="lazy" />
+                                      <img
+                                        src={previewImgSrc}
+                                        alt="post preview"
+                                        className="h-auto max-h-[70vh] w-full object-contain"
+                                        loading="lazy"
+                                      />
                                       {isVideoUrl(firstMediaUrl) && (
-                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                          <div className="w-12 h-12 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
-                                            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                                        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                                          <div className="bg-opacity-50 flex h-12 w-12 items-center justify-center rounded-full bg-black">
+                                            <svg
+                                              className="h-6 w-6 text-white"
+                                              viewBox="0 0 24 24"
+                                              fill="currentColor"
+                                              aria-hidden
+                                            >
                                               <path d="M8 5v14l11-7z" />
                                             </svg>
                                           </div>
@@ -486,30 +556,53 @@ export default function ChatWindow({
                                       )}
                                     </>
                                   ) : (
-                                    <div className="w-full flex items-center justify-center text-sm text-gray-200 py-8">Xem bài viết</div>
+                                    <div className="flex w-full items-center justify-center py-8 text-sm text-gray-200">
+                                      Xem bài viết
+                                    </div>
                                   )}
                                 </div>
                               </a>
 
-                              {caption ? <div className="px-3 py-2 text-sm text-gray-100">{caption.length > 200 ? `${caption.slice(0, 200)}...` : caption}</div> : null}
+                              {caption ? (
+                                <div className="px-3 py-2 text-sm text-gray-100">
+                                  {caption.length > 200 ? `${caption.slice(0, 200)}...` : caption}
+                                </div>
+                              ) : null}
                             </div>
                           </div>
 
                           {message.content && (
-                            <div className={`w-full flex ${isOwn ? "justify-end" : "justify-start"}`}>
+                            <div
+                              className={`flex w-full ${isOwn ? "justify-end" : "justify-start"}`}
+                            >
                               <div
-                                className={`px-4 py-2 rounded-xl cursor-pointer break-words leading-5 ${isOwn ? "bg-blue-500 text-white" : "bg-[#EFEFEF] text-gray-900 border"}`}
+                                className={`cursor-pointer rounded-xl px-3 py-2 leading-5 break-words md:px-4 ${isOwn ? "bg-blue-500 text-white dark:bg-blue-600" : "border border-gray-200 bg-[#EFEFEF] text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"}`}
                                 style={{ maxWidth: bubbleMaxWidth, minWidth: 96 }}
                                 onClick={() => {
-                                  try { if (!isOwn && !message.isRead && typeof handleMarkAsRead === "function") handleMarkAsRead(message._id); } catch (err) { console.error(err); }
+                                  try {
+                                    if (
+                                      !isOwn &&
+                                      !message.isRead &&
+                                      typeof handleMarkAsRead === "function"
+                                    )
+                                      handleMarkAsRead(message._id);
+                                  } catch (err) {
+                                    console.error(err);
+                                  }
                                 }}
                                 onDoubleClick={() => handleReaction(message._id, "❤️")}
                               >
-                                <p className="text-sm">{renderTextWithBreaks(message.content)}</p>
+                                <p className="text-xs md:text-sm">
+                                  {renderTextWithBreaks(message.content)}
+                                </p>
 
                                 {message.reactions && message.reactions.length > 0 && (
-                                  <div className="flex space-x-1 mt-1">
-                                    {message.reactions.map((reaction, idx) => <span key={idx} className="text-xs">{reaction.emoji}</span>)}
+                                  <div className="mt-1 flex space-x-1">
+                                    {message.reactions.map((reaction, idx) => (
+                                      <span key={idx} className="text-xs">
+                                        {reaction.emoji}
+                                      </span>
+                                    ))}
                                   </div>
                                 )}
                               </div>
@@ -518,47 +611,74 @@ export default function ChatWindow({
                         </div>
                       );
                     })()
-                  ) : 
-                  
-                  /* ✅ EXISTING: Media rendering */
+                  ) : /* ✅ EXISTING: Media rendering */
                   message.messageType === "media" && message.mediaUrl ? (
                     // ...existing media code...
-                    <div className="px-0 py-0 rounded-2xl">
-                      <div className="relative w-56 sm:w-64 flex-shrink-0 overflow-hidden rounded-lg bg-black">
+                    <div className="rounded-2xl px-0 py-0">
+                      <div className="relative w-56 flex-shrink-0 overflow-hidden rounded-lg bg-black sm:w-64">
                         {message.mediaType === "image" ? (
-                          <img src={message.mediaUrl} alt="Shared image" className="w-full h-auto max-h-[70vh] object-contain" />
+                          <img
+                            src={message.mediaUrl}
+                            alt="Shared image"
+                            className="h-auto max-h-[70vh] w-full object-contain"
+                          />
                         ) : message.mediaType === "video" ? (
-                          <video src={message.mediaUrl} controls poster={cloudinaryVideoThumbnail(message.mediaUrl) || undefined} className="w-full h-auto max-h-[70vh]" />
+                          <video
+                            src={message.mediaUrl}
+                            controls
+                            poster={cloudinaryVideoThumbnail(message.mediaUrl) || undefined}
+                            className="h-auto max-h-[70vh] w-full"
+                          />
                         ) : (
-                          <div className="w-full flex items-center justify-center text-sm text-gray-200 py-8">Không hỗ trợ media này</div>
+                          <div className="flex w-full items-center justify-center py-8 text-sm text-gray-200">
+                            Không hỗ trợ media này
+                          </div>
                         )}
                       </div>
-                      {message.content && <p className="text-sm mt-2">{message.content}</p>}
+                      {message.content && (
+                        <p className="mt-2 text-xs text-gray-900 md:text-sm dark:text-white">
+                          {message.content}
+                        </p>
+                      )}
                     </div>
                   ) : (
-                    
                     /* ✅ EXISTING: Text messages */
-                    <div className={`w-full flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`flex w-full ${isOwn ? "justify-end" : "justify-start"}`}>
                       <div
-                        className={`px-4 py-2 rounded-xl cursor-pointer break-words leading-5 ${isOwn ? "bg-blue-500 text-white" : "bg-[#EFEFEF] text-gray-900 border"}`}
+                        className={`cursor-pointer rounded-xl px-3 py-2 leading-5 break-words md:px-4 ${isOwn ? "bg-blue-500 text-white dark:bg-blue-600" : "border border-gray-200 bg-[#EFEFEF] text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"}`}
                         style={{ maxWidth: bubbleMaxWidth, minWidth: 96 }}
                         onClick={() => {
-                          try { if (!isOwn && !message.isRead && typeof handleMarkAsRead === "function") handleMarkAsRead(message._id); } catch (err) { console.error(err); }
+                          try {
+                            if (!isOwn && !message.isRead && typeof handleMarkAsRead === "function")
+                              handleMarkAsRead(message._id);
+                          } catch (err) {
+                            console.error(err);
+                          }
                         }}
                         onDoubleClick={() => handleReaction(message._id, "❤️")}
                       >
-                        {message.messageType === "text" && <p className="text-sm">{renderTextWithBreaks(message.content)}</p>}
+                        {message.messageType === "text" && (
+                          <p className="text-xs md:text-sm">
+                            {renderTextWithBreaks(message.content)}
+                          </p>
+                        )}
 
                         {message.messageType === "location" && message.location && (
                           <div>
-                            <p className="text-sm">📍 {message.location.name}</p>
-                            <p className="text-xs opacity-75">{message.location.coordinates[1]}, {message.location.coordinates[0]}</p>
+                            <p className="text-xs md:text-sm">📍 {message.location.name}</p>
+                            <p className="text-xs opacity-75">
+                              {message.location.coordinates[1]}, {message.location.coordinates[0]}
+                            </p>
                           </div>
                         )}
 
                         {message.reactions && message.reactions.length > 0 && (
-                          <div className="flex space-x-1 mt-1">
-                            {message.reactions.map((reaction, idx) => <span key={idx} className="text-xs">{reaction.emoji}</span>)}
+                          <div className="mt-1 flex space-x-1">
+                            {message.reactions.map((reaction, idx) => (
+                              <span key={idx} className="text-xs">
+                                {reaction.emoji}
+                              </span>
+                            ))}
                           </div>
                         )}
                       </div>
@@ -566,19 +686,25 @@ export default function ChatWindow({
                   )}
 
                   {/* Tooltip */}
-                  <div className="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 absolute -top-7 left-1/2 transform -translate-x-1/2 z-20">
-                    <div className="bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap">
-                      {new Date(message.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                  <div className="pointer-events-none absolute -top-7 left-1/2 z-20 -translate-x-1/2 transform opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                    <div className="rounded bg-gray-800 px-2 py-1 text-xs whitespace-nowrap text-white shadow-lg">
+                      {new Date(message.createdAt).toLocaleTimeString("vi-VN", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </div>
-                    <div className="w-0 h-0 border-l-6 border-r-6 border-t-6 border-l-transparent border-r-transparent border-t-gray-800 mx-auto"></div>
+                    <div className="mx-auto h-0 w-0 border-t-6 border-r-6 border-l-6 border-t-gray-800 border-r-transparent border-l-transparent"></div>
                   </div>
                 </div>
 
                 {isOwn && (
                   <img
-                    src={user?.data?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.data?.userId || 'You')}&background=random`}
+                    src={
+                      user?.data?.avatarUrl ||
+                      `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.data?.userId || "You")}&background=random`
+                    }
                     alt="You"
-                    className="w-8 h-8 rounded-full object-cover ml-2 mt-1"
+                    className="mt-1 ml-2 h-8 w-8 rounded-full object-cover"
                   />
                 )}
               </div>
@@ -589,55 +715,101 @@ export default function ChatWindow({
       </div>
 
       {/* Input area - giữ nguyên */}
-      <form onSubmit={handleSendMessage} className="p-4 bg-white">
+      <form
+        onSubmit={handleSendMessage}
+        className="border-t border-gray-200 bg-white p-3 md:p-4 dark:border-gray-700 dark:bg-gray-900"
+      >
         {selectedImages.length > 0 && (
-          <div className="flex space-x-2 mb-2">
+          <div className="mb-2 flex space-x-2 overflow-x-auto">
             {selectedImages.map((img, idx) => (
-              <div key={idx} className="relative">
+              <div key={idx} className="relative flex-shrink-0">
                 {img.mediaType === "image" ? (
-                  <img src={img.url} alt="preview" className="w-16 h-16 object-cover rounded" />
+                  <img
+                    src={img.url}
+                    alt="preview"
+                    className="h-16 w-16 rounded border border-gray-300 object-cover md:h-20 md:w-20 dark:border-gray-600"
+                  />
                 ) : (
-                  <video src={img.url} controls className="w-16 h-16 object-cover rounded" />
+                  <video
+                    src={img.url}
+                    controls
+                    className="h-16 w-16 rounded border border-gray-300 object-cover md:h-20 md:w-20 dark:border-gray-600"
+                  />
                 )}
-                <button type="button" className="absolute top-0 right-0 bg-black bg-opacity-50 text-white rounded-full px-1" onClick={() => handleRemoveImage(idx)}>×</button>
+                <button
+                  type="button"
+                  className="bg-opacity-50 dark:bg-opacity-80 hover:bg-opacity-70 absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black text-sm text-white dark:bg-gray-800"
+                  onClick={() => handleRemoveImage(idx)}
+                >
+                  ×
+                </button>
               </div>
             ))}
           </div>
         )}
 
-        <div className="flex items-center w-full">
-          <div className="flex items-center bg-white border border-gray-300 rounded-full w-full px-3 py-2">
-            <button type="button" className="mr-2 flex-shrink-0 text-2xl focus:outline-none"><span role="img" aria-label="emoji">😊</span></button>
+        <div className="flex w-full items-center">
+          <div className="flex w-full items-center rounded-full border border-gray-300 bg-white px-3 py-2 dark:border-gray-600 dark:bg-gray-800">
+            <button
+              type="button"
+              className="mr-2 flex-shrink-0 text-xl focus:outline-none md:text-2xl"
+            >
+              <span role="img" aria-label="emoji">
+                😊
+              </span>
+            </button>
             <textarea
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyDown={handleInputKeyDown}
-              onInput={(e) => { e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
+              onInput={(e) => {
+                e.target.style.height = "auto";
+                e.target.style.height = e.target.scrollHeight + "px";
+              }}
               placeholder="Nhắn tin..."
               rows={1}
-              className="flex-1 border-none outline-none bg-transparent text-base resize-none overflow-hidden"
+              className="flex-1 resize-none overflow-hidden border-none bg-transparent text-sm text-gray-900 placeholder-gray-400 outline-none md:text-base dark:bg-gray-800 dark:text-white dark:placeholder-gray-500"
               disabled={sendingMessage}
             />
-             <div className="flex items-center space-x-2 ml-2">
-               {(newMessage.trim().length > 0 || selectedImages.length > 0) ? (
-                 <span
-                   className="ml-2 text-blue-500 font-semibold cursor-pointer select-none"
-                   style={{ padding: "0 16px", lineHeight: "36px" }}
-                   onClick={() => !sendingMessage && handleSendMessage({ preventDefault: () => {} })}
-                   role="button"
-                 >
-                   {sendingMessage ? "Đang gửi..." : "Gửi"}
-                 </span>
-               ) : (
-                 <>
-                   <button type="button" className="text-xl focus:outline-none" title="Ghi âm">🎤</button>
-                   <input type="file" accept="image/*,video/*" multiple style={{ display: "none" }} ref={imageInputRef} onChange={handleImageChange} />
-                   <button type="button" className="text-xl focus:outline-none" title="Chọn ảnh/video" onClick={() => imageInputRef.current.click()}>🖼️</button>
-                 </>
-               )}
-             </div>
-           </div>
-         </div>
+            <div className="ml-2 flex items-center space-x-1 md:space-x-2">
+              {newMessage.trim().length > 0 || selectedImages.length > 0 ? (
+                <span
+                  className="ml-2 cursor-pointer px-2 py-1 text-sm font-semibold text-blue-500 select-none hover:text-blue-600 md:px-4 md:py-2 md:text-base dark:text-blue-400 dark:hover:text-blue-300"
+                  onClick={() => !sendingMessage && handleSendMessage({ preventDefault: () => {} })}
+                  role="button"
+                >
+                  {sendingMessage ? "Đang gửi..." : "Gửi"}
+                </span>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="text-lg hover:opacity-70 focus:outline-none md:text-xl"
+                    title="Ghi âm"
+                  >
+                    🎤
+                  </button>
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    multiple
+                    style={{ display: "none" }}
+                    ref={imageInputRef}
+                    onChange={handleImageChange}
+                  />
+                  <button
+                    type="button"
+                    className="text-lg hover:opacity-70 focus:outline-none md:text-xl"
+                    title="Chọn ảnh/video"
+                    onClick={() => imageInputRef.current.click()}
+                  >
+                    🖼️
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       </form>
     </div>
   );

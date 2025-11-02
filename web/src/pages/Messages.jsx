@@ -48,7 +48,7 @@ const Messages = () => {
     formatLastMessageTime,
     getMessagePreview,
     isOwnMessage,
-    groupMessagesByDate
+    groupMessagesByDate,
   } = useMessages({ initialUserId: searchParams.get("userId") });
 
   const onlineUsersHook = useOnlineUsers();
@@ -61,10 +61,10 @@ const Messages = () => {
     setIsLoadingMore(true);
     try {
       const nextPage = currentPage + 1;
-      
+
       // ✅ SỬA: Sử dụng fetchMessages từ hook với page tiếp theo
       await fetchMessages(selectedChat.partner._id, nextPage);
-      
+
       setCurrentPage(nextPage);
     } catch (error) {
       console.error("[MESSAGES] Failed to load more messages:", error);
@@ -87,10 +87,10 @@ const Messages = () => {
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center">
+      <div className="flex h-full items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-          <div className="text-gray-500">Đang tải tin nhắn...</div>
+          <div className="mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-b-2 border-blue-500 dark:border-blue-400"></div>
+          <div className="text-gray-500 dark:text-gray-400">Đang tải tin nhắn...</div>
         </div>
       </div>
     );
@@ -98,17 +98,22 @@ const Messages = () => {
 
   if (error) {
     return (
-      <div className="h-full flex items-center justify-center">
+      <div className="flex h-full items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center">
-          <div className="text-red-500 mb-2">❌ {error}</div>
-          <button onClick={fetchConversations} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Thử lại</button>
+          <div className="mb-2 text-red-500 dark:text-red-400">❌ {error}</div>
+          <button
+            onClick={fetchConversations}
+            className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
+          >
+            Thử lại
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full bg-white dark:bg-gray-900">
       <ConversationList
         user={user}
         userId={userId}
