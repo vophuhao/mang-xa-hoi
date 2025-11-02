@@ -160,3 +160,8 @@ export const increasePostViewHandler = catchErrors(async (req: AuthenticatedRequ
 
   return ResponseUtil.success(res, { viewCount: views }, "View count increased");
 });
+
+export const getAllPostHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const posts = await PostService.getAllPost();
+  return ResponseUtil.success(res, posts, "Lấy tất cả bài viết thành công");
+});

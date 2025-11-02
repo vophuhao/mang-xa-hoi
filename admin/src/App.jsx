@@ -12,6 +12,7 @@ import store from "@/store";
 
 import ReportPage from "./components/Report";
 import User from "./components/User";
+import DashBoardPage from "./pages/DashBoardPage";
 import Layout from "./pages/Layout";
 
 
@@ -37,7 +38,8 @@ function App() {
         <Route path="/login" element={<Login />} />
     
         {/* Các route chính sau khi login */}
-        <Route path="/" element={<Layout />}>  
+        <Route path="/" element={<Layout />}>
+              <Route index element={<DashBoardPage/>} />  
                <Route path="report" element={<ReportPage/>} />
                 <Route path="user" element={<User/>} />
         </Route>

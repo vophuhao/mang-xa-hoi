@@ -246,11 +246,13 @@ export default function ChatWindow({
         <div className="flex items-center space-x-3">
           {/* Avatar with Online Status */}
           <div className="relative">
-            <img
-              src={selectedChat.partner?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedChat.partner?.userId || selectedChat.partner?.username || 'User')}&background=random`}
-              alt={selectedChat.partner?.userId || selectedChat.partner?.username || 'User'}
-              className="w-10 h-10 rounded-full object-cover"
-            />
+            <a href={`/${selectedChat.partner?.userId || selectedChat.partner?._id}`}>
+              <img
+                src={selectedChat.partner?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedChat.partner?.userId || selectedChat.partner?.username || 'User')}&background=random`}
+                alt={selectedChat.partner?.userId || selectedChat.partner?.username || 'User'}
+                className="w-10 h-10 rounded-full object-cover"
+              />
+            </a>
             {/* ✅ THÊM: Online Status Indicator */}
             <OnlineStatusIndicator 
               isOnline={isPartnerOnline}

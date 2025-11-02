@@ -1,5 +1,6 @@
 import {
   followUserHandler,
+  getAllUser,
   getFollowersHandler,
   getFollowingHandler,
   getSuggestedUsersHandler,
@@ -46,5 +47,7 @@ userRoutes.get("/:userId/following", getFollowingHandler);
 userRoutes.post("/:userId/follow", followUserHandler);
 userRoutes.delete("/:userId/follow", unfollowUserHandler);
 userRoutes.get("/userid/:userId", getUserByIdHandler);
+
+userRoutes.get("/all/users", getAllUser);
 
 export default userRoutes;

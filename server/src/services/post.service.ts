@@ -737,6 +737,11 @@ export class PostService {
     await post.incrementView(); // 👈 dùng method có sẵn trong model
     return post.viewCount; // trả lại số lượt xem sau khi tăng
   }
+
+  static async getAllPost () {
+    const posts = await PostModel.find().populate("user", "username userId avatarUrl isVerified");
+    return posts;
+  }
 }
 
 // Legacy function for backward compatibility

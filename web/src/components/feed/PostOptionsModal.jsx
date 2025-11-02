@@ -59,13 +59,7 @@ const PostOptionsModal = ({
           icon: <AlertTriangle size={18} />,
           onClick: () => onReport?.(post),
           danger: true,
-        },
-        {
-          label: "Bỏ theo dõi",
-          icon: <UserMinus size={18} />,
-          onClick: () => console.log("Unfollow user"),
-          danger: true,
-        },
+        },       
       ];
     }
   };
