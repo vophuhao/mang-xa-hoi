@@ -8,6 +8,7 @@ import {
   getUser,
   getUserByUsername,
   getUserPosts,
+  getUserTaggedPosts,
   searchUsers,
   unfollowUser,
   updateProfile,
@@ -91,6 +92,24 @@ export const useUserPosts = (username) => {
   return useInfiniteQuery({
     queryKey: ["user", "posts", username],
     queryFn: ({ pageParam = 1 }) => getUserPosts(username, pageParam, 12),
+    getNextPageParam: (lastPage, pages) => {
+      if (!lastPage?.data?.length || lastPage.data.length < 12) {
+        return undefined;
+      }
+      return pages.length + 1;
+    },
+    enabled: !!username,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+};
+
+/**
+ * Hook to get user's tagged posts with infinite scroll
+ */
+export const useUserTaggedPosts = (username) => {
+  return useInfiniteQuery({
+    queryKey: ["user", "tagged", username],
+    queryFn: ({ pageParam = 1 }) => getUserTaggedPosts(username, pageParam, 12),
     getNextPageParam: (lastPage, pages) => {
       if (!lastPage?.data?.length || lastPage.data.length < 12) {
         return undefined;

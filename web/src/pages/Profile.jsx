@@ -12,7 +12,7 @@ import ProfileStoryHighlights from "@/components/profile/ProfileStoryHighlights"
 import ProfileTabs from "@/components/profile/ProfileTabs";
 import { useFollowActions } from "@/hooks/useFollow";
 import { useHighlights, useStoriesByUsername, useUserStories } from "@/hooks/useStory";
-import { useCurrentUser, useUserPosts, useUserProfile } from "@/hooks/useUser";
+import { useCurrentUser, useUserPosts, useUserProfile, useUserTaggedPosts } from "@/hooks/useUser";
 
 import EditProfile from "./EditProfile";
 
@@ -53,6 +53,13 @@ const Profile = () => {
     isFetchingNextPage,
     isLoading: postsLoading,
   } = useUserPosts(username);
+  const {
+    data: taggedPostsData,
+    fetchNextPage: fetchNextTaggedPage,
+    hasNextPage: hasNextTaggedPage,
+    isFetchingNextPage: isFetchingNextTaggedPage,
+    isLoading: taggedPostsLoading,
+  } = useUserTaggedPosts(username);
   const { followUser, unfollowUser } = useFollowActions();
 
   // Story hooks
@@ -62,6 +69,7 @@ const Profile = () => {
 
   // Flatten posts from pages
   const posts = postsData?.pages?.flatMap((page) => page.data) || [];
+  const taggedPosts = taggedPostsData?.pages?.flatMap((page) => page.data) || [];
 
   // Check if this is current user's profile
   const isOwnProfile = currentUser?.data?._id === profileData?.data?._id;
@@ -179,6 +187,12 @@ const Profile = () => {
     }
   };
 
+  const handleLoadMoreTagged = () => {
+    if (hasNextTaggedPage && !isFetchingNextTaggedPage) {
+      fetchNextTaggedPage();
+    }
+  };
+
   // Loading state
   if (profileLoading) {
     return (
@@ -279,19 +293,33 @@ const Profile = () => {
         )}
 
         {activeTab === "tagged" && (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="mb-4 rounded-full border-2 border-gray-900 p-6 dark:border-white">
-              <div className="h-12 w-12 rounded-full border-2 border-gray-900 dark:border-white" />
-            </div>
-            <h3 className="mb-2 text-2xl font-light text-gray-900 dark:text-white">
-              Ảnh có gắn thẻ bạn
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {isOwnProfile
-                ? "Khi có ai đó gắn thẻ bạn trong ảnh, ảnh đó sẽ xuất hiện ở đây."
-                : "Khi có ai đó gắn thẻ người này trong ảnh, ảnh đó sẽ xuất hiện ở đây."}
-            </p>
-          </div>
+          <>
+            {taggedPosts.length > 0 ? (
+              <ProfileGrid
+                posts={taggedPosts}
+                onPostClick={handlePostClick}
+                isLoading={taggedPostsLoading}
+                hasNextPage={hasNextTaggedPage}
+                onLoadMore={handleLoadMoreTagged}
+                isOwnProfile={isOwnProfile}
+                type="tagged"
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="mb-4 rounded-full border-2 border-gray-900 p-6 dark:border-white">
+                  <div className="h-12 w-12 rounded-full border-2 border-gray-900 dark:border-white" />
+                </div>
+                <h3 className="mb-2 text-2xl font-light text-gray-900 dark:text-white">
+                  Ảnh có gắn thẻ bạn
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {isOwnProfile
+                    ? "Khi có ai đó gắn thẻ bạn trong ảnh, ảnh đó sẽ xuất hiện ở đây."
+                    : "Khi có ai đó gắn thẻ người này trong ảnh, ảnh đó sẽ xuất hiện ở đây."}
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
 
