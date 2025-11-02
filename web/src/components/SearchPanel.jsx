@@ -1,10 +1,15 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useNavigate } from "react-router-dom";
 
 import { searchHashtags, searchUsers } from "../lib/api";
 
-export default function SearchPanel({ onUserSelect, onHashtagSelect, placeholder = "Search", overlay = false }) {
+export default function SearchPanel({
+  onUserSelect,
+  onHashtagSelect,
+  placeholder = "Search",
+  overlay = false,
+}) {
   const [query, setQuery] = useState("");
   const [result, setResult] = useState({ users: [], hashtags: [] });
   const [loading, setLoading] = useState(false);
@@ -18,8 +23,8 @@ export default function SearchPanel({ onUserSelect, onHashtagSelect, placeholder
     const users = JSON.parse(localStorage.getItem("recentUsers") || "[]");
     const hashtags = JSON.parse(localStorage.getItem("recentHashtags") || "[]");
     setRecentItems([
-      ...users.map(u => ({ ...u, type: "user" })),
-      ...hashtags.map(ht => ({ ...ht, type: "hashtag" })),
+      ...users.map((u) => ({ ...u, type: "user" })),
+      ...hashtags.map((ht) => ({ ...ht, type: "hashtag" })),
     ]);
   }, []);
 
@@ -42,7 +47,7 @@ export default function SearchPanel({ onUserSelect, onHashtagSelect, placeholder
   const handleUserClick = (user) => {
     // Lưu recent như trước
     const recent = JSON.parse(localStorage.getItem("recentUsers") || "[]");
-    const filtered = recent.filter(u => u.userId !== user.userId);
+    const filtered = recent.filter((u) => u.userId !== user.userId);
     filtered.unshift(user);
     const limited = filtered.slice(0, 10);
     localStorage.setItem("recentUsers", JSON.stringify(limited));
@@ -61,7 +66,7 @@ export default function SearchPanel({ onUserSelect, onHashtagSelect, placeholder
 
   const handleHashtagClick = (hashtag) => {
     const recent = JSON.parse(localStorage.getItem("recentHashtags") || "[]");
-    const filtered = recent.filter(ht => ht.name !== hashtag.name);
+    const filtered = recent.filter((ht) => ht.name !== hashtag.name);
     filtered.unshift(hashtag);
     const limited = filtered.slice(0, 10);
     localStorage.setItem("recentHashtags", JSON.stringify(limited));
@@ -128,7 +133,7 @@ export default function SearchPanel({ onUserSelect, onHashtagSelect, placeholder
   };
 
   return (
-    <div ref={wrapperRef} className={`search-panel relative ${overlay ? '' : ''}`}>
+    <div ref={wrapperRef} className={`search-panel relative ${overlay ? "" : ""}`}>
       <div className="search-input-wrapper">
         <input
           type="text"
@@ -136,47 +141,57 @@ export default function SearchPanel({ onUserSelect, onHashtagSelect, placeholder
           value={query}
           onChange={handleChange}
           onFocus={openDropdown}
-          className="search-input"
+          className="search-input focus:ring-primary w-full rounded-lg border border-gray-200 bg-white px-4 py-2 text-gray-900 focus:ring-2 focus:outline-none dark:border-gray-700 dark:bg-zinc-900 dark:text-gray-100"
         />
         {query && (
           <button
-            className="search-clear-btn"
-            onClick={() => { setQuery(""); setResult({ users: [], hashtags: [] }); }}
+            className="search-clear-btn absolute top-2 right-3 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300"
+            onClick={() => {
+              setQuery("");
+              setResult({ users: [], hashtags: [] });
+            }}
             aria-label="Clear"
             type="button"
           >
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <circle cx="9" cy="9" r="9" fill="#e0e0e0"/>
-              <path d="M6 6L12 12M12 6L6 12" stroke="#888" strokeWidth="1.5" strokeLinecap="round"/>
+              <circle cx="9" cy="9" r="9" fill="#e0e0e0" />
+              <path
+                d="M6 6L12 12M12 6L6 12"
+                stroke="#888"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
             </svg>
           </button>
         )}
       </div>
-      <div className="search-divider" />
+      <div className="search-divider my-2 h-px bg-gray-200 dark:bg-zinc-700" />
 
       {/* Dropdown: nếu overlay === true thì absolute overlay, ngược lại render như block bình thường (push layout) */}
-      {showDropdown && (
-        overlay ? (
-          <div
-            className="absolute left-0 right-0 mt-2 bg-white rounded-lg shadow-md z-50"
-          >
+      {showDropdown &&
+        (overlay ? (
+          <div className="absolute right-0 left-0 z-50 mt-2 rounded-lg border border-gray-100 bg-white shadow-md dark:border-zinc-800 dark:bg-zinc-900">
             <div className="p-2">
               {loading && <div className="px-4 py-2 text-sm text-gray-500">Đang tìm...</div>}
 
               {/* Hashtags results */}
               {query.startsWith("#") && result.hashtags?.length > 0 && (
                 <div className="search-hashtag-list">
-                  {result.hashtags.map(ht => (
+                  {result.hashtags.map((ht) => (
                     <div
                       key={ht._id}
-                      className="search-hashtag-row cursor-pointer hover:bg-gray-50 px-4 py-2 rounded"
+                      className="search-hashtag-row cursor-pointer rounded px-4 py-2 hover:bg-gray-100 dark:hover:bg-zinc-800"
                       onClick={() => handleHashtagClick(ht)}
                     >
                       <div className="flex items-center">
-                        <div className="search-hashtag-icon mr-3">#</div>
+                        <div className="search-hashtag-icon text-primary mr-3">#</div>
                         <div className="search-hashtag-info">
-                          <span className="search-hashtag-name">#{ht.name}</span>
-                          <div className="text-sm text-gray-500">{ht.postCount?.toLocaleString() ?? 0} posts</div>
+                          <span className="search-hashtag-name text-gray-900 dark:text-gray-100">
+                            #{ht.name}
+                          </span>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {ht.postCount?.toLocaleString() ?? 0} posts
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -187,16 +202,27 @@ export default function SearchPanel({ onUserSelect, onHashtagSelect, placeholder
               {/* User results */}
               {!query.startsWith("#") && result.users?.length > 0 && (
                 <div className="search-user-result">
-                  {result.users.map(u => (
+                  {result.users.map((u) => (
                     <div
                       key={u.userId}
-                      className="search-user-row cursor-pointer hover:bg-gray-50 px-4 py-2 rounded flex items-center"
+                      className="search-user-row flex cursor-pointer items-center rounded px-4 py-2 hover:bg-gray-100 dark:hover:bg-zinc-800"
                       onClick={() => handleUserClick(u)}
                     >
-                      <img src={u.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.username || u.userId)}&background=random`} alt={u.username} className="search-user-avatar w-8 h-8 rounded-full mr-3" />
+                      <img
+                        src={
+                          u.avatarUrl ||
+                          `https://ui-avatars.com/api/?name=${encodeURIComponent(u.username || u.userId)}&background=random`
+                        }
+                        alt={u.username}
+                        className="search-user-avatar mr-3 h-8 w-8 rounded-full"
+                      />
                       <div className="search-user-info">
-                        <div className="search-user-username">{u.username}</div>
-                        <div className="search-user-meta text-sm text-gray-500">{u.userId}</div>
+                        <div className="search-user-username text-gray-900 dark:text-gray-100">
+                          {u.username}
+                        </div>
+                        <div className="search-user-meta text-sm text-gray-500 dark:text-gray-400">
+                          {u.userId}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -220,64 +246,88 @@ export default function SearchPanel({ onUserSelect, onHashtagSelect, placeholder
                     </button>
                   </div>
                   <div className="px-1">
-                    {recentItems.map(item => (
+                    {recentItems.map((item) =>
                       item.type === "user" ? (
                         <div
                           key={item.userId}
-                          className="search-user-row search-recent-row cursor-pointer hover:bg-gray-50 px-3 py-2 rounded flex items-center"
+                          className="search-user-row search-recent-row flex cursor-pointer items-center rounded px-3 py-2 hover:bg-gray-100 dark:hover:bg-zinc-800"
                           onClick={() => handleUserClick(item)}
                         >
-                          <img src={item.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(item.username || item.userId)}&background=random`} alt={item.username} className="search-user-avatar w-8 h-8 rounded-full mr-3" />
+                          <img
+                            src={
+                              item.avatarUrl ||
+                              `https://ui-avatars.com/api/?name=${encodeURIComponent(item.username || item.userId)}&background=random`
+                            }
+                            alt={item.username}
+                            className="search-user-avatar mr-3 h-8 w-8 rounded-full"
+                          />
                           <div className="search-user-info">
-                            <div className="search-user-username">{item.username}</div>
-                            <div className="search-user-meta text-sm text-gray-500">{ item.userId}</div>
+                            <div className="search-user-username text-gray-900 dark:text-gray-100">
+                              {item.username}
+                            </div>
+                            <div className="search-user-meta text-sm text-gray-500 dark:text-gray-400">
+                              {item.userId}
+                            </div>
                           </div>
                         </div>
                       ) : (
                         <div
                           key={item._id}
-                          className="search-hashtag-row search-recent-row cursor-pointer hover:bg-gray-50 px-3 py-2 rounded flex items-center"
+                          className="search-hashtag-row search-recent-row flex cursor-pointer items-center rounded px-3 py-2 hover:bg-gray-100 dark:hover:bg-zinc-800"
                           onClick={() => handleHashtagClick(item)}
                         >
-                          <div className="search-hashtag-icon mr-3">#</div>
+                          <div className="search-hashtag-icon text-primary mr-3">#</div>
                           <div className="search-hashtag-info">
-                            <div className="search-hashtag-name">#{item.name}</div>
-                            <div className="search-hashtag-count text-sm text-gray-500">{item.postCount?.toLocaleString() ?? 0} posts</div>
+                            <div className="search-hashtag-name text-gray-900 dark:text-gray-100">
+                              #{item.name}
+                            </div>
+                            <div className="search-hashtag-count text-sm text-gray-500 dark:text-gray-400">
+                              {item.postCount?.toLocaleString() ?? 0} posts
+                            </div>
                           </div>
                         </div>
                       )
-                    ))}
+                    )}
                   </div>
                 </div>
               )}
 
               {/* Empty state */}
-              {!loading && query && query.trim().length > 0 && !showRecent && result.users.length === 0 && result.hashtags.length === 0 && (
-                <div className="px-4 py-2 text-sm text-gray-500">Không tìm thấy kết quả</div>
-              )}
+              {!loading &&
+                query &&
+                query.trim().length > 0 &&
+                !showRecent &&
+                result.users.length === 0 &&
+                result.hashtags.length === 0 && (
+                  <div className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">
+                    Không tìm thấy kết quả
+                  </div>
+                )}
             </div>
           </div>
         ) : (
-          <div
-            className="mt-2 bg-white rounded-lg shadow-sm"
-          >
+          <div className="mt-2 rounded-lg border border-gray-100 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <div className="p-2">
               {loading && <div className="px-4 py-2 text-sm text-gray-500">Đang tìm...</div>}
 
               {/* Hashtags results */}
               {query.startsWith("#") && result.hashtags?.length > 0 && (
                 <div className="search-hashtag-list">
-                  {result.hashtags.map(ht => (
+                  {result.hashtags.map((ht) => (
                     <div
                       key={ht._id}
-                      className="search-hashtag-row cursor-pointer hover:bg-gray-50 px-4 py-2 rounded"
+                      className="search-hashtag-row cursor-pointer rounded px-4 py-2 hover:bg-gray-100 dark:hover:bg-zinc-800"
                       onClick={() => handleHashtagClick(ht)}
                     >
                       <div className="flex items-center">
-                        <div className="search-hashtag-icon mr-3">#</div>
+                        <div className="search-hashtag-icon text-primary mr-3">#</div>
                         <div className="search-hashtag-info">
-                          <span className="search-hashtag-name">#{ht.name}</span>
-                          <div className="text-sm text-gray-500">{ht.postCount?.toLocaleString() ?? 0} posts</div>
+                          <span className="search-hashtag-name text-gray-900 dark:text-gray-100">
+                            #{ht.name}
+                          </span>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {ht.postCount?.toLocaleString() ?? 0} posts
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -288,16 +338,27 @@ export default function SearchPanel({ onUserSelect, onHashtagSelect, placeholder
               {/* User results */}
               {!query.startsWith("#") && result.users?.length > 0 && (
                 <div className="search-user-result">
-                  {result.users.map(u => (
+                  {result.users.map((u) => (
                     <div
                       key={u.userId}
-                      className="search-user-row cursor-pointer hover:bg-gray-50 px-4 py-2 rounded flex items-center"
+                      className="search-user-row flex cursor-pointer items-center rounded px-4 py-2 hover:bg-gray-100 dark:hover:bg-zinc-800"
                       onClick={() => handleUserClick(u)}
                     >
-                      <img src={u.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.username || u.userId)}&background=random`} alt={u.username} className="search-user-avatar w-8 h-8 rounded-full mr-3" />
+                      <img
+                        src={
+                          u.avatarUrl ||
+                          `https://ui-avatars.com/api/?name=${encodeURIComponent(u.username || u.userId)}&background=random`
+                        }
+                        alt={u.username}
+                        className="search-user-avatar mr-3 h-8 w-8 rounded-full"
+                      />
                       <div className="search-user-info">
-                        <div className="search-user-username">{u.username}</div>
-                        <div className="search-user-meta text-sm text-gray-500">{u.userId}</div>
+                        <div className="search-user-username text-gray-900 dark:text-gray-100">
+                          {u.username}
+                        </div>
+                        <div className="search-user-meta text-sm text-gray-500 dark:text-gray-400">
+                          {u.userId}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -321,45 +382,66 @@ export default function SearchPanel({ onUserSelect, onHashtagSelect, placeholder
                     </button>
                   </div>
                   <div className="px-1">
-                    {recentItems.map(item => (
+                    {recentItems.map((item) =>
                       item.type === "user" ? (
                         <div
                           key={item.userId}
-                          className="search-user-row search-recent-row cursor-pointer hover:bg-gray-50 px-3 py-2 rounded flex items-center"
+                          className="search-user-row search-recent-row flex cursor-pointer items-center rounded px-3 py-2 hover:bg-gray-100 dark:hover:bg-zinc-800"
                           onClick={() => handleUserClick(item)}
                         >
-                          <img src={item.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(item.username || item.userId)}&background=random`} alt={item.username} className="search-user-avatar w-8 h-8 rounded-full mr-3" />
+                          <img
+                            src={
+                              item.avatarUrl ||
+                              `https://ui-avatars.com/api/?name=${encodeURIComponent(item.username || item.userId)}&background=random`
+                            }
+                            alt={item.username}
+                            className="search-user-avatar mr-3 h-8 w-8 rounded-full"
+                          />
                           <div className="search-user-info">
-                            <div className="search-user-username">{item.username}</div>
-                            <div className="search-user-meta text-sm text-gray-500">{ item.userId}</div>
+                            <div className="search-user-username text-gray-900 dark:text-gray-100">
+                              {item.username}
+                            </div>
+                            <div className="search-user-meta text-sm text-gray-500 dark:text-gray-400">
+                              {item.userId}
+                            </div>
                           </div>
                         </div>
                       ) : (
                         <div
                           key={item._id}
-                          className="search-hashtag-row search-recent-row cursor-pointer hover:bg-gray-50 px-3 py-2 rounded flex items-center"
+                          className="search-hashtag-row search-recent-row flex cursor-pointer items-center rounded px-3 py-2 hover:bg-gray-100 dark:hover:bg-zinc-800"
                           onClick={() => handleHashtagClick(item)}
                         >
-                          <div className="search-hashtag-icon mr-3">#</div>
+                          <div className="search-hashtag-icon text-primary mr-3">#</div>
                           <div className="search-hashtag-info">
-                            <div className="search-hashtag-name">#{item.name}</div>
-                            <div className="search-hashtag-count text-sm text-gray-500">{item.postCount?.toLocaleString() ?? 0} posts</div>
+                            <div className="search-hashtag-name text-gray-900 dark:text-gray-100">
+                              #{item.name}
+                            </div>
+                            <div className="search-hashtag-count text-sm text-gray-500 dark:text-gray-400">
+                              {item.postCount?.toLocaleString() ?? 0} posts
+                            </div>
                           </div>
                         </div>
                       )
-                    ))}
+                    )}
                   </div>
                 </div>
               )}
 
               {/* Empty state */}
-              {!loading && query && query.trim().length > 0 && !showRecent && result.users.length === 0 && result.hashtags.length === 0 && (
-                <div className="px-4 py-2 text-sm text-gray-500">Không tìm thấy kết quả</div>
-              )}
+              {!loading &&
+                query &&
+                query.trim().length > 0 &&
+                !showRecent &&
+                result.users.length === 0 &&
+                result.hashtags.length === 0 && (
+                  <div className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">
+                    Không tìm thấy kết quả
+                  </div>
+                )}
             </div>
           </div>
-        )
-      )}
+        ))}
     </div>
   );
 }
