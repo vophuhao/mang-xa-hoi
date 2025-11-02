@@ -163,39 +163,47 @@ export const loginWithGoogle = async ({
 }) => {
   let user = await UserModel.findOne({ email });
   const userId = generateUserId(username);
+
   if (!user) {
-    // ✅ Chưa có tài khoản nào → tạo mới bằng Google
+    // ✅ User mới → lấy avatar từ Google
     user = await UserModel.create({
       email,
       userId,
-      username, // Thêm username vào đây
+      username,
       provider: "google",
       verified: true,
-      avatarUrl,
-      googleId, // Lưu Google ID để tracking
+      avatarUrl, // dùng avatar từ Google
+      googleId,
     });
   } else {
-    // ✅ Đã có tài khoản, kiểm tra provider
+    // ✅ User đã tồn tại
     if (user.provider === "local") {
-      // 👉 Cho phép login bằng Google nếu email khớp
-      // 👉 Liên kết Google với tài khoản hiện có
       user.provider = "google+local";
-      user.googleId = googleId; // Lưu Google ID
+      user.googleId = googleId;
+
+      // ✅ Chỉ update avatar nếu user chưa có avatar
+      if (!user.avatarUrl && avatarUrl) {
+        user.avatarUrl = avatarUrl;
+      }
+
       await user.save();
     } else if (user.provider === "google" || user.provider === "google+local") {
-      // Cập nhật thông tin nếu có thay đổi
-    
+      // ✅ Đồng bộ hóa các giá trị khác
+
       if (user.googleId !== googleId) {
         user.googleId = googleId;
       }
-      // Cập nhật username nếu user chưa có hoặc muốn sync với Google
+
       if (!user.username || user.username === "Google User") {
         user.username = username;
       }
-      // Chỉ save nếu có thay đổi
-      if (user.isModified()) {
-        await user.save();
+
+      // ✅ ❗ NGĂN avatar bị ghi đè mỗi lần login
+      if (!user.avatarUrl && avatarUrl) {
+        user.avatarUrl = avatarUrl; // chỉ gán khi avatar trống và avatarUrl có giá trị
       }
+
+      await user.save();
     }
   }
 
@@ -220,6 +228,7 @@ export const loginWithGoogle = async ({
     refreshToken,
   };
 };
+
 
 export const verifyEmail = async (code: string) => {
   const validCode = await VerificationCodeModel.findOne({
