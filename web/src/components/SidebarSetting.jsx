@@ -20,29 +20,29 @@ const settingsSidebar = [
     group: "Cách bạn sử dụng Instagram",
     items: [
       { label: "Chỉnh sửa trang cá nhân", key: "edit", icon: <User size={20} /> },
-      { label: "Thông báo", key: "notifications", icon: <Bell size={20} /> },
+      //{ label: "Thông báo", key: "notifications", icon: <Bell size={20} /> },
     ],
   },
-  {
-    group: "Ai có thể xem nội dung của bạn",
-    items: [
-      { label: "Quyền riêng tư tài khoản", key: "privacy", icon: <Shield size={20} /> },
-      { label: "Bạn thân", key: "closefriends", icon: <Star size={20} /> },
-      { label: "Đã chặn", key: "blocked", icon: <Ban size={20} /> },
-      { label: "Ẩn tin", key: "hidestory", icon: <EyeOff size={20} /> },
-    ],
-  },
-  {
-    group: "Cách người khác tương tác với bạn",
-    items: [
-      { label: "Tin nhắn và trả lời tin", key: "messages", icon: <MessageCircle size={20} /> },
-      { label: "Thẻ và nhắc đến", key: "tags", icon: <AtSign size={20} /> },
-      { label: "Bình luận", key: "comments", icon: <MessageSquare size={20} /> },
-      { label: "Chia sẻ và sử dụng lại", key: "sharing", icon: <Repeat2 size={20} /> },
-      { label: "Tài khoản bị hạn chế", key: "restricted", icon: <UserX size={20} /> },
-      { label: "Từ ẩn", key: "hiddenwords", icon: <Type size={20} /> },
-    ],
-  },
+  // {
+  //   group: "Ai có thể xem nội dung của bạn",
+  //   items: [
+  //     { label: "Quyền riêng tư tài khoản", key: "privacy", icon: <Shield size={20} /> },
+  //     { label: "Bạn thân", key: "closefriends", icon: <Star size={20} /> },
+  //     { label: "Đã chặn", key: "blocked", icon: <Ban size={20} /> },
+  //     { label: "Ẩn tin", key: "hidestory", icon: <EyeOff size={20} /> },
+  //   ],
+  // },
+  // {
+  //   group: "Cách người khác tương tác với bạn",
+  //   items: [
+  //     { label: "Tin nhắn và trả lời tin", key: "messages", icon: <MessageCircle size={20} /> },
+  //     { label: "Thẻ và nhắc đến", key: "tags", icon: <AtSign size={20} /> },
+  //     { label: "Bình luận", key: "comments", icon: <MessageSquare size={20} /> },
+  //     { label: "Chia sẻ và sử dụng lại", key: "sharing", icon: <Repeat2 size={20} /> },
+  //     { label: "Tài khoản bị hạn chế", key: "restricted", icon: <UserX size={20} /> },
+  //     { label: "Từ ẩn", key: "hiddenwords", icon: <Type size={20} /> },
+  //   ],
+  // },
 ];
 
 export default function SidebarSetting({ activeSetting, setActiveSetting }) {

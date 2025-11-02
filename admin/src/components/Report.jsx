@@ -150,11 +150,12 @@ export default function Report() {
   }, [activeType, activeStatus, page]);
 
   const handleClick = async (targetId, key) => {
+    const id = typeof targetId === "object" && targetId !== null ? targetId._id : targetId;
     try {
       if (activeType === "post") {
-        await resolveReport(targetId, key, adminNote);
+        await resolveReport(id, key, adminNote);
       } else if (activeType === "user") {
-        await resolveReportUser(targetId, key, adminNote);
+        await resolveReportUser(id, key, adminNote);
       }
       toast.success("Xử lý báo cáo thành công");
       setSelected(null);
@@ -470,8 +471,18 @@ export default function Report() {
                   </div>
                   <div className="col-span-2">
                     <p className="text-gray-500">ID mục tiêu</p>
-                    <p className="mt-1 truncate" title={selected.targetId}>
-                      {String(selected.targetId)}
+                    <p className="mt-1 truncate" title={
+                      selected?.targetType === "user"
+                        ? selected?.targetId?.userId || selected?.targetId?._id
+                        : selected?.targetType === "post"
+                        ? selected?.targetId?._id
+                        : ""
+                    }>
+                      {selected?.targetType === "user"
+                        ? selected?.targetId?.userId || selected?.targetId?._id
+                        : selected?.targetType === "post"
+                        ? selected?.targetId?._id
+                        : ""}
                     </p>
                   </div>
                 </div>
@@ -489,9 +500,41 @@ export default function Report() {
                     className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white"
                     onClick={() => handleClick(selected.targetId, "block")}
                   >
-                    Khoá
+                    Duyệt
                   </button>
                 </div>
+              )}
+
+              {selected?.targetType === "post" && (
+                <a
+                  href={
+                    selected?.targetId?.user?.userId
+                      ? `http://localhost:5173/${selected.targetId.user.userId}/p/${selected.targetId._id}`
+                      : selected?.targetId?.userId
+                      ? `http://localhost:5173/${selected.targetId.userId}/p/${selected.targetId._id}`
+                      : `http://localhost:5173/p/${selected.targetId?._id || selected.targetId}`
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  Xem bài viết bị báo cáo
+                </a>
+              )}
+
+              {selected?.targetType === "user" && (
+                <a
+                  href={
+                    selected?.targetId?.userId
+                      ? `http://localhost:5173/${selected.targetId.userId}`
+                      : `http://localhost:5173/${selected.targetId}`
+                  }                  
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  Xem trang cá nhân người bị báo cáo
+                </a>
               )}
             </motion.div>
           </motion.div>

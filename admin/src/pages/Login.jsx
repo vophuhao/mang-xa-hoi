@@ -56,7 +56,15 @@ const Login = () => {
             </div>
 
             {/* Error Message */}
-            {error && <ErrorAlertWithAutoClose message={error} />}
+            {error && (
+              <ErrorAlertWithAutoClose
+                message={
+                  typeof error === "string"
+                    ? error
+                    : error?.message || JSON.stringify(error) || "Đăng nhập thất bại."
+                }
+              />
+            )}
 
             {/* Form */}
             <div className="space-y-6">

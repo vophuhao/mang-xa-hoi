@@ -66,10 +66,23 @@ class ReportService {
     if (type) query.targetType = type;
     if (status) query.status = status;
 
+    let populateTarget;
+    if (type === "user") {
+      populateTarget = { path: "targetId", model: "User", select: "userId username _id" };
+    } else if (type === "post") {
+      populateTarget = {
+        path: "targetId",
+        model: "Post",
+        select: "user _id",
+        populate: { path: "user", select: "userId" }, // Lấy userId của chủ post
+      };
+    }
+
     const [reports, total] = await Promise.all([
       ReportModel.find(query)
-        .populate("reporter", "username userId avatarUrl userId")
+        .populate("reporter", "username userId avatarUrl")
         .populate("resolvedBy", "username userId")
+        .populate(populateTarget)
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
@@ -218,13 +231,23 @@ class ReportService {
    * Lấy chi tiết báo cáo
    */
   async getReportDetail(reportId: string | mongoose.Types.ObjectId) {
-    const report = await ReportModel.findById(reportId)
-      .populate("reporter", "username userId avatarUrl")
-      .populate("resolvedBy", "username userId");
+  const report = await ReportModel.findById(reportId)
+    .populate("reporter", "username userId avatarUrl")
+    .populate("resolvedBy", "username userId")
+    .populate({
+      path: "targetId",
+      model: function (doc) {
+        return doc.targetType === "user" ? "User" : "Post";
+      },
+      select: "userId username _id",
+      populate: doc => doc.targetType === "post"
+        ? { path: "user", select: "userId" }
+        : undefined,
+    });
 
-    if (!report) throw ErrorFactory.resourceNotFound("Report");
-    return report;
-  }
+  if (!report) throw ErrorFactory.resourceNotFound("Report");
+  return report;
+}
 }
 
 export default new ReportService();

@@ -54,11 +54,6 @@ export default function Sidebar({ activeMenu, isCollapsed, onMenuClick }) {
     },
   });
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["pendingReports"],
-    queryFn: () => getReports({ status: "pending", limit: 1 }),
-  });
-
   const handleThemeToggle = () => {
     const nextTheme =
       theme === "light" ? "dark" : theme === "dark" ? "system" : "light";

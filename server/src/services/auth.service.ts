@@ -23,6 +23,7 @@ import {
 import { getPasswordResetTemplate, getVerifyEmailTemplate } from "@/utils/emailTemplates";
 import { RefreshTokenPayload, refreshTokenSignOptions, signToken, verifyToken } from "@/utils/jwt";
 import { sendMail } from "@/utils/sendMail";
+import AppError from "@/utils/AppError";
 
 type CreateAccountParams = {
   email: string;
@@ -113,6 +114,17 @@ export const loginUser = async ({ email, password, userAgent }: LoginParams) => 
     "Please verify your email before logging in",
     AppErrorCode.EMAIL_NOT_VERIFIED
   );
+
+  // Kiểm tra khóa tạm thời
+  if (user.isBanned && user.banUntil && user.banUntil > new Date()) {
+    throw AppError.forbidden("Tài khoản của bạn đang bị khóa tạm thời. Vui lòng thử lại sau.");
+  }
+  // Nếu hết hạn ban, tự động mở khóa
+  if (user.isBanned && user.banUntil && user.banUntil <= new Date()) {
+    user.isBanned = false;
+    user.banUntil = null;
+    await user.save();
+  }
 
   const userId = user._id;
   const session = await SessionModel.create({
