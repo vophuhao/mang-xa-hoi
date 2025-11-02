@@ -26,6 +26,9 @@ export const getUserByUsername = async (username) => API.get(`/users/${username}
 // Get user's posts
 export const getUserPosts = async (username, page = 1, limit = 12) =>
   API.get(`/users/${username}/posts?page=${page}&limit=${limit}`);
+// Get user's tagged posts
+export const getUserTaggedPosts = async (username, page = 1, limit = 12) =>
+  API.get(`/users/${username}/tagged?page=${page}&limit=${limit}`);
 // Get user's followers
 export const getFollowers = async (username, page = 1, limit = 20) =>
   API.get(`/users/${username}/followers?page=${page}&limit=${limit}`);
@@ -263,4 +266,5 @@ export const deleteNotification = async (notificationId) =>
 export const saveCallHistory = async (data) => API.post("/messages/call-history", data);
 
 // Update call status
-export const updateCallStatus = async (roomId, data) => API.put(`/messages/call/${roomId}/status`, data);
+export const updateCallStatus = async (roomId, data) =>
+  API.put(`/messages/call/${roomId}/status`, data);

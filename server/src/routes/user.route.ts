@@ -7,6 +7,7 @@ import {
   getUserByIdHandler,
   getUserHandler,
   getUserPostsHandler,
+  getUserTaggedPostsHandler,
   searchUsersHandler,
   unfollowUserHandler,
   updateProfileHandler,
@@ -36,6 +37,9 @@ userRoutes.get("/:userId", getUserByIdHandler);
 
 // Get user's posts
 userRoutes.get("/:userId/posts", getUserPostsHandler);
+
+// Get user's tagged posts
+userRoutes.get("/:userId/tagged", getUserTaggedPostsHandler);
 
 // Get user's followers
 userRoutes.get("/:userId/followers", getFollowersHandler);

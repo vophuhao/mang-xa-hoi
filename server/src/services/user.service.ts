@@ -394,7 +394,9 @@ export class UserService {
         user: user._id,
         isHidden: false,
       })
-        .select("_id caption mediaUrls mediaType likeCount commentCount createdAt location likesHidden commentsDisabled commentCount")
+        .select(
+          "_id caption mediaUrls mediaType likeCount commentCount createdAt location likesHidden commentsDisabled commentCount"
+        )
         .populate("user", "username userId avatarUrl isVerified")
         .populate("comments")
         .sort({ createdAt: -1 })
@@ -480,7 +482,7 @@ export class UserService {
   static async getAllUser() {
     const users = await UserModel.find().select("-password");
     return users;
-  } 
+  }
 
   /**
    * Dashboard overview stats (total counts, new users, total posts, top users)
@@ -506,8 +508,12 @@ export class UserService {
         UserModel.countDocuments(),
         PostModel.countDocuments(),
         UserModel.countDocuments({ createdAt: { $gte: startToday } }),
-        UserModel.countDocuments({ createdAt: { $gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) } }),
-        UserModel.countDocuments({ createdAt: { $gte: new Date(now.getFullYear(), now.getMonth(), 1) } }),
+        UserModel.countDocuments({
+          createdAt: { $gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) },
+        }),
+        UserModel.countDocuments({
+          createdAt: { $gte: new Date(now.getFullYear(), now.getMonth(), 1) },
+        }),
         PostModel.distinct("user", { createdAt: { $gte: startPeriod } }),
         // top users by followersCount
         UserModel.find()
@@ -516,7 +522,9 @@ export class UserService {
           .limit(topLimit),
       ]);
 
-      const activeUsersCount = Array.isArray(activeUsersInPeriodIds) ? activeUsersInPeriodIds.length : 0;
+      const activeUsersCount = Array.isArray(activeUsersInPeriodIds)
+        ? activeUsersInPeriodIds.length
+        : 0;
 
       return {
         totalUsers,
@@ -541,7 +549,6 @@ export class UserService {
     }
   }
 
-  
   static async getActiveUsersCount(days = 30) {
     try {
       const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
@@ -553,6 +560,76 @@ export class UserService {
     }
   }
 
+  /**
+   * Get posts where user is tagged/mentioned
+   */
+  static async getUserTaggedPosts(
+    userId: string,
+    page: number = 1,
+    limit: number = 12,
+    currentUserId?: string
+  ) {
+    const user = await UserModel.findOne({ userId });
+    if (!user) {
+      throw ErrorFactory.resourceNotFound("User");
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [posts, total] = await Promise.all([
+      PostModel.find({
+        mentions: user._id,
+        isHidden: false,
+      })
+        .select(
+          "_id caption mediaUrls mediaType likeCount commentCount createdAt location likesHidden commentsDisabled commentCount"
+        )
+        .populate("user", "username userId avatarUrl isVerified")
+        .populate("comments")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      PostModel.countDocuments({
+        mentions: user._id,
+        isHidden: false,
+      }),
+    ]);
+
+    // If currentUserId is provided, check isLiked and isSaved for each post
+    let postsWithStatus: any = posts;
+    if (currentUserId) {
+      const postIds = posts.map(post => post._id);
+      const [userLikes, userSaves] = await Promise.all([
+        LikeModel.find({ user: currentUserId, post: { $in: postIds } }).select("post"),
+        SavedPostModel.find({ user: currentUserId, post: { $in: postIds } }).select("post"),
+      ]);
+
+      const likedPostIds = new Set(
+        userLikes.map(like => (like.post as any)?.toString()).filter(Boolean)
+      );
+      const savedPostIds = new Set(
+        userSaves.map(save => (save.post as any)?.toString()).filter(Boolean)
+      );
+
+      postsWithStatus = posts.map(post => ({
+        ...post.toObject(),
+        isLiked: likedPostIds.has((post._id as any).toString()),
+        isSaved: savedPostIds.has((post._id as any).toString()),
+      }));
+    }
+
+    return {
+      data: postsWithStatus,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page < Math.ceil(total / limit),
+        hasPrev: page > 1,
+      },
+    };
+  }
 }
 
 export default UserService;
