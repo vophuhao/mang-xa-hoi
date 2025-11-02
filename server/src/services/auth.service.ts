@@ -180,16 +180,11 @@ export const loginWithGoogle = async ({
       // 👉 Cho phép login bằng Google nếu email khớp
       // 👉 Liên kết Google với tài khoản hiện có
       user.provider = "google+local";
-      if (avatarUrl) {
-        user.avatarUrl = avatarUrl;
-      }
       user.googleId = googleId; // Lưu Google ID
       await user.save();
     } else if (user.provider === "google" || user.provider === "google+local") {
       // Cập nhật thông tin nếu có thay đổi
-      if (avatarUrl && user.avatarUrl !== avatarUrl) {
-        user.avatarUrl = avatarUrl;
-      }
+    
       if (user.googleId !== googleId) {
         user.googleId = googleId;
       }
@@ -197,7 +192,6 @@ export const loginWithGoogle = async ({
       if (!user.username || user.username === "Google User") {
         user.username = username;
       }
-
       // Chỉ save nếu có thay đổi
       if (user.isModified()) {
         await user.save();

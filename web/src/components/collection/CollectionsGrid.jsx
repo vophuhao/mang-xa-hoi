@@ -113,7 +113,7 @@ const CollectionsGrid = ({ onCollectionClick }) => {
             {/* ✅ Ảnh đại diện album */}
             {audios.length > 0 && (audios[0].cover || audios[0].fileUrl) ? (
               <img
-                src={audios[0].cover || audios[0].fileUrl}
+                src={ audios[0].cover || audios[0].user.avatarUrl }
                 alt={audios[0].title}
                 className="h-full w-full object-cover"
               />
