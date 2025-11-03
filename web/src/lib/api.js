@@ -44,6 +44,8 @@ export const searchUsers = async (query, page = 1, limit = 20) => {
 };
 // Get user profile by userId
 export const getUserByUserId = async (userId) => API.get(`/users/userid/${userId}`);
+// Get user's last online status
+export const getUserLastOnline = async (userId) => API.get(`/users/${userId}/last-online`);
 
 // =============== SESSION API ===============
 export const getSessions = async () => API.get("/sessions");

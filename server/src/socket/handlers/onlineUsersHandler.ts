@@ -1,10 +1,10 @@
 import { Server, Socket } from "socket.io";
+import UserModel from "@/models/user.model";
 
 export class OnlineUsersHandler {
   private io: Server;
-  // ✅ SỬA: Track multiple connections per user
-  private userConnections = new Map<string, Set<string>>(); // userId -> Set of socketIds
-  private socketToUser = new Map<string, string>(); // socketId -> userId
+  private userConnections = new Map<string, Set<string>>(); 
+  private socketToUser = new Map<string, string>(); 
 
   constructor(io: Server) {
     this.io = io;
@@ -26,6 +26,7 @@ export class OnlineUsersHandler {
     console.log(`[ONLINE] User ${userId} connected (socket: ${socket.id}). Connections: ${connectionCount}`);
     
     if (connectionCount === 1) {
+      this.clearLastOnline(userId);
       console.log(`[ONLINE] User ${userId} is now online (first connection). Total users: ${this.userConnections.size}`);
       socket.broadcast.emit("user_online", userId);
     } else {
@@ -37,13 +38,11 @@ export class OnlineUsersHandler {
     const userId = this.socketToUser.get(socket.id);
     if (!userId) return;
 
-    // Remove socket tracking
     this.socketToUser.delete(socket.id);
 
     const userSockets = this.userConnections.get(userId);
     if (!userSockets) return;
 
-    // Remove this specific socket from user's connections
     userSockets.delete(socket.id);
     const remainingConnections = userSockets.size;
 
@@ -51,10 +50,33 @@ export class OnlineUsersHandler {
 
     if (remainingConnections === 0) {
       this.userConnections.delete(userId);
+      this.setLastOnline(userId);
       console.log(`[OFFLINE] User ${userId} is now offline (no active connections). Total users: ${this.userConnections.size}`);
       socket.broadcast.emit("user_offline", userId);
     } else {
       console.log(`[OFFLINE] User ${userId} still has ${remainingConnections} active connections`);
+    }
+  }
+
+  private async setLastOnline(userId: string) {
+    try {
+      await UserModel.findByIdAndUpdate(userId, {
+        lastOnline: new Date()
+      });
+      console.log(`[LAST_ONLINE] Set lastOnline for user ${userId}`);
+    } catch (error) {
+      console.error(`[LAST_ONLINE] Failed to set lastOnline for user ${userId}:`, error);
+    }
+  }
+
+  private async clearLastOnline(userId: string) {
+    try {
+      await UserModel.findByIdAndUpdate(userId, {
+        lastOnline: null
+      });
+      console.log(`[LAST_ONLINE] Cleared lastOnline for user ${userId}`);
+    } catch (error) {
+      console.error(`[LAST_ONLINE] Failed to clear lastOnline for user ${userId}:`, error);
     }
   }
 

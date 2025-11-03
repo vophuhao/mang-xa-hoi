@@ -177,3 +177,15 @@ export const getUserTaggedPostsHandler = catchErrors(
     return ResponseUtil.paginated(res, result.data, result.pagination);
   }
 );
+
+/**
+ * Get user's last online status
+ * @route GET /users/:userId/last-online
+ */
+export const getUserLastOnlineHandler = catchErrors(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const { userId } = getUserByUserIdSchema.parse(req.params);
+    const lastOnline = await UserService.getUserLastOnline(userId);
+    return ResponseUtil.success(res, { lastOnline });
+  }
+);

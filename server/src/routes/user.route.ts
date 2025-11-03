@@ -11,6 +11,7 @@ import {
   searchUsersHandler,
   unfollowUserHandler,
   updateProfileHandler,
+  getUserLastOnlineHandler,
 } from "@/controllers/user.controller";
 import authenticate from "@/middleware/authenticate";
 import { Router } from "express";
@@ -51,6 +52,9 @@ userRoutes.get("/:userId/following", getFollowingHandler);
 userRoutes.post("/:userId/follow", followUserHandler);
 userRoutes.delete("/:userId/follow", unfollowUserHandler);
 userRoutes.get("/userid/:userId", getUserByIdHandler);
+
+// Get user's last online status
+userRoutes.get("/:userId/last-online", getUserLastOnlineHandler);
 
 userRoutes.get("/all/users", getAllUser);
 
