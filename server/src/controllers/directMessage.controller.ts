@@ -225,3 +225,22 @@ export const updateCallStatusHandler = catchErrors(async (req: AuthenticatedRequ
 
   return ResponseUtil.success(res, callMessage, "Call status updated successfully");
 });
+
+/**
+ * Delete conversation
+ * @route DELETE /messages/conversation/:partnerId
+ */
+export const deleteConversationHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const { partnerId } = req.params;
+
+  if (!partnerId) {
+    throw new Error("Partner ID is required");
+  }
+
+  const result = await DirectMessageService.deleteConversation(
+    (req.userId as any).toString(),
+    partnerId
+  );
+
+  return ResponseUtil.success(res, result, "Conversation deleted successfully");
+});

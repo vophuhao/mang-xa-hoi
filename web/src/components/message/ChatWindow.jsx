@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { useQueries } from "@tanstack/react-query";
+import { MoreHorizontal, Trash2 } from 'lucide-react';
 
 import OnlineStatusIndicator from "@/components/common/OnlineStatusIndicator";
 import useAuth from "@/hooks/useAuth";
@@ -17,6 +18,7 @@ export default function ChatWindow({
   isOwnMessage,
   handleMarkAsRead,
   handleReaction,
+  handleDeleteMessage,
   selectedImages,
   handleRemoveImage,
   imageInputRef,
@@ -60,6 +62,25 @@ export default function ChatWindow({
     })),
   });
 
+  const [messageContextMenu, setMessageContextMenu] = useState(null);
+
+  const handleDelete = async (messageId) => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa tin nhắn này?')) {
+      try {
+        const result = await handleDeleteMessage(messageId);
+        if (result && result.success) {
+          console.log('Message deleted successfully');
+        } else {
+          alert('Không thể xóa tin nhắn: ' + (result?.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Delete message error:', error);
+        alert('Không thể xóa tin nhắn: ' + error.message);
+      }
+    }
+    setMessageContextMenu(null);
+  };
+
   const postMap = useMemo(() => {
     const map = {};
     postQueries.forEach((q, idx) => {
@@ -76,12 +97,10 @@ export default function ChatWindow({
   const { emit } = useSocket();
   const [bubbleMaxWidth, setBubbleMaxWidth] = useState("40%");
 
-  // ✅ THÊM: Scroll detection refs
   const scrollPositionRef = useRef(0);
   const isLoadingRef = useRef(false);
   const loadTriggerRef = useRef(null);
 
-  // ✅ THÊM: Intersection Observer để detect scroll to top
   useEffect(() => {
     if (!messagesContainerRef?.current || !hasNextPage || isLoadingMore) return;
 
@@ -93,10 +112,8 @@ export default function ChatWindow({
           console.log("[SCROLL] Loading more messages...");
           isLoadingRef.current = true;
 
-          // Lưu scroll position trước khi load
           scrollPositionRef.current = container.scrollHeight - container.scrollTop;
 
-          // Load more messages
           if (loadMoreMessages) {
             loadMoreMessages().finally(() => {
               isLoadingRef.current = false;
@@ -120,14 +137,12 @@ export default function ChatWindow({
     };
   }, [hasNextPage, isLoadingMore, loadMoreMessages, messagesContainerRef]);
 
-  // ✅ THÊM: Maintain scroll position sau khi load more
   useEffect(() => {
     if (!messagesContainerRef?.current || !scrollPositionRef.current) return;
 
     const container = messagesContainerRef.current;
     const newScrollTop = container.scrollHeight - scrollPositionRef.current;
 
-    // Restore scroll position
     container.scrollTop = newScrollTop;
     scrollPositionRef.current = 0;
   }, [groupedMessages.length]);
@@ -177,13 +192,10 @@ export default function ChatWindow({
     }
   };
 
-  // ✅ SỬA: startCall với kiểm tra online status
   const startCall = async () => {
     if (!selectedChat?.partner?._id) return;
 
-    // ✅ THÊM: Kiểm tra online status trước khi gọi
     if (!isPartnerOnline) {
-      // Có thể thêm toast notification nếu cần
       console.log("[CALL] Cannot call - user is offline");
       return;
     }
@@ -196,7 +208,6 @@ export default function ChatWindow({
     try {
       console.log("[CALL] Starting call with roomId:", roomId);
 
-      // ✅ CHỈ tạo call history với status "outgoing"
       await saveCallHistory({
         recipientId: partnerId,
         status: "outgoing",
@@ -209,7 +220,6 @@ export default function ChatWindow({
       console.error("[CALL] Failed to create call history:", error);
     }
 
-    // Emit call request
     emit("call_request", {
       toUserId: partnerId,
       fromUserId: userId,
@@ -217,12 +227,10 @@ export default function ChatWindow({
       roomId,
     });
 
-    // Mở call page
     const url = `/call?roomId=${encodeURIComponent(roomId)}&role=caller&to=${encodeURIComponent(partnerId)}`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
-  // ✅ THÊM: Hook để check online status
   const { isUserOnline } = useOnlineUsers();
 
   if (!selectedChat) {
@@ -239,7 +247,6 @@ export default function ChatWindow({
     );
   }
 
-  // ✅ THÊM: Check online status của partner
   const isPartnerOnline = isUserOnline(selectedChat.partner?._id);
 
   return (
@@ -259,7 +266,6 @@ export default function ChatWindow({
                 className="h-10 w-10 rounded-full object-cover"
               />
             </a>
-            {/* ✅ THÊM: Online Status Indicator */}
             <OnlineStatusIndicator
               isOnline={isPartnerOnline}
               size="sm"
@@ -275,7 +281,6 @@ export default function ChatWindow({
                   <span className="ml-1 text-blue-500 dark:text-blue-400">✓</span>
                 )}
               </h3>
-              {/* ✅ THÊM: Online status text */}
               {isPartnerOnline && (
                 <span className="hidden text-xs font-medium text-green-600 md:inline dark:text-green-400">
                   • Online
@@ -297,7 +302,7 @@ export default function ChatWindow({
             type="button"
             title={isPartnerOnline ? "Gọi" : "Người dùng không trực tuyến"}
             onClick={startCall}
-            disabled={!isPartnerOnline} // ✅ THÊM: Disable khi offline
+            disabled={!isPartnerOnline}
             className={`rounded-full p-2 text-lg transition-colors ${
               isPartnerOnline
                 ? "cursor-pointer bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
@@ -309,13 +314,12 @@ export default function ChatWindow({
         </div>
       </div>
 
-      {/* Messages Area - giữ nguyên existing code */}
+      {/* Messages Area*/}
       <div
         ref={messagesContainerRef}
         className="flex-1 space-y-3 overflow-y-auto bg-white p-3 md:p-4 dark:bg-gray-900"
       >
         <div>
-          {/* ✅ THÊM: Load more trigger và loading indicator */}
           {hasNextPage && (
             <div ref={loadTriggerRef} className="flex justify-center py-4">
               {isLoadingMore ? (
@@ -360,7 +364,7 @@ export default function ChatWindow({
             </div>
           )}
 
-          {/* ✅ Messages rendering - giữ nguyên code cũ */}
+          {/* ✅ Messages rendering với dropdown menu */}
           {groupedMessages.map((item, idx) => {
             if (item.type === "date") {
               return (
@@ -390,299 +394,267 @@ export default function ChatWindow({
                   />
                 )}
 
-                <div className={`group relative mt-2 mb-2 rounded-full px-0 py-0`}>
-                  {/* ✅ SỬA: Render cuộc gọi theo status mới */}
-                  {message.messageType === "call" && message.callData ? (
-                    <div className={`flex w-full ${isOwn ? "justify-end" : "justify-start"}`}>
-                      <div
-                        className={`max-w-xs cursor-pointer rounded-xl px-3 py-2 leading-5 break-words md:px-4 md:py-3 ${
-                          isOwn
-                            ? "bg-blue-500 text-white dark:bg-blue-600"
-                            : "border border-gray-200 bg-[#EFEFEF] text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                        }`}
-                        onClick={() => {
-                          try {
-                            if (
-                              !isOwn &&
-                              !message.isRead &&
-                              typeof handleMarkAsRead === "function"
-                            ) {
-                              handleMarkAsRead(message._id);
-                            }
-                          } catch (err) {
-                            console.error(err);
-                          }
+                <div className="group relative mt-2 mb-2 flex items-start">
+                  
+                  {isOwn && (
+                    <div className="relative mr-2 flex items-center">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMessageContextMenu(messageContextMenu === message._id ? null : message._id);
                         }}
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
+                        title="Tùy chọn"
                       >
-                        <div className="flex items-center space-x-2">
-                          {/* Call icon */}
-                          <div
-                            className={`text-lg md:text-xl ${isOwn ? "text-white" : "text-gray-600 dark:text-gray-300"}`}
-                          >
-                          </div>
+                        <MoreHorizontal className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                      </button>
 
-                          <div className="flex-1">
-                            {/* ✅ SỬA: Call status text theo logic mới */}
-                            <div
-                              className={`text-xs font-medium md:text-sm ${isOwn ? "text-white" : "text-gray-900 dark:text-white"}`}
-                            >
-                              {getCallStatusText(message.callData.status, isOwn)}
-                            </div>
-
-                            {/* Call time */}
-                            <div
-                              className={`mt-1 text-xs ${isOwn ? "text-blue-100 dark:text-blue-200" : "text-gray-500 dark:text-gray-400"}`}
-                            >
-                              {new Date(message.createdAt).toLocaleString("vi-VN", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                day: "2-digit",
-                                month: "2-digit",
-                              })}
-                            </div>
-                          </div>
-
-                          {/* Call again button */}
+                      {/* ✅ THÊM: Dropdown menu cho tin nhắn */}
+                      {messageContextMenu === message._id && (
+                        <div className="absolute left-0 top-full z-10 mt-1 w-48 rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 dark:bg-gray-800">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              // ✅ THÊM: Kiểm tra online trước khi gọi lại
-                              if (isPartnerOnline) {
-                                startCall();
-                              }
+                              handleDelete(message._id);
                             }}
-                            disabled={!isPartnerOnline} // ✅ THÊM: Disable khi offline
-                            title={isPartnerOnline ? "Gọi lại" : "Người dùng không trực tuyến"}
-                            className={`rounded-full p-1 transition-colors ${
-                              isPartnerOnline
-                                ? `hover:bg-opacity-20 cursor-pointer hover:bg-white ${isOwn ? "text-white" : "text-gray-600"}`
-                                : "cursor-not-allowed text-gray-400"
-                            }`}
+                            className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
                           >
-                            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
-                            </svg>
+                            <Trash2 className="mr-3 h-4 w-4" />
+                            Xóa tin nhắn
                           </button>
                         </div>
-                      </div>
+                      )}
                     </div>
-                  ) : /* ✅ EXISTING: Post share rendering */
-                  message.messageType === "post_share" &&
-                    (message.sharedPost || message.sharedPostId || message.content) ? (
-                    // ...existing post_share code...
-                    (() => {
-                      const postId =
-                        message.sharedPost && typeof message.sharedPost === "string"
-                          ? message.sharedPost
-                          : (message.sharedPost && message.sharedPost._id) || message.sharedPostId;
-                      const populatedPost =
-                        message.sharedPost && typeof message.sharedPost === "object"
-                          ? message.sharedPost
-                          : postMap[postId] || null;
-                      const post = populatedPost;
-                      const author =
-                        post?.user ||
-                        post?.author ||
-                        post?.postedBy ||
-                        post?.owner ||
-                        (message.sharedPost && message.sharedPost.user) ||
-                        {};
-                      const mediaUrls =
-                        post?.thumbnailUrl ||
-                        post?.mediaUrls ||
-                        (post?.images && (post.images[0]?.url || post.images[0])) ||
-                        (post?.media && (post.media[0]?.url || post.media[0])) ||
-                        message.mediaUrl ||
-                        null;
-                      const firstMediaUrl = Array.isArray(mediaUrls) ? mediaUrls[0] : mediaUrls;
-                      let previewImgSrc = null;
-                      if (firstMediaUrl) {
-                        if (isVideoUrl(firstMediaUrl))
-                          previewImgSrc = cloudinaryVideoThumbnail(firstMediaUrl) || null;
-                        else previewImgSrc = firstMediaUrl;
-                      }
-                      const caption = post?.caption || "";
-                      return (
-                        <div className="flex w-full flex-col space-y-2">
-                          <div className={`flex w-full ${isOwn ? "justify-end" : "justify-start"}`}>
-                            <div className="overflow-hidden rounded-lg border bg-[#1f2937] text-white shadow-sm">
-                              <a
-                                href={`/${author?.userId || author?.username || author?._id || ""}`}
-                                className="flex items-center space-x-3 px-3 py-2 hover:underline"
-                              >
-                                <img
-                                  src={
-                                    author?.avatarUrl ||
-                                    `https://ui-avatars.com/api/?name=${author?.userId || author?.username || "User"}&background=random`
-                                  }
-                                  alt={author?.userId || author?.username || "user"}
-                                  className="h-8 w-8 rounded-full object-cover"
-                                />
-                                <div className="text-sm font-medium">
-                                  {author?.userId ||
-                                    author?.username ||
-                                    author?.displayName ||
-                                    "User"}
-                                </div>
-                              </a>
+                  )}
+                  
+                  {/* Message content */}
+                  <div className="flex-1">
+                    {/* Call messages */}
+                    {message.messageType === "call" && message.callData ? (
+                      <div className={`flex w-full ${isOwn ? "justify-end" : "justify-start"}`}>
+                        <div
+                          className={`max-w-xs cursor-pointer rounded-xl px-3 py-2 leading-5 break-words md:px-4 md:py-3 ${
+                            isOwn
+                              ? "bg-blue-500 text-white dark:bg-blue-600"
+                              : "border border-gray-200 bg-[#EFEFEF] text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                          }`}
+                          onClick={() => {
+                            try {
+                              if (!isOwn && !message.isRead && typeof handleMarkAsRead === "function") {
+                                handleMarkAsRead(message._id);
+                              }
+                            } catch (err) {
+                              console.error(err);
+                            }
+                          }}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <div className="flex-1">
+                              <div className={`text-xs font-medium md:text-sm ${isOwn ? "text-white" : "text-gray-900 dark:text-white"}`}>
+                                {getCallStatusText(message.callData.status, isOwn)}
+                              </div>
+                              <div className={`mt-1 text-xs ${isOwn ? "text-blue-100 dark:text-blue-200" : "text-gray-500 dark:text-gray-400"}`}>
+                                {new Date(message.createdAt).toLocaleString("vi-VN", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                })}
+                              </div>
+                            </div>
 
-                              <a
-                                href={`/${author?.userId || author?.username || author?._id || ""}/p/${postId || ""}`}
-                                className="inline-block"
-                              >
-                                <div className="relative w-56 flex-shrink-0 overflow-hidden rounded-md bg-black sm:w-64">
-                                  {previewImgSrc ? (
-                                    <>
-                                      <img
-                                        src={previewImgSrc}
-                                        alt="post preview"
-                                        className="h-auto max-h-[70vh] w-full object-contain"
-                                        loading="lazy"
-                                      />
-                                      {isVideoUrl(firstMediaUrl) && (
-                                        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                                          <div className="bg-opacity-50 flex h-12 w-12 items-center justify-center rounded-full bg-black">
-                                            <svg
-                                              className="h-6 w-6 text-white"
-                                              viewBox="0 0 24 24"
-                                              fill="currentColor"
-                                              aria-hidden
-                                            >
-                                              <path d="M8 5v14l11-7z" />
-                                            </svg>
-                                          </div>
-                                        </div>
+                            {/* Call again button */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (isPartnerOnline) {
+                                  startCall();
+                                }
+                              }}
+                              disabled={!isPartnerOnline}
+                              title={isPartnerOnline ? "Gọi lại" : "Người dùng không trực tuyến"}
+                              className={`rounded-full p-1 transition-colors ${
+                                isPartnerOnline
+                                  ? `hover:bg-opacity-20 cursor-pointer hover:bg-white ${isOwn ? "text-white" : "text-gray-600"}`
+                                  : "cursor-not-allowed text-gray-400"
+                              }`}
+                            >
+                              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : 
+                    
+                    /* Post share messages */
+                    message.messageType === "post_share" && (message.sharedPost || message.sharedPostId || message.content) ? (
+                      <div className="flex w-full flex-col space-y-2">
+                        <div className={`flex w-full ${isOwn ? "justify-end" : "justify-start"}`}>
+                          <div className="overflow-hidden rounded-lg border bg-[#1f2937] text-white shadow-sm">
+                            {/* Post share content*/}
+                            {(() => {
+                              const postId = message.sharedPost && typeof message.sharedPost === "string"
+                                ? message.sharedPost
+                                : (message.sharedPost && message.sharedPost._id) || message.sharedPostId;
+                              const populatedPost = message.sharedPost && typeof message.sharedPost === "object"
+                                ? message.sharedPost
+                                : postMap[postId] || null;
+                              const post = populatedPost;
+                              const author = post?.user || post?.author || post?.postedBy || post?.owner || (message.sharedPost && message.sharedPost.user) || {};
+                              const mediaUrls = post?.thumbnailUrl || post?.mediaUrls || (post?.images && (post.images[0]?.url || post.images[0])) || (post?.media && (post.media[0]?.url || post.media[0])) || message.mediaUrl || null;
+                              const firstMediaUrl = Array.isArray(mediaUrls) ? mediaUrls[0] : mediaUrls;
+                              let previewImgSrc = null;
+                              if (firstMediaUrl) {
+                                if (isVideoUrl(firstMediaUrl)) previewImgSrc = cloudinaryVideoThumbnail(firstMediaUrl) || null;
+                                else previewImgSrc = firstMediaUrl;
+                              }
+                              const caption = post?.caption || "";
+                              
+                              return (
+                                <>
+                                  <a href={`/${author?.userId || author?.username || author?._id || ""}`} className="flex items-center space-x-3 px-3 py-2 hover:underline">
+                                    <img src={author?.avatarUrl || `https://ui-avatars.com/api/?name=${author?.userId || author?.username || "User"}&background=random`} alt={author?.userId || author?.username || "user"} className="h-8 w-8 rounded-full object-cover" />
+                                    <div className="text-sm font-medium">{author?.userId || author?.username || author?.displayName || "User"}</div>
+                                  </a>
+                                  <a href={`/${author?.userId || author?.username || author?._id || ""}/p/${postId || ""}`} className="inline-block">
+                                    <div className="relative w-56 flex-shrink-0 overflow-hidden rounded-md bg-black sm:w-64">
+                                      {previewImgSrc ? (
+                                        <>
+                                          <img src={previewImgSrc} alt="post preview" className="h-auto max-h-[70vh] w-full object-contain" loading="lazy" />
+                                          {isVideoUrl(firstMediaUrl) && (
+                                            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                                              <div className="bg-opacity-50 flex h-12 w-12 items-center justify-center rounded-full bg-black">
+                                                <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                                                  <path d="M8 5v14l11-7z" />
+                                                </svg>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </>
+                                      ) : (
+                                        <div className="flex w-full items-center justify-center py-8 text-sm text-gray-200">Xem bài viết</div>
                                       )}
-                                    </>
-                                  ) : (
-                                    <div className="flex w-full items-center justify-center py-8 text-sm text-gray-200">
-                                      Xem bài viết
                                     </div>
-                                  )}
-                                </div>
-                              </a>
+                                  </a>
+                                  {caption ? <div className="px-3 py-2 text-sm text-gray-100">{caption.length > 200 ? `${caption.slice(0, 200)}...` : caption}</div> : null}
+                                </>
+                              );
+                            })()}
+                          </div>
+                        </div>
 
-                              {caption ? (
-                                <div className="px-3 py-2 text-sm text-gray-100">
-                                  {caption.length > 200 ? `${caption.slice(0, 200)}...` : caption}
+                        {/* Message content sau post share */}
+                        {message.content && (
+                          <div className={`flex w-full ${isOwn ? "justify-end" : "justify-start"}`}>
+                            <div
+                              className={`cursor-pointer rounded-xl px-3 py-2 leading-5 break-words md:px-4 ${isOwn ? "bg-blue-500 text-white dark:bg-blue-600" : "border border-gray-200 bg-[#EFEFEF] text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"}`}
+                              style={{ maxWidth: bubbleMaxWidth, minWidth: 96 }}
+                              onClick={() => {
+                                try {
+                                  if (!isOwn && !message.isRead && typeof handleMarkAsRead === "function")
+                                    handleMarkAsRead(message._id);
+                                } catch (err) {
+                                  console.error(err);
+                                }
+                              }}
+                              onDoubleClick={() => handleReaction(message._id, "❤️")}
+                            >
+                              <p className="text-xs md:text-sm">{renderTextWithBreaks(message.content)}</p>
+                              {message.reactions && message.reactions.length > 0 && (
+                                <div className="mt-1 flex space-x-1">
+                                  {message.reactions.map((reaction, idx) => (
+                                    <span key={idx} className="text-xs">{reaction.emoji}</span>
+                                  ))}
                                 </div>
-                              ) : null}
+                              )}
                             </div>
                           </div>
-
-                          {message.content && (
-                            <div
-                              className={`flex w-full ${isOwn ? "justify-end" : "justify-start"}`}
-                            >
-                              <div
-                                className={`cursor-pointer rounded-xl px-3 py-2 leading-5 break-words md:px-4 ${isOwn ? "bg-blue-500 text-white dark:bg-blue-600" : "border border-gray-200 bg-[#EFEFEF] text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"}`}
-                                style={{ maxWidth: bubbleMaxWidth, minWidth: 96 }}
-                                onClick={() => {
-                                  try {
-                                    if (
-                                      !isOwn &&
-                                      !message.isRead &&
-                                      typeof handleMarkAsRead === "function"
-                                    )
-                                      handleMarkAsRead(message._id);
-                                  } catch (err) {
-                                    console.error(err);
-                                  }
-                                }}
-                                onDoubleClick={() => handleReaction(message._id, "❤️")}
-                              >
-                                <p className="text-xs md:text-sm">
-                                  {renderTextWithBreaks(message.content)}
-                                </p>
-
-                                {message.reactions && message.reactions.length > 0 && (
-                                  <div className="mt-1 flex space-x-1">
-                                    {message.reactions.map((reaction, idx) => (
-                                      <span key={idx} className="text-xs">
-                                        {reaction.emoji}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
+                        )}
+                      </div>
+                    ) : 
+                    
+                    /* Media messages */
+                    message.messageType === "media" && message.mediaUrl ? (
+                      <div className={`flex w-full ${isOwn ? "justify-end" : "justify-start"}`}>
+                        <div className="rounded-2xl px-0 py-0">
+                          <div className="relative w-56 flex-shrink-0 overflow-hidden rounded-lg bg-black sm:w-64">
+                            {message.mediaType === "image" ? (
+                              <img
+                                src={message.mediaUrl}
+                                alt="Shared image"
+                                className="h-auto max-h-[70vh] w-full object-contain"
+                              />
+                            ) : message.mediaType === "video" ? (
+                              <video
+                                src={message.mediaUrl}
+                                controls
+                                poster={cloudinaryVideoThumbnail(message.mediaUrl) || undefined}
+                                className="h-auto max-h-[70vh] w-full"
+                              />
+                            ) : (
+                              <div className="flex w-full items-center justify-center py-8 text-sm text-gray-200">
+                                Không hỗ trợ media này
                               </div>
+                            )}
+                          </div>
+                          {message.content && (
+                            <p className="mt-2 text-xs text-gray-900 md:text-sm dark:text-white">
+                              {message.content}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      
+                      /* Text messages */
+                      <div className={`flex w-full ${isOwn ? "justify-end" : "justify-start"}`}>
+                        <div
+                          className={`cursor-pointer rounded-xl px-3 py-2 leading-5 break-words md:px-4 ${
+                            isOwn
+                              ? "bg-blue-500 text-white dark:bg-blue-600"
+                              : "border border-gray-200 bg-[#EFEFEF] text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                          }`}
+                          style={{ maxWidth: bubbleMaxWidth, minWidth: 96 }}
+                          onClick={() => {
+                            try {
+                              if (!isOwn && !message.isRead && typeof handleMarkAsRead === "function")
+                                handleMarkAsRead(message._id);
+                            } catch (err) {
+                              console.error(err);
+                            }
+                          }}
+                          onDoubleClick={() => handleReaction(message._id, "❤️")}
+                        >
+                          {message.messageType === "text" && (
+                            <p className="text-xs md:text-sm">
+                              {renderTextWithBreaks(message.content)}
+                            </p>
+                          )}
+
+                          {message.messageType === "location" && message.location && (
+                            <div>
+                              <p className="text-xs md:text-sm">📍 {message.location.name}</p>
+                              <p className="text-xs opacity-75">
+                                {message.location.coordinates[1]}, {message.location.coordinates[0]}
+                              </p>
+                            </div>
+                          )}
+
+                          {message.reactions && message.reactions.length > 0 && (
+                            <div className="mt-1 flex space-x-1">
+                              {message.reactions.map((reaction, idx) => (
+                                <span key={idx} className="text-xs">
+                                  {reaction.emoji}
+                                </span>
+                              ))}
                             </div>
                           )}
                         </div>
-                      );
-                    })()
-                  ) : /* ✅ EXISTING: Media rendering */
-                  message.messageType === "media" && message.mediaUrl ? (
-                    // ...existing media code...
-                    <div className="rounded-2xl px-0 py-0">
-                      <div className="relative w-56 flex-shrink-0 overflow-hidden rounded-lg bg-black sm:w-64">
-                        {message.mediaType === "image" ? (
-                          <img
-                            src={message.mediaUrl}
-                            alt="Shared image"
-                            className="h-auto max-h-[70vh] w-full object-contain"
-                          />
-                        ) : message.mediaType === "video" ? (
-                          <video
-                            src={message.mediaUrl}
-                            controls
-                            poster={cloudinaryVideoThumbnail(message.mediaUrl) || undefined}
-                            className="h-auto max-h-[70vh] w-full"
-                          />
-                        ) : (
-                          <div className="flex w-full items-center justify-center py-8 text-sm text-gray-200">
-                            Không hỗ trợ media này
-                          </div>
-                        )}
                       </div>
-                      {message.content && (
-                        <p className="mt-2 text-xs text-gray-900 md:text-sm dark:text-white">
-                          {message.content}
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    /* ✅ EXISTING: Text messages */
-                    <div className={`flex w-full ${isOwn ? "justify-end" : "justify-start"}`}>
-                      <div
-                        className={`cursor-pointer rounded-xl px-3 py-2 leading-5 break-words md:px-4 ${isOwn ? "bg-blue-500 text-white dark:bg-blue-600" : "border border-gray-200 bg-[#EFEFEF] text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"}`}
-                        style={{ maxWidth: bubbleMaxWidth, minWidth: 96 }}
-                        onClick={() => {
-                          try {
-                            if (!isOwn && !message.isRead && typeof handleMarkAsRead === "function")
-                              handleMarkAsRead(message._id);
-                          } catch (err) {
-                            console.error(err);
-                          }
-                        }}
-                        onDoubleClick={() => handleReaction(message._id, "❤️")}
-                      >
-                        {message.messageType === "text" && (
-                          <p className="text-xs md:text-sm">
-                            {renderTextWithBreaks(message.content)}
-                          </p>
-                        )}
-
-                        {message.messageType === "location" && message.location && (
-                          <div>
-                            <p className="text-xs md:text-sm">📍 {message.location.name}</p>
-                            <p className="text-xs opacity-75">
-                              {message.location.coordinates[1]}, {message.location.coordinates[0]}
-                            </p>
-                          </div>
-                        )}
-
-                        {message.reactions && message.reactions.length > 0 && (
-                          <div className="mt-1 flex space-x-1">
-                            {message.reactions.map((reaction, idx) => (
-                              <span key={idx} className="text-xs">
-                                {reaction.emoji}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   {/* Tooltip */}
                   <div className="pointer-events-none absolute -top-7 left-1/2 z-20 -translate-x-1/2 transform opacity-0 transition-opacity duration-150 group-hover:opacity-100">
@@ -712,6 +684,13 @@ export default function ChatWindow({
           <div ref={messagesEndRef} />
         </div>
       </div>
+
+      {messageContextMenu && (
+        <div 
+          className="fixed inset-0 z-5" 
+          onClick={() => setMessageContextMenu(null)}
+        />
+      )}
 
       {/* Input area - giữ nguyên */}
       <form
@@ -814,14 +793,11 @@ export default function ChatWindow({
   );
 }
 
-// ✅ SỬA: Helper function - chỉ 3 status
 const getCallStatusText = (status, isOwn) => {
-  switch (status) {
-    case "declined":
-      return "Cuộc gọi bị từ chối";
-    case "incoming":
+  switch (isOwn) {
+    case false:
       return "Cuộc gọi đến";
-    case "outgoing":
+    case true:
       return "Cuộc gọi đi";
     default:
       return "Cuộc gọi";

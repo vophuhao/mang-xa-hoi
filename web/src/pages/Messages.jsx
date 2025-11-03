@@ -7,6 +7,8 @@ import ConversationList from "@/components/message/ConversationList";
 import useAuth from "@/hooks/useAuth";
 import useMessages from "@/hooks/useMessages";
 import useOnlineUsers from "@/hooks/useOnlineUsers";
+// ✅ THÊM: Import API functions
+import { deleteMessage as apiDeleteMessage, deleteConversation as apiDeleteConversation } from "@/lib/api";
 
 const Messages = () => {
   const navigate = useNavigate();
@@ -14,7 +16,6 @@ const Messages = () => {
   const { user } = useAuth();
   const userId = user?.data?._id;
 
-  // ✅ THÊM: State cho infinite scroll
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
@@ -35,6 +36,9 @@ const Messages = () => {
     imageInputRef,
     setNewMessage,
     setSelectedImages,
+    setMessages, // ✅ THÊM: Cần thêm setter này từ useMessages
+    setConversations, // ✅ THÊM: Cần thêm setter này từ useMessages
+    setSelectedChat, // ✅ THÊM: Cần thêm setter này từ useMessages
     fetchConversations,
     fetchMessages,
     selectConversation,
@@ -54,7 +58,63 @@ const Messages = () => {
   const onlineUsersHook = useOnlineUsers();
   const groupedMessages = groupMessagesByDate(messages);
 
-  // ✅ THÊM: Load more messages function
+  // ✅ THÊM: Handle delete message
+  const handleDeleteMessage = useCallback(async (messageId) => {
+    try {
+      console.log('[MESSAGES] Deleting message:', messageId);
+      
+      await apiDeleteMessage(messageId);
+      
+      // Remove message from local state
+      setMessages(prev => prev.filter(msg => msg._id !== messageId));
+      
+      // Update conversation's last message if needed
+      setConversations(prev => prev.map(conv => {
+        if (conv.lastMessage && conv.lastMessage._id === messageId) {
+          // Find the previous message
+          const remainingMessages = messages.filter(msg => msg._id !== messageId);
+          const newLastMessage = remainingMessages[remainingMessages.length - 1] || null;
+          return { ...conv, lastMessage: newLastMessage };
+        }
+        return conv;
+      }));
+      
+      console.log('[MESSAGES] Message deleted successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('[MESSAGES] Failed to delete message:', error);
+      return { success: false, error: error.message };
+    }
+  }, [messages, setMessages, setConversations]);
+
+  // ✅ THÊM: Handle delete conversation
+  const handleDeleteConversation = useCallback(async (partnerId) => {
+    try {
+      console.log('[MESSAGES] Deleting conversation with:', partnerId);
+      
+      await apiDeleteConversation(partnerId);
+      
+      // Remove conversation from local state
+      setConversations(prev => prev.filter(conv => 
+        String(conv.partner._id) !== String(partnerId)
+      ));
+      
+      // Clear selected chat if it's the deleted conversation
+      if (selectedChat && String(selectedChat.partner._id) === String(partnerId)) {
+        setSelectedChat(null);
+        setMessages([]);
+        // Navigate back to messages without query params
+        navigate('/message');
+      }
+      
+      console.log('[MESSAGES] Conversation deleted successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('[MESSAGES] Failed to delete conversation:', error);
+      return { success: false, error: error.message };
+    }
+  }, [selectedChat, setConversations, setSelectedChat, setMessages, navigate]);
+
   const loadMoreMessages = useCallback(async () => {
     if (!selectedChat?.partner?._id || isLoadingMore || !hasMore) return;
 
@@ -62,7 +122,6 @@ const Messages = () => {
     try {
       const nextPage = currentPage + 1;
 
-      // ✅ SỬA: Sử dụng fetchMessages từ hook với page tiếp theo
       await fetchMessages(selectedChat.partner._id, nextPage);
 
       setCurrentPage(nextPage);
@@ -74,13 +133,11 @@ const Messages = () => {
   }, [selectedChat?.partner?._id, currentPage, isLoadingMore, hasMore, fetchMessages]);
 
   const handleSelectConversation = async (conversation) => {
-    // ✅ THÊM: Reset pagination khi chọn chat mới
     setCurrentPage(1);
     await selectConversation(conversation, (url) => navigate(url));
   };
 
   const handleOpenConversationFromSearch = async (userObj) => {
-    // ✅ THÊM: Reset pagination khi mở chat từ search
     setCurrentPage(1);
     await openConversationFromSearch(userObj, (url) => navigate(url));
   };
@@ -122,7 +179,7 @@ const Messages = () => {
         onSelectConversation={handleSelectConversation}
         fetchConversations={fetchConversations}
         openConversationFromSearch={handleOpenConversationFromSearch}
-        // ✅ KHÔNG cần pass hook, component tự dùng useOnlineUsers
+        handleDeleteConversation={handleDeleteConversation} // ✅ THÊM
       />
 
       <ChatWindow
@@ -133,6 +190,7 @@ const Messages = () => {
         isOwnMessage={isOwnMessage}
         handleMarkAsRead={handleMarkAsRead}
         handleReaction={handleReaction}
+        handleDeleteMessage={handleDeleteMessage} // ✅ THÊM
         selectedImages={selectedImages}
         handleRemoveImage={handleRemoveImage}
         imageInputRef={imageInputRef}
@@ -144,11 +202,9 @@ const Messages = () => {
         user={user}
         userId={userId}
         conversationFullyLoaded={!hasMore}
-        // ✅ THÊM: Props cho infinite scroll
         hasNextPage={hasMore}
         loadMoreMessages={loadMoreMessages}
         isLoadingMore={isLoadingMore}
-        // ✅ KHÔNG cần pass hook, component tự dùng useOnlineUsers
       />
     </div>
   );
