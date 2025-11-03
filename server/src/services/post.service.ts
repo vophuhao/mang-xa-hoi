@@ -12,6 +12,7 @@ import { getAudioByIdSchema } from "@/validators/audio.validator";
 import mongoose from "mongoose";
 import NotificationService from "./notification.service";
 import { UserBlockService } from "./userBlock.service";
+import CollectionModel from "@/models/collection.model";
 export type CreateNewPost = {
   user: mongoose.Types.ObjectId;
   caption?: string;
@@ -284,38 +285,62 @@ export class PostService {
    * Delete a post
    */
   static async deletePost(postId: string, userId: string) {
-    const post = await PostModel.findById(postId);
+  // 1. Tìm post
+  const post = await PostModel.findById(postId);
 
-    if (!post) {
-      throw ErrorFactory.resourceNotFound("Post");
-    }
-
-    // Check if user owns the post
-    if (post.user.toString() !== userId) {
-      throw ErrorFactory.insufficientPermissions("You can only delete your own posts");
-    }
-
-    // Delete associated data
-    await Promise.all([
-      // Delete likes
-      LikeModel.deleteMany({ post: postId }),
-      // Delete saved posts
-      SavedPostModel.deleteMany({ post: postId }),
-      // Delete notifications
-      NotificationModel.deleteMany({ post: postId }),
-      // Delete comments handled by cascade delete if configured
-    ]);
-
-    // Decrement hashtag counts
-    if (post.tags && post.tags.length > 0) {
-      await Promise.all(post.tags.map(tag => HashtagModel.decrementPostCount(tag.toString())));
-    }
-
-    // Delete the post
-    await PostModel.findByIdAndDelete(postId);
-
-    return { message: "Post deleted successfully" };
+  if (!post) {
+    throw ErrorFactory.resourceNotFound("Post");
   }
+
+  // 2. Kiểm tra quyền
+  if (post.user.toString() !== userId) {
+    throw ErrorFactory.insufficientPermissions("You can only delete your own posts");
+  }
+
+  // 3. Tìm các SavedPost có chứa post này
+  const savedRecords = await SavedPostModel.find({ post: postId }).select("collection");
+
+  // 4. Lấy danh sách collectionId đang chứa post (lọc null)
+  const collectionIds = savedRecords
+    .filter(record => record.collection)
+    .map(record => record.collection.toString());
+  console.log("Collections containing the post:", collectionIds);
+
+  // 5. Giảm postsCount trong Collection (nếu cần)
+  if (collectionIds.length > 0) {
+    await Promise.all(
+      collectionIds.map(collectionId =>
+        CollectionModel.findByIdAndUpdate(
+          collectionId,
+          { $inc: { postCount: -1 } },
+          { new: false }
+        )
+      )
+    );
+  }
+
+  // 6. Xoá các dữ liệu liên quan
+  await Promise.all([
+    LikeModel.deleteMany({ post: postId }),          // xoá like
+    SavedPostModel.deleteMany({ post: postId }),     // xoá saved-post (sau khi đã giảm count)
+    NotificationModel.deleteMany({ post: postId }),  // xoá thông báo
+  ]);
+
+  // 7. Giảm số lượng hashtag
+  if (post.tags?.length) {
+    await Promise.all(
+      post.tags.map(tag =>
+        HashtagModel.decrementPostCount(tag.toString())
+      )
+    );
+  }
+
+  // 8. Xoá post
+  await PostModel.findByIdAndDelete(postId);
+
+  return { message: "Post deleted successfully" };
+}
+
 
   /**
    * Update post
