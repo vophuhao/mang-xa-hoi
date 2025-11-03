@@ -12,6 +12,7 @@ import {
   removeReactionHandler,
   deleteMessageHandler,
   getMessageByIdHandler,
+  deleteConversationHandler,
 } from "@/controllers/directMessage.controller";
 import authenticate from "@/middleware/authenticate";
 
@@ -26,6 +27,7 @@ router.get("/conversations", getUserConversationsHandler);
 router.get("/conversation/:partnerId", getConversationHandler);
 router.get("/:messageId", getMessageByIdHandler);
 router.delete("/:messageId", deleteMessageHandler);
+router.delete("/conversation/:partnerId", authenticate, deleteConversationHandler);
 
 // Message interactions
 router.put("/:messageId/read", markAsReadHandler);

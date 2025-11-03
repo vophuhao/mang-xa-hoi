@@ -5,7 +5,6 @@ import UserModel from "@/models/user.model";
 import ErrorFactory from "@/utils/ErrorFactory";
 import mongoose from "mongoose";
 
-// ✅ SỬA: Thêm "call" vào messageType
 export type SendMessageData = {
   senderId: string;
   recipientId: string;
@@ -23,7 +22,6 @@ export type SendMessageData = {
     | undefined;
   replyTo?: string | undefined;
 
-  // ✅ THÊM: callData cho message type "call"
   callData?: {
     duration?: number | undefined;
     status: "incoming" | "outgoing" | "declined";
@@ -591,6 +589,40 @@ export class DirectMessageService {
     }
 
     return message;
+  }
+
+  /**
+   * Delete conversation between two users
+   */
+  static async deleteConversation(userId: string, partnerId: string) {
+    // Validate users exist
+    const [user, partner] = await Promise.all([
+      UserModel.findById(userId),
+      UserModel.findById(partnerId),
+    ]);
+
+    if (!user) {
+      throw ErrorFactory.resourceNotFound("User");
+    }
+
+    if (!partner) {
+      throw ErrorFactory.resourceNotFound("Partner");
+    }
+
+    // Delete all messages between the two users
+    const result = await DirectMessageModel.deleteMany({
+      $or: [
+        { sender: userId, recipient: partnerId },
+        { sender: partnerId, recipient: userId },
+      ],
+    });
+
+    console.log(`[SERVICE] Deleted ${result.deletedCount} messages from conversation between ${userId} and ${partnerId}`);
+
+    return {
+      deletedCount: result.deletedCount,
+      message: `Deleted conversation with ${partner.username || partner.userId}`,
+    };
   }
 }
 

@@ -9,7 +9,9 @@ import {
   markAsRead as apiMarkAsRead,
   markAllAsRead as apiMarkAllAsRead,
   reactToMessage as apiReactToMessage,
-  uploadMedia as apiUploadMedia
+  uploadMedia as apiUploadMedia,
+  deleteMessage as apiDeleteMessage,
+  deleteConversation as apiDeleteConversation
 } from "@/lib/api";
 
 /**
@@ -20,12 +22,12 @@ import {
 export default function useMessages({ initialUserId } = {}) {
   const { user } = useAuth();
   const userId = user?.data?._id;
-  // get socket helpers from hook (will reuse context socket)
+
   const { socket, on, off, emit } = useSocket();
 
-  const [selectedChat, setSelectedChat] = useState(null);
   const [conversations, setConversations] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [selectedChat, setSelectedChat] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sendingMessage, setSendingMessage] = useState(false);
@@ -365,6 +367,54 @@ export default function useMessages({ initialUserId } = {}) {
     fetchConversations();
   }, [fetchConversations]);
 
+  const handleDeleteMessage = useCallback(async (messageId) => {
+    try {
+      await apiDeleteMessage(messageId);
+      
+      // Remove message from local state
+      setMessages(prev => prev.filter(msg => msg._id !== messageId));
+      
+      // Update conversation's last message if needed
+      setConversations(prev => prev.map(conv => {
+        if (conv.lastMessage && conv.lastMessage._id === messageId) {
+          // Find the previous message
+          const remainingMessages = messages.filter(msg => msg._id !== messageId);
+          const newLastMessage = remainingMessages[remainingMessages.length - 1] || null;
+          return { ...conv, lastMessage: newLastMessage };
+        }
+        return conv;
+      }));
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to delete message:', error);
+      return { success: false, error: error.message };
+    }
+  }, [messages]);
+
+  // ✅ THÊM: Delete conversation function
+  const handleDeleteConversation = useCallback(async (partnerId) => {
+    try {
+      await apiDeleteConversation(partnerId);
+      
+      // Remove conversation from local state
+      setConversations(prev => prev.filter(conv => 
+        String(conv.partner._id) !== String(partnerId)
+      ));
+      
+      // Clear selected chat if it's the deleted conversation
+      if (selectedChat && String(selectedChat.partner._id) === String(partnerId)) {
+        setSelectedChat(null);
+        setMessages([]);
+      }
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+      return { success: false, error: error.message };
+    }
+  }, [selectedChat]);
+
   return {
     // state
     selectedChat,
@@ -382,9 +432,14 @@ export default function useMessages({ initialUserId } = {}) {
     messagesEndRef,
     messagesContainerRef,
     imageInputRef,
-    // actions
+    
+    setMessages,
+    setConversations,
+    setSelectedChat,
     setNewMessage,
     setSelectedImages,
+    
+    // actions
     fetchConversations,
     fetchMessages,
     selectConversation,
@@ -398,6 +453,6 @@ export default function useMessages({ initialUserId } = {}) {
     formatLastMessageTime,
     getMessagePreview,
     isOwnMessage,
-    groupMessagesByDate
+    groupMessagesByDate,
   };
 }

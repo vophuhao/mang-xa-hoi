@@ -98,6 +98,8 @@ export const getConversation = async (partnerId, page = 1, limit = 10) =>
   API.get(`/messages/conversation/${partnerId}?page=${page}&limit=${limit}`);
 export const getMessageById = async (messageId) => API.get(`/messages/${messageId}`);
 export const deleteMessage = async (messageId) => API.delete(`/messages/${messageId}`);
+export const deleteConversation = async (partnerId) => 
+  API.delete(`/messages/conversation/${partnerId}`);
 
 // Message interactions
 export const markAsRead = async (messageId) => API.put(`/messages/${messageId}/read`);
