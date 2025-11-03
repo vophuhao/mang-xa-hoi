@@ -100,7 +100,7 @@ export class UserService {
    * Get user profile by userId
    */
   static async getUserByUserId(userId: string, currentUserId: string): Promise<UserProfile> {
-    const user = await UserModel.findOne({ userId }).select("-password +lastOnline");
+    const user = await UserModel.findOne({ userId }).select("-password");
 
     if (!user) {
       throw ErrorFactory.resourceNotFound("User", `User with id "${userId}" not found`);
