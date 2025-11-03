@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { MoreHorizontal, Trash2 } from 'lucide-react';
 
+import ConfirmDialog from "@/components/common/ConfirmDialog";
 import OnlineStatusIndicator from "@/components/common/OnlineStatusIndicator";
 import useAuth from "@/hooks/useAuth";
 import useOnlineUsers from "@/hooks/useOnlineUsers";
@@ -41,6 +42,12 @@ export default function ChatWindow({
   // ✅ SỬA: Định nghĩa tất cả state và variables trước
   const [messageContextMenu, setMessageContextMenu] = useState(null);
   const [partnerLastOnline, setPartnerLastOnline] = useState(null);
+
+  // ✅ THÊM: State cho confirm dialog
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    messageId: null,
+  });
 
   // ✅ SỬA: Định nghĩa isPartnerOnline TRƯỚC khi sử dụng
   const isPartnerOnline = useMemo(() => {
@@ -139,21 +146,28 @@ export default function ChatWindow({
     }
   };
 
-  const handleDelete = async (messageId) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa tin nhắn này?')) {
-      try {
-        const result = await handleDeleteMessage(messageId);
-        if (result && result.success) {
-          console.log('Message deleted successfully');
-        } else {
-          alert('Không thể xóa tin nhắn: ' + (result?.error || 'Unknown error'));
-        }
-      } catch (error) {
-        console.error('Delete message error:', error);
-        alert('Không thể xóa tin nhắn: ' + error.message);
-      }
-    }
+  // ✅ SỬA: Handle delete message với popup
+  const handleDeleteClick = (messageId) => {
     setMessageContextMenu(null);
+    setConfirmDialog({
+      isOpen: true,
+      messageId,
+    });
+  };
+
+  const handleDeleteConfirm = async () => {
+    const { messageId } = confirmDialog;
+    try {
+      const result = await handleDeleteMessage(messageId);
+      if (result && result.success) {
+        console.log('Message deleted successfully');
+      } else {
+        alert('Không thể xóa tin nhắn: ' + (result?.error || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Delete message error:', error);
+      alert('Không thể xóa tin nhắn: ' + error.message);
+    }
   };
 
   // Helper functions
@@ -369,13 +383,14 @@ export default function ChatWindow({
                         <MoreHorizontal className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                       </button>
 
-                      {/* ✅ THÊM: Dropdown menu cho tin nhắn */}
+                      {/* Dropdown menu */}
                       {messageContextMenu === message._id && (
                         <div className="absolute left-0 top-full z-10 mt-1 w-48 rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 dark:bg-gray-800">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDelete(message._id);
+                              // ✅ SỬA: Gọi handleDeleteClick thay vì handleDelete
+                              handleDeleteClick(message._id);
                             }}
                             className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
                           >
@@ -652,6 +667,18 @@ export default function ChatWindow({
           onClick={() => setMessageContextMenu(null)}
         />
       )}
+
+      {/* ✅ THÊM: Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog({ isOpen: false, messageId: null })}
+        onConfirm={handleDeleteConfirm}
+        title="Xóa tin nhắn"
+        message="Bạn có chắc chắn muốn xóa tin nhắn này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        cancelText="Hủy"
+        type="danger"
+      />
 
       {/* Input area - existing code... */}
       <form

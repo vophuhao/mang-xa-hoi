@@ -6,6 +6,7 @@ import useOnlineUsers from "@/hooks/useOnlineUsers";
 import { getUserLastOnline } from "@/lib/api";
 import { formatLastOnline } from "@/utils/timeUtils";
 
+import ConfirmDialog from "../common/ConfirmDialog";
 import OnlineStatusIndicator from "../common/OnlineStatusIndicator";
 import SearchPanel from "../SearchPanel";
 
@@ -21,10 +22,14 @@ export default function ConversationList({
   const { isUserOnline } = useOnlineUsers();
   const [contextMenu, setContextMenu] = useState(null);
   
-  // ✅ THÊM: State cho lastOnline của tất cả partners
   const [partnersLastOnline, setPartnersLastOnline] = useState({});
 
-  // ✅ THÊM: Fetch lastOnline cho tất cả offline partners
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    partnerId: null,
+    partnerName: "",
+  });
+
   useEffect(() => {
     const fetchLastOnlines = async () => {
       const offlinePartners = conversations
@@ -58,7 +63,6 @@ export default function ConversationList({
     fetchLastOnlines();
   }, [conversations, isUserOnline]);
 
-  // ✅ THÊM: Clear lastOnline khi partner comes online
   useEffect(() => {
     conversations.forEach(conv => {
       if (isUserOnline(conv.partner?._id) && partnersLastOnline[conv.partner._id]) {
@@ -71,15 +75,22 @@ export default function ConversationList({
     });
   }, [conversations, isUserOnline, partnersLastOnline]);
 
-  // ✅ THÊM: Handle delete conversation
-  const handleDelete = async (partnerId, partnerName) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa cuộc hội thoại với ${partnerName}?`)) {
-      const result = await handleDeleteConversation(partnerId);
-      if (result.success) {
-        console.log('Conversation deleted successfully');
-      } else {
-        alert('Không thể xóa cuộc hội thoại: ' + result.error);
-      }
+  const handleDeleteClick = (partnerId, partnerName) => {
+    setContextMenu(null);
+    setConfirmDialog({
+      isOpen: true,
+      partnerId,
+      partnerName,
+    });
+  };
+
+  const handleDeleteConfirm = async () => {
+    const { partnerId, partnerName } = confirmDialog;
+    const result = await handleDeleteConversation(partnerId);
+    if (result.success) {
+      console.log('Conversation deleted successfully');
+    } else {
+      alert('Không thể xóa cuộc hội thoại: ' + result.error);
     }
   };
 
@@ -241,8 +252,8 @@ export default function ConversationList({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setContextMenu(null);
-                            handleDelete(conversation.partner._id, partnerName);
+                            // ✅ SỬA: Gọi handleDeleteClick thay vì handleDelete
+                            handleDeleteClick(conversation.partner._id, partnerName);
                           }}
                           className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
                         >
@@ -266,6 +277,18 @@ export default function ConversationList({
           onClick={() => setContextMenu(null)}
         />
       )}
+
+      {/* ✅ THÊM: Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog({ isOpen: false, partnerId: null, partnerName: "" })}
+        onConfirm={handleDeleteConfirm}
+        title="Xóa cuộc hội thoại"
+        message={`Bạn có chắc chắn muốn xóa cuộc hội thoại với ${confirmDialog.partnerName}? Hành động này không thể hoàn tác.`}
+        confirmText="Xóa"
+        cancelText="Hủy"
+        type="danger"
+      />
     </div>
   );
 }
