@@ -62,20 +62,6 @@ export default function ConversationList({
         />
       </div>
 
-      {/* Avatar / note area - giữ nguyên */}
-      <div className="relative hidden flex-col px-4 py-4 md:flex">
-        <div className="relative">
-          <img
-            src={user?.data.avatarUrl}
-            alt={user?.data.username}
-            className="h-16 w-16 rounded-full border border-gray-200 object-cover dark:border-gray-700"
-          />
-        </div>
-        <span className="mt-2 text-xs font-medium text-gray-800 dark:text-gray-300">
-          Ghi chú của bạn
-        </span>
-      </div>
-
       {/* Tabs - giữ nguyên */}
       <div className="flex border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
         <button className="px-4 py-2 text-sm font-semibold text-gray-900 md:text-base dark:text-white">
