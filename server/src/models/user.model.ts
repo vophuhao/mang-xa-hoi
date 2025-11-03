@@ -10,7 +10,7 @@ export interface UserDocument extends mongoose.Document {
 
   // Instagram-like profile fields
   username: string;
-  userId: String,
+  userId: String;
   fullName?: string;
   bio?: string;
   avatarUrl?: string;
@@ -39,6 +39,8 @@ export interface UserDocument extends mongoose.Document {
   strikes: number;
   lastStrikeAt: Date | null;
 
+  lastOnline: Date | null;
+
   comparePassword(val: string): Promise<boolean>;
   omitPassword(): Omit<UserDocument, "password">;
 }
@@ -64,7 +66,7 @@ const userSchema = new mongoose.Schema<UserDocument>(
       maxlength: 30,
       match: /^[\p{L}\p{N}._\s]+$/u,
     },
-      userId: {
+    userId: {
       type: String,
       required: true,
       unique: true,
@@ -134,6 +136,11 @@ const userSchema = new mongoose.Schema<UserDocument>(
     banUntil: { type: Date, default: null },
     strikes: { type: Number, default: 0 },
     lastStrikeAt: { type: Date, default: null },
+
+    lastOnline: { 
+      type: Date, 
+      default: null 
+    },
   },
   { timestamps: true }
 );

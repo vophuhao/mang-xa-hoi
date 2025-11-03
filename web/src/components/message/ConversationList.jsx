@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 import { MoreHorizontal, Trash2 } from 'lucide-react';
 
 import useOnlineUsers from "@/hooks/useOnlineUsers";
+import { getUserLastOnline } from "@/lib/api";
+import { formatLastOnline } from "@/utils/timeUtils";
 
 import OnlineStatusIndicator from "../common/OnlineStatusIndicator";
 import SearchPanel from "../SearchPanel";
@@ -14,10 +16,60 @@ export default function ConversationList({
   onSelectConversation,
   fetchConversations,
   openConversationFromSearch,
-  handleDeleteConversation, // ✅ THÊM
+  handleDeleteConversation,
 }) {
   const { isUserOnline } = useOnlineUsers();
-  const [contextMenu, setContextMenu] = useState(null); // ✅ THÊM
+  const [contextMenu, setContextMenu] = useState(null);
+  
+  // ✅ THÊM: State cho lastOnline của tất cả partners
+  const [partnersLastOnline, setPartnersLastOnline] = useState({});
+
+  // ✅ THÊM: Fetch lastOnline cho tất cả offline partners
+  useEffect(() => {
+    const fetchLastOnlines = async () => {
+      const offlinePartners = conversations
+        .filter(conv => !isUserOnline(conv.partner?._id))
+        .map(conv => conv.partner?._id)
+        .filter(Boolean);
+      
+      if (offlinePartners.length === 0) return;
+      
+      try {
+        const lastOnlines = await Promise.allSettled(
+          offlinePartners.map(async (partnerId) => {
+            const response = await getUserLastOnline(partnerId);
+            return { partnerId, lastOnline: response.data?.lastOnline };
+          })
+        );
+        
+        const lastOnlineMap = {};
+        lastOnlines.forEach((result) => {
+          if (result.status === 'fulfilled' && result.value) {
+            lastOnlineMap[result.value.partnerId] = result.value.lastOnline;
+          }
+        });
+        
+        setPartnersLastOnline(lastOnlineMap);
+      } catch (error) {
+        console.error('Error fetching partners lastOnline:', error);
+      }
+    };
+    
+    fetchLastOnlines();
+  }, [conversations, isUserOnline]);
+
+  // ✅ THÊM: Clear lastOnline khi partner comes online
+  useEffect(() => {
+    conversations.forEach(conv => {
+      if (isUserOnline(conv.partner?._id) && partnersLastOnline[conv.partner._id]) {
+        setPartnersLastOnline(prev => {
+          const updated = { ...prev };
+          delete updated[conv.partner._id];
+          return updated;
+        });
+      }
+    });
+  }, [conversations, isUserOnline, partnersLastOnline]);
 
   // ✅ THÊM: Handle delete conversation
   const handleDelete = async (partnerId, partnerName) => {
@@ -62,20 +114,6 @@ export default function ConversationList({
         />
       </div>
 
-      {/* Avatar / note area - giữ nguyên */}
-      <div className="relative hidden flex-col px-4 py-4 md:flex">
-        <div className="relative">
-          <img
-            src={user?.data.avatarUrl}
-            alt={user?.data.username}
-            className="h-16 w-16 rounded-full border border-gray-200 object-cover dark:border-gray-700"
-          />
-        </div>
-        <span className="mt-2 text-xs font-medium text-gray-800 dark:text-gray-300">
-          Ghi chú của bạn
-        </span>
-      </div>
-
       {/* Tabs - giữ nguyên */}
       <div className="flex border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
         <button className="px-4 py-2 text-sm font-semibold text-gray-900 md:text-base dark:text-white">
@@ -103,6 +141,7 @@ export default function ConversationList({
             {conversations.map((conversation) => {
               const isPartnerOnline = isUserOnline(conversation.partner?._id);
               const partnerName = conversation.partner?.userId || conversation.partner?.username || "Unknown User";
+              const partnerLastOnline = partnersLastOnline[conversation.partner?._id];
 
               return (
                 <div
@@ -137,15 +176,26 @@ export default function ConversationList({
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <span className="truncate text-sm font-medium text-gray-900 md:text-base dark:text-white">
-                            {partnerName}
-                          </span>
-                          {isPartnerOnline && (
-                            <span className="hidden text-xs font-medium text-green-600 md:inline dark:text-green-400">
-                              • Online
+                        <div className="flex flex-col">
+                          <div className="flex items-center space-x-2">
+                            <span className="truncate text-sm font-medium text-gray-900 md:text-base dark:text-white">
+                              {partnerName}
                             </span>
-                          )}
+                            {/* ✅ SỬA: Hiển thị online hoặc lastOnline */}
+                            {isPartnerOnline ? (
+                              <span className="hidden text-xs font-medium text-green-600 md:inline dark:text-green-400">
+                                • Online
+                              </span>
+                            ) : partnerLastOnline ? (
+                              <span className="hidden text-xs text-gray-500 md:inline dark:text-gray-400">
+                                • {formatLastOnline(partnerLastOnline)}
+                              </span>
+                            ) : (
+                              <span className="hidden text-xs text-red-500 md:inline dark:text-red-400">
+                                • Offline
+                              </span>
+                            )}
+                          </div>
                         </div>
                         {conversation.lastMessage && (
                           <span className="ml-2 text-xs whitespace-nowrap text-gray-400 dark:text-gray-500">

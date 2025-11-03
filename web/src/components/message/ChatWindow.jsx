@@ -8,7 +8,8 @@ import useAuth from "@/hooks/useAuth";
 import useOnlineUsers from "@/hooks/useOnlineUsers";
 import { POST_QUERY_KEYS } from "@/hooks/usePost";
 import useSocket from "@/hooks/useSocket";
-import { getPostById, saveCallHistory } from "@/lib/api";
+import { getPostById, saveCallHistory, getUserLastOnline } from "@/lib/api";
+import { formatLastOnline } from "@/utils/timeUtils";
 
 export default function ChatWindow({
   selectedChat,
@@ -33,36 +34,110 @@ export default function ChatWindow({
   loadMoreMessages,
   isLoadingMore = false,
 }) {
-  const postIds = useMemo(() => {
-    const s = new Set();
-    groupedMessages.forEach((item) => {
-      if (item.type !== "message") return;
-      const m = item.message;
-      if (!m) return;
-      if (m.messageType !== "post_share") return;
-      const pid =
-        m.sharedPost && typeof m.sharedPost === "string"
-          ? m.sharedPost
-          : (m.sharedPost && m.sharedPost._id) || m.sharedPostId;
-      if (pid) s.add(String(pid));
-      else if (typeof m.content === "string") {
-        const match = m.content.match(/\/p\/([a-zA-Z0-9_-]+)/);
-        if (match) s.add(match[1]);
+  const { user: currentUser } = useAuth();
+  const { isUserOnline } = useOnlineUsers();
+  const { socket } = useSocket();
+
+  // ✅ SỬA: Định nghĩa tất cả state và variables trước
+  const [messageContextMenu, setMessageContextMenu] = useState(null);
+  const [partnerLastOnline, setPartnerLastOnline] = useState(null);
+
+  // ✅ SỬA: Định nghĩa isPartnerOnline TRƯỚC khi sử dụng
+  const isPartnerOnline = useMemo(() => {
+    return selectedChat?.partner?._id ? isUserOnline(selectedChat.partner._id) : false;
+  }, [selectedChat?.partner?._id, isUserOnline]);
+
+  // ✅ THÊM: Fetch lastOnline khi selectedChat thay đổi hoặc partner offline
+  useEffect(() => {
+    const fetchLastOnline = async () => {
+      if (!selectedChat?.partner?._id || isPartnerOnline) {
+        setPartnerLastOnline(null);
+        return;
       }
-    });
-    return Array.from(s);
+      
+      try {
+        const response = await getUserLastOnline(selectedChat.partner._id);
+        setPartnerLastOnline(response.data?.lastOnline);
+      } catch (error) {
+        console.error('Error fetching last online:', error);
+        setPartnerLastOnline(null);
+      }
+    };
+    
+    fetchLastOnline();
+  }, [selectedChat?.partner?._id, isPartnerOnline]);
+
+  // ✅ THÊM: Clear lastOnline khi user comes online
+  useEffect(() => {
+    if (isPartnerOnline) {
+      setPartnerLastOnline(null);
+    }
+  }, [isPartnerOnline]);
+
+  // ✅ Existing code for post queries
+  const postIds = useMemo(() => {
+    return groupedMessages
+      .filter(item => item.type === "message")
+      .map(item => item.message)
+      .filter(message => 
+        message.messageType === "post_share" && 
+        (message.sharedPostId || (typeof message.sharedPost === "string"))
+      )
+      .map(message => 
+        message.sharedPostId || 
+        (typeof message.sharedPost === "string" ? message.sharedPost : null)
+      )
+      .filter(Boolean);
   }, [groupedMessages]);
 
   const postQueries = useQueries({
-    queries: postIds.map((id) => ({
-      queryKey: POST_QUERY_KEYS.post(id),
-      queryFn: () => getPostById(id),
-      enabled: !!id,
+    queries: postIds.map(postId => ({
+      queryKey: [POST_QUERY_KEYS.POST, postId],
+      queryFn: () => getPostById(postId),
+      enabled: !!postId,
       staleTime: 5 * 60 * 1000,
+      cacheTime: 10 * 60 * 1000,
     })),
   });
 
-  const [messageContextMenu, setMessageContextMenu] = useState(null);
+  const postMap = useMemo(() => {
+    const map = {};
+    postQueries.forEach((query, index) => {
+      if (query.data) {
+        map[postIds[index]] = query.data;
+      }
+    });
+    return map;
+  }, [postQueries, postIds]);
+
+  // ✅ Other existing functions
+  const bubbleMaxWidth = "75%";
+
+  const startCall = async () => {
+    if (!isPartnerOnline || !selectedChat?.partner?._id) return;
+
+    try {
+      const callData = {
+        callerId: currentUser?.data?._id,
+        receiverId: selectedChat.partner._id,
+        callerName: currentUser?.data?.userId || currentUser?.data?.username,
+        receiverName: selectedChat.partner.userId || selectedChat.partner.username,
+        timestamp: new Date().toISOString(),
+      };
+
+      if (socket) {
+        socket.emit("call_request", callData);
+        await saveCallHistory({
+          callerId: callData.callerId,
+          receiverId: callData.receiverId,
+          status: "initiated",
+          startTime: callData.timestamp,
+        });
+      }
+    } catch (error) {
+      console.error("Error starting call:", error);
+    }
+  };
 
   const handleDelete = async (messageId) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa tin nhắn này?')) {
@@ -81,180 +156,64 @@ export default function ChatWindow({
     setMessageContextMenu(null);
   };
 
-  const postMap = useMemo(() => {
-    const map = {};
-    postQueries.forEach((q, idx) => {
-      const id = postIds[idx];
-      const res = q?.data;
-      const data = res?.data || res || null;
-      if (data) map[id] = data;
-    });
-    return map;
-  }, [postQueries, postIds]);
-
-  const { user: authUser } = useAuth();
-  const userId = authUser?.data?._id;
-  const { emit } = useSocket();
-  const [bubbleMaxWidth, setBubbleMaxWidth] = useState("40%");
-
-  const scrollPositionRef = useRef(0);
-  const isLoadingRef = useRef(false);
-  const loadTriggerRef = useRef(null);
-
-  useEffect(() => {
-    if (!messagesContainerRef?.current || !hasNextPage || isLoadingMore) return;
-
-    const container = messagesContainerRef.current;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (entry.isIntersecting && !isLoadingRef.current && hasNextPage) {
-          console.log("[SCROLL] Loading more messages...");
-          isLoadingRef.current = true;
-
-          scrollPositionRef.current = container.scrollHeight - container.scrollTop;
-
-          if (loadMoreMessages) {
-            loadMoreMessages().finally(() => {
-              isLoadingRef.current = false;
-            });
-          }
-        }
-      },
-      {
-        root: container,
-        rootMargin: "50px 0px 0px 0px",
-        threshold: 0.1,
-      }
-    );
-
-    if (loadTriggerRef.current) {
-      observer.observe(loadTriggerRef.current);
-    }
-
-    return () => {
-      observer.disconnect();
+  // Helper functions
+  const getCallStatusText = (status, isOwn) => {
+    const statusMap = {
+      initiated: isOwn ? "Cuộc gọi đi" : "Cuộc gọi đến",
+      answered: "Cuộc gọi",
+      declined: isOwn ? "Cuộc gọi bị từ chối" : "Đã từ chối cuộc gọi",
+      missed: isOwn ? "Cuộc gọi nhỡ" : "Cuộc gọi nhỡ",
+      ended: "Cuộc gọi đã kết thúc",
     };
-  }, [hasNextPage, isLoadingMore, loadMoreMessages, messagesContainerRef]);
-
-  useEffect(() => {
-    if (!messagesContainerRef?.current || !scrollPositionRef.current) return;
-
-    const container = messagesContainerRef.current;
-    const newScrollTop = container.scrollHeight - scrollPositionRef.current;
-
-    container.scrollTop = newScrollTop;
-    scrollPositionRef.current = 0;
-  }, [groupedMessages.length]);
-
-  useLayoutEffect(() => {
-    const compute = () => {
-      try {
-        const el = messagesContainerRef?.current;
-        const base = el?.clientWidth || window.innerWidth;
-        setBubbleMaxWidth(`${Math.floor(base * 0.4)}px`);
-      } catch {
-        setBubbleMaxWidth(`${Math.floor(window.innerWidth * 0.4)}px`);
-      }
-    };
-    compute();
-    window.addEventListener("resize", compute);
-    return () => window.removeEventListener("resize", compute);
-  }, [messagesContainerRef]);
-
-  useEffect(() => {
-    if (!messagesEndRef?.current || isLoadingRef.current) return;
-
-    const container = messagesContainerRef?.current;
-    if (!container) return;
-
-    const isNearBottom =
-      container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-
-    if (isNearBottom || groupedMessages.length <= 10) {
-      const t = setTimeout(() => {
-        try {
-          messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-        } catch (err) {
-          console.warn("Scroll error:", err);
-        }
-      }, 100);
-      return () => clearTimeout(t);
-    }
-  }, [selectedChat?._id, groupedMessages?.length, messagesEndRef, messagesContainerRef]);
-
-  const handleInputKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      if (!sendingMessage) {
-        handleSendMessage(e);
-      }
-    }
+    return statusMap[status] || "Cuộc gọi";
   };
 
-  const startCall = async () => {
-    if (!selectedChat?.partner?._id) return;
+  const renderTextWithBreaks = (text) => {
+    if (!text) return "";
+    return text.split('\n').map((line, index) => (
+      <span key={index}>
+        {line}
+        {index < text.split('\n').length - 1 && <br />}
+      </span>
+    ));
+  };
 
-    if (!isPartnerOnline) {
-      console.log("[CALL] Cannot call - user is offline");
-      return;
-    }
+  const isVideoUrl = (url) => {
+    if (!url) return false;
+    const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
+    return videoExtensions.some(ext => url.toLowerCase().includes(ext));
+  };
 
-    const partnerId = String(selectedChat.partner._id);
-
-    const roomId = `room_${userId}_${partnerId}_${Date.now()}`;
-    const fromUserName = authUser?.data?.userId || authUser?.data?.displayName || "";
-
+  const cloudinaryVideoThumbnail = (videoUrl) => {
+    if (!videoUrl || !videoUrl.includes('cloudinary')) return null;
     try {
-      console.log("[CALL] Starting call with roomId:", roomId);
-
-      await saveCallHistory({
-        recipientId: partnerId,
-        status: "outgoing",
-        roomId: String(roomId),
-        startedAt: new Date().toISOString(),
-      });
-
-      console.log("[CALL] Outgoing call history created");
+      return videoUrl.replace('/video/upload/', '/video/upload/c_thumb,w_300,h_200/');
     } catch (error) {
-      console.error("[CALL] Failed to create call history:", error);
+      return null;
     }
-
-    emit("call_request", {
-      toUserId: partnerId,
-      fromUserId: userId,
-      fromUserName,
-      roomId,
-    });
-
-    const url = `/call?roomId=${encodeURIComponent(roomId)}&role=caller&to=${encodeURIComponent(partnerId)}`;
-    window.open(url, "_blank", "noopener,noreferrer");
   };
 
-  const { isUserOnline } = useOnlineUsers();
-
+  // ✅ Early return nếu không có selectedChat
   if (!selectedChat) {
     return (
-      <div className="flex flex-1 items-center justify-center bg-gray-50 text-gray-500 dark:bg-gray-900 dark:text-gray-400">
-        <div className="px-4 text-center">
-          <div className="mb-4 text-4xl md:text-6xl">💬</div>
-          <h3 className="mb-2 text-base font-medium text-gray-900 md:text-lg dark:text-white">
-            Chọn một đoạn chat để bắt đầu
+      <div className="flex flex-1 items-center justify-center bg-white dark:bg-gray-900">
+        <div className="text-center">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+            Chọn một cuộc hội thoại
           </h3>
-          <p className="text-sm">Tin nhắn của bạn sẽ hiển thị ở đây</p>
+          <p className="text-gray-500 dark:text-gray-400">
+            Chọn một cuộc hội thoại từ danh sách để bắt đầu nhắn tin
+          </p>
         </div>
       </div>
     );
   }
-
-  const isPartnerOnline = isUserOnline(selectedChat.partner?._id);
 
   return (
     <div className="flex min-w-0 flex-1 flex-col bg-white dark:bg-gray-900">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-gray-300 bg-white p-3 md:p-4 dark:border-gray-700 dark:bg-gray-900">
         <div className="flex items-center space-x-2 md:space-x-3">
-          {/* Avatar with Online Status */}
           <div className="relative">
             <a href={`/${selectedChat.partner?.userId || selectedChat.partner?._id}`}>
               <img
@@ -290,13 +249,14 @@ export default function ChatWindow({
             <p className="text-xs text-gray-500 md:text-sm dark:text-gray-400">
               @{selectedChat.partner?.username || "unknown"}
               {!isPartnerOnline && (
-                <span className="ml-2 text-red-500 dark:text-red-400">• Offline</span>
+                <span className="ml-2 text-red-500 dark:text-red-400">
+                  • {partnerLastOnline ? formatLastOnline(partnerLastOnline) : "Offline"}
+                </span>
               )}
             </p>
           </div>
         </div>
 
-        {/* Call button */}
         <div className="flex items-center space-x-2">
           <button
             type="button"
@@ -314,14 +274,14 @@ export default function ChatWindow({
         </div>
       </div>
 
-      {/* Messages Area*/}
+      {/* Messages Area */}
       <div
         ref={messagesContainerRef}
         className="flex-1 space-y-3 overflow-y-auto bg-white p-3 md:p-4 dark:bg-gray-900"
       >
         <div>
           {hasNextPage && (
-            <div ref={loadTriggerRef} className="flex justify-center py-4">
+            <div className="flex justify-center py-4">
               {isLoadingMore ? (
                 <div className="flex items-center space-x-2 text-gray-500 dark:text-gray-400">
                   <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-gray-400 dark:border-gray-500"></div>
@@ -685,6 +645,7 @@ export default function ChatWindow({
         </div>
       </div>
 
+      {/* Click outside to close message context menu */}
       {messageContextMenu && (
         <div 
           className="fixed inset-0 z-5" 
@@ -692,7 +653,7 @@ export default function ChatWindow({
         />
       )}
 
-      {/* Input area - giữ nguyên */}
+      {/* Input area - existing code... */}
       <form
         onSubmit={handleSendMessage}
         className="border-t border-gray-200 bg-white p-3 md:p-4 dark:border-gray-700 dark:bg-gray-900"
@@ -739,7 +700,6 @@ export default function ChatWindow({
             <textarea
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              onKeyDown={handleInputKeyDown}
               onInput={(e) => {
                 e.target.style.height = "auto";
                 e.target.style.height = e.target.scrollHeight + "px";

@@ -24,6 +24,7 @@ export interface UserProfile {
   isFollowing?: boolean;
   followsBack?: boolean;
   isOwnProfile?: boolean;
+  lastOnline?: Date | null;
 }
 
 export interface SearchUsersParams {
@@ -99,7 +100,7 @@ export class UserService {
    * Get user profile by userId
    */
   static async getUserByUserId(userId: string, currentUserId: string): Promise<UserProfile> {
-    const user = await UserModel.findOne({ userId }).select("-password");
+    const user = await UserModel.findOne({ userId }).select("-password +lastOnline");
 
     if (!user) {
       throw ErrorFactory.resourceNotFound("User", `User with id "${userId}" not found`);
@@ -110,6 +111,7 @@ export class UserService {
     if (excludedUserIds.includes((user._id as any).toString())) {
       throw ErrorFactory.forbiddenAction("You cannot view this user profile");
     }
+
     // Get user stats and relationships in parallel
     const [isFollowing, followsBack, followersCount, followingCount, postsCount] =
       await Promise.all([
@@ -134,9 +136,20 @@ export class UserService {
       isFollowing: !!isFollowing,
       followsBack: !!followsBack,
       isOwnProfile: (user._id as any).toString() === currentUserId.toString(),
+      lastOnline: user.lastOnline,
     };
 
     return userProfile as UserProfile;
+  }
+
+  static async getUserLastOnline(userId: string): Promise<Date | null> {
+    try {
+      const user = await UserModel.findById(userId).select('lastOnline');
+      return user?.lastOnline || null;
+    } catch (error) {
+      console.error('[USER_SERVICE] Error getting lastOnline:', error);
+      return null;
+    }
   }
 
   /**
